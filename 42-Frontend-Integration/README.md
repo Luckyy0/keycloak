@@ -1,0 +1,18 @@
+# Chapter 42: Lên Đồ Cho Frontend (Frontend Integration)
+
+## Giới thiệu (Introduction)
+Dù bạn đã xây dựng một pháo đài Backend cực kỳ kiên cố Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Trải nghiệm Người dùng (User Experience - UX) cuối cùng vẫn nằm ở phía Frontend Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Trong chương này Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, chúng ta sẽ học cách kết nối các "Quái vật" giao diện hiện đại như **React, Next.js, Angular, Vue** với Keycloak Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. 
+Đồng thời Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, áp dụng những tuyệt kỹ "Tàng hình" như Silent Login và Auto Refresh Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, để người dùng không bao giờ bị văng ra ngoài một cách vô duyên khi đang điền Form Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
+
+## Mục lục (Table of Contents)
+
+### Module 1: Cắm Phích Cho Trình Duyệt
+*   **Lesson 1: React & Next.js Auth:** Cách tích hợp chuẩn mực cho hệ sinh thái React Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề. Cấu hình OIDC Client cho Next.js (NextAuth/Auth.js) để tận dụng sức mạnh Server-Side Rendering (SSR).
+*   **Lesson 2: Angular & Vue.js:** Góc nhìn tổng quan về thư viện `angular-oauth2-oidc` và cách Vue.js bắt tay với Keycloak thông qua thư viện cốt lõi `keycloak-js` Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh.
+*   **Lesson 3: Keycloak JS & Nghệ Thuật Tàng Hình:** Đào sâu vào thư viện Native `keycloak-js` Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Các thuật toán Silent Check-sso (Kiểm tra đăng nhập ngầm qua iframe) và Silent Refresh (Lấy Token mới mà không chớp màn hình) Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần.
+
+### Labs & Thực hành (Labs)
+*   **Lab 1:** Code Hệ Thống Đăng Nhập React Oanh Khung Dịch Lụa Mạch Lệnh. Cài đặt thư viện `react-oidc-context` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, cấu hình nút Đăng nhập đá văng sang Keycloak Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, sau đó bóc tách giao diện dựa trên Quyền Của Người Dùng.
+
+## Bắt đầu từ đâu? (Where to start?)
+Chúng ta sẽ bắt đầu với thế lực Frontend lớn nhất hiện nay tại [Lesson 1: React & Next.js](Module-1-Concepts/Lesson-1-React-and-Nextjs.md).

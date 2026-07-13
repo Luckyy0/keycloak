@@ -1,0 +1,23 @@
+server:
+  port: 8080
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: false # Để false chạy ở Localhost Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
+        same-site: lax
+        
+spring:
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8180/realms/my-company
+        registration:
+          bff-client:
+            provider: keycloak
+            client-id: bff-client
+            client-secret: xxxx-yyyy-zzzz
+            authorization-grant-type: authorization_code
+            scope: openid, profile

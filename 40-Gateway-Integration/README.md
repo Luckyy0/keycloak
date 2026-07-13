@@ -1,0 +1,18 @@
+# Chapter 40: Người Canh Gác Cổng Phân Tán (Spring Cloud Gateway Integration)
+
+## Giới thiệu (Introduction)
+Trong một Kiến Trúc Microservices đồ sộ Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, bạn không thể để hàng chục cái API Backend trơ trọi hứng chịu các cuộc tấn công trực tiếp từ Internet Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Bạn cần một **Người Gác Cổng (API Gateway)** đứng sừng sững ở vòng ngoài.
+Chương này sẽ hướng dẫn bạn dùng `Spring Cloud Gateway` (Cỗ Máy Non-Blocking Reactive Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) làm Bức Tường Lửa Bảo Mật. Kết nối API Gateway với Keycloak Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, biến Gateway thành một trạm chặn Token, bảo vệ toàn bộ các dịch vụ yếu đuối phía sau Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy.
+
+## Mục lục (Table of Contents)
+
+### Module 1: Xây Dựng Cổng Thành
+*   **Lesson 1: Bức Tường Lửa Spring Cloud Gateway:** Cấu hình Gateway đóng vai trò là `OAuth2 Client` (Trạm Login) và `Resource Server` (Trạm Kiểm Tra). Tích hợp Keycloak vào dòng máu Reactive (WebFlux) của Gateway Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
+*   **Lesson 2: Nghệ Thuật Token Relay Tại Gateway:** Cách Gateway nhét Token JWT vào đầu (Header) của các Gói Tin HTTP trước khi điều hướng (Routing) bắn sâu vào các Microservices bên trong nội mạng Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
+*   **Lesson 3: Phân Quyền Theo Luồng (Route Security):** Code logic chặn đường API ngay tại cấu hình Route của Gateway Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Route nào cần quyền Admin Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Route nào thả rông (Public).
+
+### Labs & Thực hành (Labs)
+*   **Lab 1:** Xây Dựng Mạng Lưới Gateway Bảo Vệ Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Tự tay cấu hình Spring Cloud Gateway Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, bắt Frontend phải Login qua Gateway Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, sau đó Gateway tự động ném Token xuống cái Service Mỏ Neo (Order Service) Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề.
+
+## Bắt đầu từ đâu? (Where to start?)
+Tiến lên Cổng Thành tại [Lesson 1: Spring Cloud Gateway](Module-1-Concepts/Lesson-1-Spring-Cloud-Gateway.md).

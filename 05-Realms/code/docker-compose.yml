@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  postgres_db_theme:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    networks:
+      - theme-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kc_theme_server:
+    image: quay.io/keycloak/keycloak:24.0.1
+    command: start-dev # Chạy Dev Mode Giao Cấp Chặn Code Nhanh Mạch Đáy Để Theme Không Caching Sóng Khung
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres_db_theme:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    volumes:
+      # Lỗ Hổng Tiêm Mã UI Web Vô Đáy Mạch Không Cần Bật Build Tái Bức Mạch Khung K8s Cắt Đóng Bê Tông Rỗng Đáy Image Nhựa
+      - ./themes/vingroup-theme:/opt/keycloak/themes/vingroup-theme:ro
+      - ./export:/opt/keycloak/data/export
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres_db_theme:
+        condition: service_healthy
+    networks:
+      - theme-network
+
+networks:
+  theme-network:
+    driver: bridge

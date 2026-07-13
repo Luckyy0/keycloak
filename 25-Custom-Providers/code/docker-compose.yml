@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.1
+    command: start-dev --debug 5005
+    environment:
+      KC_DB: dev-file
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - 8080:8080
+      - 5005:5005
+    volumes:
+      - ./my-providers:/opt/keycloak/providers
+    networks:
+      - keycloak_network
+
+networks:
+  keycloak_network:
+    driver: bridge

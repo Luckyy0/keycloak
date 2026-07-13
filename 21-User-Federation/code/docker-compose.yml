@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: keycloak-db-chapter21
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    networks:
+      - keycloak-network-21
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: keycloak-server-chapter21
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: 
+      - start-dev
+      - --http-port=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - openldap
+    networks:
+      - keycloak-network-21
+
+  openldap:
+    image: bitnami/openldap:latest
+    container_name: openldap-chapter21
+    environment:
+      LDAP_ADMIN_USERNAME: admin
+      LDAP_ADMIN_PASSWORD: admin
+      LDAP_USERS: nguyen-van-b
+      LDAP_PASSWORDS: admin
+    ports:
+      - "389:1389"
+    networks:
+      - keycloak-network-21
+
+networks:
+  keycloak-network-21:
+    driver: bridge

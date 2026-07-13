@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak_db
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    networks:
+      - keycloak_network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  keycloak:
+    # BƯỚC 1: BẮT ĐẦU VỚI BẢN CŨ. BẠN HÃY DÙNG BẢN NÀY ĐỂ TẠO DATA!
+    # SAU ĐÓ TẮT MÁY, ĐỔI CHỮ 23.0.0 THÀNH 24.0.1 VÀ BẬT LÊN ĐỂ XEM ĐIỀU KỲ DIỆU.
+    image: quay.io/keycloak/keycloak:23.0.0 
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: db
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - keycloak_network
+
+networks:
+  keycloak_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

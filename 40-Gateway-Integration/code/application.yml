@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8180/realms/my-company
+        registration:
+          my-client:
+            provider: keycloak
+            client-id: gateway-client
+            client-secret: xxxx-yyyy-zzzz # Thay bằng secret của bạn
+            authorization-grant-type: authorization_code
+            scope: openid, profile
+
+  cloud:
+    gateway:
+      routes:
+        - id: backend-api
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/**
+          filters:
+            - TokenRelay=
+            - RemoveRequestHeader=Cookie

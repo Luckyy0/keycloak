@@ -1,0 +1,13 @@
+/* Cú Đánh Kẻ Đáy Trắng Giao Diệt Logo Redhat */
+#kc-header-wrapper {
+    visibility: hidden; /* Cất Logo OIDC Rác Tĩnh Rễ Khung Mặc Định Của Khung Mệnh RedHat */
+}
+
+/* Đục Sóng Thay Màu Toàn Cụm Nóng Mạch Vingroup Màu Đỏ Máu Đáy Kẽ Lệnh */
+body {
+    background-color: #fce4e4; 
+}
+
+#kc-form-login .pf-c-button.pf-m-primary {
+    background-color: #d11f26; /* Nút Đăng Nhập Đỏ Đuôi OIDC Bọc Lệnh API Nhựa Gắn Sóng Mạch */
+}

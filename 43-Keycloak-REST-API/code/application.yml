@@ -1,0 +1,13 @@
+server:
+  port: 8081
+
+# File này mang tính chất minh họa Oanh Khung Dịch Lụa Mạch Lệnh. 
+# Thông số kết nối Keycloak Admin Client thường được hardcode trong Java Config bằng Builder (Xem Lab-1)
+# Hoặc truyền qua Biến Môi Trường (Environment Variables) để bảo mật tuyệt đối Client-Secret Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
+
+keycloak:
+  admin:
+    server-url: http://localhost:8180
+    realm: my-company
+    client-id: registration-service-client
+    client-secret: xxxx-yyyy-zzzz # Thay bằng Secret lấy từ Keycloak Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa

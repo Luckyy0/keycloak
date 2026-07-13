@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak_db
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    networks:
+      - ha_network
+
+  kc1:
+    image: quay.io/keycloak/keycloak:24.0.1
+    command: start-dev --proxy-headers=xforwarded
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: db
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      JGROUPS_DISCOVERY_PROTOCOL: PING
+    depends_on:
+      - db
+    networks:
+      - ha_network
+
+  kc2:
+    image: quay.io/keycloak/keycloak:24.0.1
+    command: start-dev --proxy-headers=xforwarded
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: db
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      JGROUPS_DISCOVERY_PROTOCOL: PING
+    depends_on:
+      - db
+    networks:
+      - ha_network
+
+  loadbalancer:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - kc1
+      - kc2
+    networks:
+      - ha_network
+
+networks:
+  ha_network:
+    driver: bridge

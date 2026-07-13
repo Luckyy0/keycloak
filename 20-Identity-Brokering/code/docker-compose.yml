@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  postgres-broker:
+    image: postgres:15
+    container_name: keycloak-db-broker
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    networks:
+      - keycloak-network-20
+
+  postgres-idp:
+    image: postgres:15
+    container_name: keycloak-db-idp
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    networks:
+      - keycloak-network-20
+
+  kc-broker:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: keycloak-broker-chapter20
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-broker:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: 
+      - start-dev
+      - --http-port=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres-broker
+    networks:
+      - keycloak-network-20
+
+  kc-idp:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: keycloak-idp-chapter20
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-idp:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: 
+      - start-dev
+      - --http-port=8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres-idp
+    networks:
+      - keycloak-network-20
+
+networks:
+  keycloak-network-20:
+    driver: bridge

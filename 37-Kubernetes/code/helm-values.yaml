@@ -1,0 +1,19 @@
+# Cấu hình Helm Chart
+
+replicaCount: 2 
+
+ingress:
+  enabled: true
+  hostname: id.cong-ty-cua-toi.com 
+
+auth:
+  adminUser: quan-tri-vien
+  adminPassword: pass-sieu-kho
+
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: db-password
+  primary:
+    persistence:
+      size: 8Gi
