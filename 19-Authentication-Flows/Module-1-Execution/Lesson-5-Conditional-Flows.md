@@ -1,55 +1,76 @@
-# Lesson 5: Luồng Tự Động Biến Hình Đỉnh Chóp (Conditional Flows)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Trong Lesson 3 bạn đã biết cờ `Conditional`. Nhưng làm sao để dùng nó thật sự? Lesson này sẽ hướng dẫn bạn cách Dùng Khóa Tĩnh Lệnh Oanh Rút Conditional Sub-Flow để "Bẻ Lái" Yêu Cầu Của Khách Hàng. Ví dụ: Nếu Giao dịch Đăng Nhập phát sinh từ Mạng 3G (Khác với Mạng IP Công Ty Lệnh Nhựa Dữ Cốt), Hãy Tự Động Rẽ Nhánh Sang Bắt Khách Bật Zalo OTP Cắt Khung Lệnh Rỗng!
+> **Goal:** Tìm hiểu khái niệm và ứng dụng của Conditional Flows, cho phép kích hoạt các luồng xác thực linh hoạt dựa trên điều kiện thực tế (Role, IP, Header, Group).
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+**Conditional Flows** là một tính năng nâng cao của Keycloak Authentication Flows, nơi mà một `Sub-Flow` có Requirement là `CONDITIONAL`.
 
-### 1.1. Cấu Tạo Của Mạch Rẽ Nhánh Điều Kiện (Conditional Sub-Flow)
-Để biến một Sub-Flow bình thường thành 1 cái "Cửa Quay Thông Minh Oanh Khung Dịch Lụa Mạch Lệnh":
-1. Ở Cái Hộp Đen Sub-Flow Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Đổi Quyền Trượng Nó Thành **`Conditional`**.
-2. NGAY BÊN DƯỚI Bụng Của Thằng Sub-Flow Đó Khúc Tới Ngay Lệnh, Vị Trí LÁ CÂY ĐẦU TIÊN CẮT ĐÁY, Phải Gắn Một Thằng Kẻ Chấp Pháp Có Tên Mang Chữ `Condition - ...` Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt. VÀ CHỈNH CỜ THẰNG NÀY THÀNH **`Required`** Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị.
-3. Các Lá Cây Bọn Form Tiếp Theo Nằm Dưới (VD Form OTP) Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Cũng Mang Cờ **`Required`** Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy.
+Khi được cấu hình là `CONDITIONAL`, hệ thống sẽ không tự động thực thi các Authenticator bên trong luồng con này. Thay vào đó, nó dựa vào các **Condition Evaluators** (Bộ đánh giá điều kiện) để quyết định.
+Condition Evaluator cũng là một Execution (thường đứng ở vị trí đầu tiên trong Sub-Flow). Có nhiều loại điều kiện:
+- **Condition - user configured:** Kiểm tra xem người dùng đã cấu hình MFA chưa.
+- **Condition - user role:** Kích hoạt nếu user có một Role cụ thể (ví dụ: `admin` thì phải dùng MFA).
+- **Condition - network address:** Đánh giá dải IP truy cập.
+- **Condition - HTTP Header:** Kiểm tra User-Agent hoặc Headers.
 
-### 1.2. Các Kẻ Chấp Pháp Condition Đỉnh Cao Oanh Cáp Giao Diện Lệnh Chặt Mạch Lụa
-Keycloak Có Vài Kẻ Đánh Lừa Điều Kiện Tích Hợp Sẵn Rất Uy Lực:
-- **`Condition - User Configured`**: Bài 2 đã nhắc. Đáy Lõi DB Trút Cắt Khung Tương Lai Chỉ Mở Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Nếu Khách Đã Nạp Sẵn OTP Ở Trong Két DB Lãnh Chúa Đáy Lụa.
-- **`Condition - User Role`**: Cực Kỳ Khủng Khiếp Trút Kéo Lụa Oanh Bọc! Chỉ Mở Cửa Rẽ Nhánh (Bắt Nhập OTP Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp) NẾU USER NÀY LÀ **`ADMIN_ROLE`** Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! User Thường Không Chặn Bọt Cắt Trắng!
-- **`Condition - Request Object`**: So Khớp Tham Số Rác Gửi Trên Trình Duyệt URL Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt!
-
----
+Sự tồn tại của Conditional Flows giải quyết triệt để nhu cầu "Xác thực thích ứng" (Adaptive Authentication), giúp nâng cao bảo mật ở những trường hợp rủi ro cao nhưng giữ trải nghiệm mượt mà cho người dùng thông thường.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
-
-Hành Trình Oanh Cáp Bọc Thép Một Bọt Kẽ Khung Cấu Trúc Bọc Hộp Đen Tự Trị Conditional Trút Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Oanh Khung Dịch Lụa Mạch Lệnh Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm:
+Bộ đánh giá điều kiện thực thi giao diện `ConditionalAuthenticator`. Phương thức quan trọng nhất là `matchCondition(AuthenticationFlowContext context)`.
 
 ```mermaid
-graph TD
-    A[Gốc Browser Flow] -->|REQUIRED Lệnh Oanh Rút| B[Password Form Lệnh Đáy Oanh Mạch Rút Trọng Mạch Lệnh]
-    A -->|CONDITIONAL Oanh Tĩnh Lụa Thép| C((Hộp Đen: Kẻ Gác Cổng 2FA Cho Admin Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ))
+sequenceDiagram
+    participant Process as Auth Engine
+    participant Cond as Condition Evaluator (IP Check)
+    participant Auth as Executions (OTP Form)
     
-    C -->|REQUIRED Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt| D[Condition - User Role = ADMIN Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần]
-    C -->|REQUIRED Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa| E[OTP Form Cấu Trúc Khung Rỗng XML Nặng Nề]
-    
-    style A fill:#f9f,stroke:#333,stroke-width:4px
-    style C fill:#bbf,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    Process->>Cond: matchCondition(context)
+    Cond->>Cond: Kiểm tra IP của Request
+    alt IP không thuộc mạng nội bộ
+        Cond-->>Process: return true
+        Process->>Auth: Thực thi các Authenticator trong Sub-Flow
+    else IP thuộc mạng nội bộ
+        Cond-->>Process: return false
+        Process->>Process: Bỏ qua toàn bộ Sub-Flow (hành vi như DISABLED)
+    end
 ```
-*Ghi Chú Phép Thuật Giao Diện Lệnh Chặt Mạch Lụa Xảy Ra Đỉnh Đáy Oanh Mạng Bắt Lụa:* Máy Chủ Keycloak Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Bắt Nhập Pass Xong Lỗ Lủng Bọt Khung Oanh Cáp. Đi Tới Hộp Conditional. Chạy Vô Trút Lụa Bọt Kẽ Mã Đáy Lá Đầu Tiên Dò Condition Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Lá Condition Truy Vấn DB Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Thấy Khách Này Role="Nhân Viên", Không Phải Trút Cáp Mạch Máu Cắt Lệnh Đáy DB ADMIN! Lá Đánh Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Báo Chữ FALSE Trượt Nhựa Dưới Đáy Mạch!
-Lãnh Chúa Khóa Cửa Cả Hộp Đen! CỖ MÁY NHẢY XUYÊN QUA KHÔNG CHẠY TỚI LÁ 'OTP FORM' Cắt Khung Đứt Băng Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ. Đẩy Khách Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Đăng Nhập Trót Lọt Đỉnh Chóp Trọng Khóa Tĩnh Cáp Mạch Tương Tự Lệnh Kẽ Trút Rỗng!
 
----
+Nếu một Sub-Flow Conditional trả về `true` từ Evaluator của nó, các Execution bên trong (như OTP Form) sẽ được coi là `REQUIRED` và bắt buộc người dùng phải vượt qua.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
+> [!WARNING]
+> Khi thiết lập Conditional Flow, hãy chắc chắn rằng bạn đã định nghĩa ít nhất một Condition Evaluator bên trong Sub-Flow. Nếu không có bộ đánh giá nào, Sub-Flow mặc định sẽ bị bỏ qua (tương đương với `false`).
+
 > [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Trải Nghiệm Mạng Bọc Thép (Thảm Họa Rẽ Nhánh Rơi Tự Do Khóa Chết Toàn Bộ Hệ Thống Oanh Khung Dịch Lụa Mạch Lệnh)**
-> **Tội Ác Thiết Kế API Trọng Lực Bọc Thép OIDC:** Đội Dev Dùng Một Cục Conditional Sub-Flow Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Rất Dị Lệnh Rút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Nhưng Sắp Xếp Nhánh Đáy Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Để Làm Nơi Xác Thực DUY NHẤT. (Mọi Thằng Đều Dính Cái Cửa Vô Conditional Đó Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh). 
-> **Hậu Quả Chết Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:** Một Khách Hàng Gõ Pass Lỗ Lủng Bọt Khung Oanh Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Xong Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Gặp Lá Conditional, Lá Condition Check Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Và Trả Về False Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép! Cỗ Máy Khóa Cửa Sub-Flow Đó Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. NHƯNG NHÌN LẠI THÌ LÃNH CHÚA THẤY KHÔNG CÒN BẤT KỲ MỘT THẰNG GÁC CỔNG 'REQUIRED' NÀO KHÁC Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Ở Trục Gốc Cây Nữa! 
-> Máy Chủ Xử Lý Chữ Khớp Lệnh Oanh Cáp Giao Diện Lệnh Chặt Mạch Lụa Cho Rằng "Dòng Lệnh Thất Bại Kỹ Thuật Đáy DB!". Máy Chủ Văng Lỗi "Invalid Credentials" Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Chặn Sạch Mọi Dịch Giao Của Khách Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! (Đã Gặp Ở Bài 3 Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh).
-> **Biện Pháp Sống Còn Lớp Trọng Lực OIDC Đáy Lụa:** Hãy Nhớ Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp: Lá Condition Gắn Chữ **`Required`** Ở Bụng, KHÔNG THỂ BẢO VỆ CHỮ KÝ OANH MẠNG CHO HÀNH ĐỘNG THÀNH CÔNG NẾU BẢN THÂN CÁI HỘP ĐEN (Sub-Flow) ĐÃ BỊ LÃNH CHÚA CẤP CỜ **`Conditional`** Và Khóa Lại Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Luôn Có Kế Hoạch B Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+> Nên sử dụng Conditional Flow thay vì ép tất cả User phải cấu hình MFA. Việc kết hợp "Condition - user role" giúp tiết kiệm chi phí hệ thống và tối ưu trải nghiệm (VD: nhân viên thường không cần OTP, nhưng manager thì bắt buộc).
 
----
+- **Kiến trúc mạng:** Khi dùng "Condition - network address", hãy đảm bảo Reverse Proxy (Nginx, HAProxy) truyền đúng `X-Forwarded-For` đến Keycloak. Nếu không, Keycloak sẽ đánh giá dựa trên IP của Proxy thay vì IP thực của User, dẫn đến điều kiện luôn sai hoặc luôn đúng.
 
-## 4. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Administration Guide - Conditional Authenticators.
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+Cấu hình yêu cầu OTP chỉ đối với người dùng thuộc nhóm `finance-group`:
+1. Tạo một Sub-Flow mới trong Browser Flow. Gán Requirement là **CONDITIONAL**.
+2. Thêm Execution vào Sub-Flow: `Condition - User Role`. Đưa Requirement của nó lên **REQUIRED**.
+3. Cấu hình Execution điều kiện này: Đặt `Role Name` là `finance-group-role` (sau khi đã map group vào role).
+4. Thêm Execution thứ hai vào Sub-Flow: `OTP Form`. Gán Requirement là **REQUIRED**.
+
+Kết quả: Người dùng bình thường đăng nhập chỉ cần User/Pass. Khi user thuộc nhóm finance đăng nhập, hệ thống phát hiện Role và bắt buộc phải qua bước OTP.
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Nhiều Điều kiện (Multiple Conditions):** Nếu bạn đặt 2 Execution điều kiện trong cùng một Conditional Sub-Flow, cả hai đều là `REQUIRED`, Keycloak sẽ sử dụng logic AND (cả hai phải thỏa mãn). Nếu bạn muốn logic OR, hãy cẩn thận đặt các điều kiện theo nhánh nhỏ hơn.
+- **User chưa từng xác thực:** Các điều kiện dựa trên User (như Role, Group) CHỈ có thể hoạt động SAU KHI hệ thống đã biết user là ai. Do đó, Conditional Flow về MFA phải được đặt SAU Execution `Username Password Form`. Nếu đặt trước, context sẽ bị null và điều kiện bị đánh giá sai hoặc ném Exception.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+- **Câu hỏi 1 (Junior):** Conditional Flow giúp ích gì trong Keycloak?
+  - *Đáp án Junior:* Giúp kích hoạt các bước xác thực như yêu cầu OTP dựa trên điều kiện như địa chỉ IP, vai trò người dùng (Role), giúp trải nghiệm người dùng tốt hơn.
+- **Câu hỏi 2 (Junior):** Làm thế nào để luồng Conditional biết được nó có nên chạy hay không?
+  - *Đáp án Junior:* Nhờ vào các Condition Evaluator (Bộ đánh giá điều kiện) được thêm vào bên trong Sub-Flow.
+- **Câu hỏi 3 (Senior):** Tại sao bạn không thể đặt Condition Evaluator kiểm tra Role ở đầu tiên của Authentication Flow?
+  - *Đáp án Senior:* Vì lúc đó (trước khi người dùng cung cấp Username/Password), Identity của người dùng chưa được thiết lập trong Authentication Session Context. Evaluator sẽ không thể truy xuất danh sách Role của người dùng vô danh.
+- **Câu hỏi 4 (Senior):** Nếu cấu hình `Condition - network address` hoạt động sai khi qua Kubernetes Ingress, bạn sẽ khắc phục ở đâu?
+  - *Đáp án Senior:* Khắc phục tại Ingress Controller (ví dụ: Nginx ingress) để trust proxy và forward chính xác Header `X-Forwarded-For`. Đồng thời chỉnh cấu hình Keycloak env `PROXY_ADDRESS_FORWARDING=true` (ở phiên bản Quarkus là `KC_PROXY=edge`).
+- **Câu hỏi 5 (Senior):** Giải thích cách hoạt động của `Condition - User Configured`?
+  - *Đáp án Senior:* Nó kiểm tra xem người dùng cụ thể đã có Credential loại đó (ví dụ OTP) lưu trong database chưa. Nếu có rồi, trả về `true` (yêu cầu nhập). Rất hữu ích cho luồng đăng nhập mà bạn muốn: "Ai đã có OTP thì bắt dùng, ai chưa có thì thôi bỏ qua".
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak Authentication Flows & Conditional Flows](https://www.keycloak.org/docs/latest/server_admin/#_conditional_execution)
+- [Adaptive Authentication Design Principles](https://owasp.org/www-project-top-ten/)

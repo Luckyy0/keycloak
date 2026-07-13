@@ -1,55 +1,107 @@
-# Lesson 2: Lắng Nghe Tiếng Động Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp (EventListener SPI)
+# Bài học 2: EventListener SPI và Kiến trúc Xử lý Sự kiện
 
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Bóc xẻ SPI dễ code nhất nhưng lại có sức mạnh thao túng cực khủng: EventListenerProvider.
+> **Goal:** Nắm vững cấu trúc và cách cài đặt một EventListener SPI để lắng nghe và phản ứng với các luồng sự kiện (như Đăng nhập, Đăng ký) nhằm tích hợp Keycloak với các hệ thống bên thứ ba (Webhooks, Message Brokers).
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Keycloak cung cấp sẵn các EventListener để ghi sự kiện ra Database (`jpa`) và màn hình console (`jboss-logging`). Tuy nhiên, trong môi trường Enterprise, doanh nghiệp thường yêu cầu tích hợp theo thời gian thực (Real-time Integration):
+- Gửi tin nhắn SMS cảnh báo khi có đăng nhập từ IP lạ.
+- Gửi thông tin người dùng mới đăng ký sang hệ thống CRM (Salesforce).
+- Xuất sự kiện sang Apache Kafka để hệ thống Fraud Detection phân tích.
 
-### 1.1. Ma Trận Sự Kiện Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-Bất cứ một tiếng ho Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, tiếng hắt hơi nào trong hệ thống Keycloak cũng đều bắn ra một dòng Log Sự Kiện (Event) Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề.
-- Có Đứa Đăng Nhập Sai Pass? Sự kiện `LOGIN_ERROR` bùng nổ Oanh Khung Dịch Lụa Mạch Lệnh!
-- Có Đứa Cập Nhật Avatar Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa? Sự kiện `UPDATE_PROFILE` rống lên Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần.
-- Có Đứa Đăng Ký Tài Khoản Mới Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng? Sự kiện `REGISTER` vang dội Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh.
+Để làm được điều này, chúng ta phải tự phát triển một **EventListener SPI**. Nó lắng nghe mọi sự kiện xảy ra trên toàn Keycloak và cung cấp cơ chế để thực thi mã nguồn tùy chỉnh mỗi khi sự kiện đó xuất hiện. EventListener xử lý cả `Event` (User event) và `AdminEvent`.
 
-Vấn đề là Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, mặc định Keycloak chỉ bắt mấy sự kiện đỏ rồi nhét vào Table Event trong Database (để hiển thị chơi) Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-Bằng Cách Lập Trình Một Cái `EventListenerProvider` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Chúng ta sẽ cắm phễu trực tiếp vào Ma Trận đó Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
+Việc bắt giữ và đẩy sự kiện tuân theo kiến trúc Push.
 
-### 1.2. Giải Phẫu Code Sự Kiện (Provider Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề)
-Cấu trúc Class Công Nhân (Provider) Bắt Sự Kiện Chỉ Có Duy Nhất 2 Hàm Quan Trọng Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh:
+```mermaid
+sequenceDiagram
+    participant Keycloak Core (Auth)
+    participant Event Manager
+    participant MyCustomEventListener (SPI)
+    participant External System (Kafka/API)
+
+    Keycloak Core (Auth)->>Event Manager: Báo cáo sự kiện REGISTER thành công
+    Event Manager->>MyCustomEventListener (SPI): Gọi hàm `onEvent(Event event)`
+    Note over MyCustomEventListener (SPI): Xử lý Event<br>(Trích xuất User ID, Email, Realm)
+    
+    alt Xử lý Đồng bộ (Synchronous)
+        MyCustomEventListener (SPI)->>External System (Kafka/API): Gửi payload
+        External System (Kafka/API)-->>MyCustomEventListener (SPI): ACK (Thành công)
+    else Xử lý Không đồng bộ (Asynchronous)
+        MyCustomEventListener (SPI)->>Background Thread: Giao việc đẩy data
+        MyCustomEventListener (SPI)-->>Event Manager: Trả về kết quả ngay
+    end
+    
+    Event Manager-->>Keycloak Core (Auth): Tiếp tục luồng xử lý chính
+```
+**Giải thích luồng đồng bộ và bất đồng bộ:**
+- Mặc định, hàm `onEvent` được gọi **Đồng bộ (Synchronous)**. Điều này nghĩa là nếu trong hàm `onEvent`, bạn gọi một API HTTP mất 5 giây, thì người dùng (User) trên màn hình đăng ký sẽ phải chờ thêm 5 giây trước khi thấy trang thành công.
+- Trong kiến trúc hệ thống thực tế, các EventListener tùy chỉnh PHẢI đẩy công việc ra một luồng phụ (Thread Pool) hoặc sử dụng các Message Broker cực nhanh (Kafka/RabbitMQ) để giảm thiểu độ trễ cho luồng xác thực chính.
+
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
+> [!IMPORTANT]
+> **Tránh Thắt cổ chai (Prevent Bottlenecks):** Tuyệt đối không thực hiện các HTTP Request đồng bộ kéo dài bên trong hàm `onEvent()`. Nếu External API phản hồi chậm, tất cả các luồng đăng nhập của Keycloak sẽ bị kẹt, dẫn đến quá tải bộ nhớ và treo máy chủ (Denial of Service). Hãy thiết kế Queue nội bộ hoặc dùng Java `CompletableFuture`.
+
+> [!WARNING]
+> **Lọc sự kiện (Event Filtering):** Hệ thống sinh ra hàng chục sự kiện liên quan đến mã Token (REFRESH_TOKEN, CODE_TO_TOKEN, INTROSPECT). Gửi toàn bộ những sự kiện này sang hệ thống ngoài có thể gây lãng phí băng thông và tài nguyên. Trong đoạn code SPI, luôn phải dùng lệnh `if (event.getType() == EventType.LOGIN)` để lọc trước khi xử lý.
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+Dưới đây là khung chuẩn của một lớp thực thi `EventListenerProvider`:
+
 ```java
-public class MyEventListenerProvider implements EventListenerProvider {
+import org.keycloak.events.Event;
+import org.keycloak.events.EventListenerProvider;
+import org.keycloak.events.admin.AdminEvent;
+import org.keycloak.events.EventType;
+
+public class WebhookEventListenerProvider implements EventListenerProvider {
+
+    public WebhookEventListenerProvider() {
+        // Constructor, có thể nhận KeycloakSession từ Factory
+    }
+
     @Override
     public void onEvent(Event event) {
-        // Hàm Lắng Nghe Sự Kiện Của Người Dùng Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp (VD: Login, Đăng Ký) Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+        // Chỉ quan tâm đến sự kiện REGISTER (Đăng ký mới)
         if (event.getType() == EventType.REGISTER) {
-            System.out.println("Bớ Làng Nước Có Khách Hàng Tên " + event.getUserId() + " Vừa Đăng Ký Kìa Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!");
+            String userId = event.getUserId();
+            String email = event.getDetails().get("email");
+            
+            // TODO: Gửi Async qua Webhook/Kafka
+            sendAsyncToWebhook(userId, email);
         }
     }
 
     @Override
     public void onEvent(AdminEvent adminEvent, boolean includeRepresentation) {
-        // Hàm Lắng Nghe Sự Kiện Của Trùm Admin Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị (VD: Có Ông Admin Nào Xóa Client Không?) Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
+        // Logic xử lý khi Admin thay đổi cấu hình
+    }
+
+    @Override
+    public void close() {
+        // Dọn dẹp tài nguyên
     }
     
-    @Override
-    public void close() { }
+    private void sendAsyncToWebhook(String id, String email) {
+        // Chạy ngầm trong ThreadPool
+    }
 }
 ```
-Tại hàm `onEvent()` Này Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Vì Bạn Đang Nằm Trọn Trong Bụng Java Của Keycloak Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Bạn Có Thể Dùng Thư Viện Apache Http Client Gửi Lệnh Bắn SMS Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Mở Cổng AMQP Bắn RabbitMQ Sang Máy Chủ Khác Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Hay Thậm Chí Tự Chọc Vào Database Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng! Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Không Gì Là Không Thể! Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
 
----
+Sau khi cấu hình Factory và cài đặt file JAR, trên UI Keycloak, truy cập **Realm Settings -> Events -> Event Listeners**, bạn sẽ thấy ID của Provider mới xuất hiện trong danh sách để kích hoạt.
 
-## 2. Câu hỏi Phỏng vấn (Interview Questions)
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Mất sự kiện khi Khởi động lại (Event Loss on Restart):** Nếu bạn lưu các Event vào một In-memory Queue trong Java (trong ProviderFactory) để chờ gửi dần qua API, nhưng đột ngột máy chủ Keycloak bị sập (Crash) hoặc Restart, toàn bộ sự kiện trong Queue sẽ bốc hơi. Giải pháp chuyên nghiệp là sử dụng thư viện Kafka Producer trực tiếp vì nó có cơ chế persistent log phía local, hoặc chấp nhận rủi ro và giám sát chặt chẽ tiến trình (Process Monitor).
 
-**1. Anh Muốn Gắn 1 Cái Lệnh `Gửi Tin Nhắn Chào Mừng Ra RabbitMQ` Ngay Tại Chỗ `EventType.REGISTER` Như Trong Code Của Cưng Vừa Viết Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Cưng Dùng Giao Thức Gọi Thằng HTTP API Nhanh 1 Phát Gửi Qua Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Nhưng Nếu Thằng Gửi HTTP API Kia Bị Lag Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Đứng Im Xoay Vòng 10 Giây Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Thì Điều Tồi Tệ Nhất Gì Sẽ Xảy Ra Với Thằng Khách Hàng Đang Bấm Nút Đăng Ký Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa? Em Khắc Phục Khúc Này Sao Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh?**
-- **Senior:** Ái Chà Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh! Đây Mới Là Mấu Chốt Sinh Tử Của Việc Viết Custom SPI Mà Lập Trình Viên Hay Mắc Bẫy Nhất Đó Sếp Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! 
-  - Thằng Method `onEvent()` Của Class SPI Này Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Nó Chạy **ĐỒNG BỘ CÙNG TUYẾN TRÌNH (Synchronous on the same Thread)** Cùng Với Cú Click Đăng Ký Của Thằng Khách Luôn Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh! 
-  - Nghĩa Là Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Khách Bấm Nút Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng -> Server Tạo DB Oanh Khung Dịch Lụa Mạch Lệnh -> Server Bắn Sự Kiện SPI -> Đoạn Code HTTP Gửi Tin Nhắn Của Em Chạy Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-  - Nếu Khúc Bắn HTTP Bị Treo Đứng Im 10 Giây Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Chắc Chắn Màn Hình Của Người Khách Cầm Chuột Sẽ Xoay Vòng Vòng Kẹt Cứng 10 Giây Trên Trình Duyệt Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Thậm Chí Bị Lỗi Gateway Timeout 504 Dù Tài Khoản Đã Tạo Xong Trong DB Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-  - Cách Em Khắc Phục Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa: Tại Lõi Hàm `onEvent` Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Em Tuyệt Đối Cấm Việc Code Luồng Xử Lý Mạng Trực Tiếp Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Em Sẽ Dùng Tính Năng Bất Đồng Bộ `Executors.newSingleThreadExecutor().submit(() -> { Code Gọi HTTP Nằm Ở Đây })` Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần! Code Đẻ Ra 1 Tuyến Trình (Thread) Phụ Riêng Biệt Để Vứt Việc Gửi SMS Qua Đó Chạy Ngầm Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Còn Tuyến Trình Chính Báo Thành Công Ngay Lập Tức! Trình Duyệt Khách Hàng Sẽ Chạy Vèo Vèo Mà Không Bị Cản Trở Gì Cả Sếp Nha Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+1. **[Junior]** Hai phương thức chính bắt buộc phải Override khi triển khai `EventListenerProvider` là gì? (Trả lời: onEvent cho User Event và onEvent cho AdminEvent).
+2. **[Junior]** Làm sao để cấu hình Keycloak gọi vào SPI EventListener của bạn sau khi deploy file JAR?
+3. **[Senior]** Phân tích hậu quả nếu bạn gọi hàm `Thread.sleep(5000)` bên trong phương thức `onEvent` của một User login.
+4. **[Senior]** Trình bày kiến trúc cho một EventListener có nhiệm vụ đẩy log sang HTTP API nhưng không làm tăng độ trễ (latency) của quá trình đăng nhập. Bạn sẽ quản lý ThreadPool như thế nào để an toàn trong một môi trường chịu tải cao?
+5. **[Senior]** Làm thế nào để lấy thông tin chi tiết (ví dụ Custom User Attribute) của người dùng ngay bên trong EventListener SPI khi mà đối tượng `Event` chỉ chứa `userId`? (Gợi ý: Cần truyền KeycloakSession từ Factory sang Provider và dùng `session.users().getUserById(...)`).
 
----
-
-## 5. Tài liệu tham khảo (References)
-- **Keycloak GitHub:** keycloak-event-listener-spi.
+## 7. Tài liệu tham khảo (References)
+- [Keycloak Server Developer Guide - Event Listener SPI](https://www.keycloak.org/docs/latest/server_development/#_events)
+- [Java Concurrency in Practice (Tham khảo xử lý Async an toàn)](#)

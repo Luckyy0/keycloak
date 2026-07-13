@@ -1,96 +1,134 @@
-# Lesson 3: Cáp Giao Tình Bằng Mảnh Bản Đồ (SAML Metadata)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Trong thế giới OIDC, để Keycloak và Client App tin tưởng kết nối với nhau, OIDC có Discovery (Lesson 10 Ch 16). Nhưng trong SAML, việc kết nối không hề "Tự Động Trút Kẽ Tĩnh Oanh Lụa Bọt" như thế. Cả 2 bên (IdP và SP) đều phải Đích Thân Trảo Đổi một Mảnh Bản Đồ Chứa Toàn Bộ Tuyệt Mật Tọa Độ Giao Dịch, Có Tên Là: **SAML Metadata (XML)**.
+> **Goal:** Nắm bắt khái niệm và cấu trúc của SAML Metadata, cơ chế thiết lập sự tin cậy (Trust Establishment) giữa Identity Provider (IdP) và Service Provider (SP), và cách tự động hóa quá trình cấu hình bằng tài liệu XML Metadata.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Bản Chất Của Metadata SAML (Trái Tim Giao Ước Bọc Lụa)
-Vì SAML có tính năng Ký Mã Hóa Trút Khung 2 Chiều Cắt Đáy Lõi Tự Trị (Tức là IdP nhả Token Ký, và SP Gửi Request Lên Cũng Đòi Ký).
-- Do Đó: **CẢ 2 BÊN ĐỀU PHẢI SỞ HỮU PUBLIC KEY CỦA NHAU!**
-- Làm sao để chép Public Key của nhau mà không bị Kẻ Trộm Man-In-The-Middle Rút Cáp Đổi Thành Khóa Giả Mạch Cắt Oanh? Bằng Cách Đọc File XML Metadata!
-- File XML Metadata là một Tờ Khai Cấu Hình Chuẩn Hoá (RFC Đáy Bọc) Của Thế Giới SAML.
-- Nó chứa: Tất cả URL đăng nhập (SSO), URL đăng xuất (SLO), và Vô Số Chuỗi Khóa Mã Hóa Public Key X.509 Kẽ Trút Rỗng Băng Tần.
+Trong kiến trúc phân tán của giao thức SAML, hệ thống Identity Provider (IdP) và Service Provider (SP) có thể được vận hành bởi hai công ty khác nhau, nằm trên hai hạ tầng mạng khác nhau. Để chúng có thể giao tiếp, mã hóa thông điệp và xác minh chữ ký của nhau, chúng cần một cơ chế để trao đổi thông tin cấu hình từ trước (Establish Trust). Cơ chế này chính là **SAML Metadata**.
 
-### 1.2. Múa Kiếm 2 Chiều Đáy Oanh Lụa (IdP Metadata & SP Metadata)
-Đây là quy trình bắt buộc trong bất cứ cuộc thiết lập Doanh Nghiệp Nào:
-1. **Trạm Xác Thực (Keycloak - IdP):** Xả ra 1 Tờ File XML `idp-metadata.xml`. Đem Tờ File Này Cầm Gửi Mail Chữ Ký Cho Thằng Đội Dev React Kế Toán Oanh Khung Dịch Lụa.
-2. **Web Kế Toán (SP):** Đem File XML của IdP Nạp Vào Code Của Mình. XONG CODE NÓ LẠI Xả Ra 1 Tờ Khai Nộp Ngược Lại `sp-metadata.xml`. Kế Toán Gửi Tờ Đó Cho Thằng Chăm Sóc Keycloak.
-3. Thằng Admin Keycloak Vác Cục Metadata Của SP Lệnh Nhập (Import) Vào Bụng Lãnh Chúa. 
-4. Lúc Này, Hai Bên Đã Đọc Được Tọa Độ Của Nhau Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống! Mạch Kết Nối Bọc Thép Thành Công!
+**SAML Metadata** là một tài liệu chuẩn hóa định dạng XML chứa tất cả các tham số cần thiết để một thực thể (IdP hoặc SP) có thể giao tiếp với đối tác. Thay vì phải cấu hình thủ công hàng chục tham số (URL, thuật toán, khóa mã hóa), quản trị viên chỉ cần trao đổi file Metadata này.
 
----
+Các thành phần cốt lõi trong một file Metadata:
+- **Entity ID:** Định danh duy nhất toàn cầu của thực thể (thường là một URL).
+- **Public Keys (X.509 Certificates):** Chứa chứng chỉ khóa công khai (Public Key) dùng để xác minh chữ ký (Signature Validation) hoặc mã hóa dữ liệu (Encryption).
+- **Endpoints (URL):**
+  - Đối với IdP: `SingleSignOnService` (Nơi nhận AuthnRequest) và `SingleLogoutService`.
+  - Đối với SP: `AssertionConsumerService` (Nơi nhận SAMLResponse) và `SingleLogoutService`.
+- **Bindings:** Các phương thức HTTP được hỗ trợ (HTTP-POST, HTTP-Redirect, SOAP).
+- **NameID Formats:** Các định dạng định danh người dùng được hỗ trợ (Ví dụ: Email, Transient, Persistent).
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Giao Diện Lệnh Bơm Bản Đồ Mạch Thép Oanh Tĩnh Bọt:
+Có hai cách để trao đổi Metadata: **Tĩnh (Static)** và **Động (Dynamic/URL-based)**. Trong môi trường doanh nghiệp hiện đại, trao đổi động thông qua URL được ưu tiên vì tính tự động cập nhật của nó.
 
 ```mermaid
 sequenceDiagram
-    participant Keycloak as Keycloak (Trạm IdP)
-    participant Dev as Thằng Admin 2 Bên Dữ Lụa
-    participant SP as App Spring Boot (Kẻ SP)
-
-    Note over Keycloak, SP: BƯỚC 1: XUẤT TỌA ĐỘ TRẠM GỐC CŨ RÍCH
-    Dev->>Keycloak: Kéo Lệnh Export IdP Metadata Trút Nhựa Bọc Cắt Lệnh Giao Thức!
-    Keycloak-->>Dev: Trả Về File: idp-metadata.xml (Có chứa Cục X.509 Chữ Ký Oanh Lụa).
+    autonumber
+    participant Admin as Quản trị viên (Admin)
+    participant SP as Service Provider (SP)
+    participant IdP as Identity Provider (Keycloak)
     
-    Note over Dev, SP: BƯỚC 2: NẠP LÕI VÀO PHẦN MỀM KHÁCH KẼ LỤA
-    Dev->>SP: Gắn Cục idp-metadata.xml Vào Thư Mục Resource Của Spring Boot Mạch Oanh Giao Dịch!
-    SP->>SP: Spring Boot Đọc Cục Bản Đồ. Tự Auto-Wire Các Cổng Redirect Rút Lụa Bọt Cắt Kẽ Mã Đáy!
+    Note over Admin, IdP: CẤU HÌNH THIẾT LẬP TIN CẬY (TRUST ESTABLISHMENT)
     
-    Note over SP, Keycloak: BƯỚC 3: XUẤT NGƯỢC LẠI BẢN ĐỒ CỦA KHÁCH KHÚC TỚI CHẶT OANH TĨNH
-    SP-->>Dev: Spring Nhả File SP-Metadata.xml Của Chính Nó Cho Admin Bọt Khung Oanh Cáp.
-    Dev->>Keycloak: Mở Bảng Console Keycloak. Bấm Import File SP Này Vào Đáy DB Mạch. Lập Tức Sinh Ra Client Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ!
+    Admin->>SP: Truy cập SP Admin Console, cấu hình SAML
+    SP-->>Admin: Sinh ra file SP-Metadata.xml (hoặc URL cung cấp Metadata)
     
-    Note over Keycloak, SP: KHỚP GIAO ƯỚC THÀNH CÔNG!
+    Admin->>IdP: Tải SP-Metadata.xml lên Keycloak (Tạo Client)
+    Note over IdP: Keycloak phân tích cú pháp XML.<br/>Lưu Entity ID, trích xuất Public Key của SP.<br/>Lưu các URL AssertionConsumerService.
+    IdP-->>Admin: Tạo Client thành công.
+    
+    Admin->>IdP: Copy URL IdP-Metadata.xml <br/>(VD: /realms/master/protocol/saml/descriptor)
+    Admin->>SP: Dán URL IdP Metadata vào SP cấu hình
+    
+    Note over SP: SP gọi HTTP GET tới IdP URL.<br/>Tự động trích xuất Public Key của IdP để dùng sau này (xác minh Assertion).
+    
+    Note over SP, IdP: LÀM VIỆC LÚC RUNTIME (KEY ROTATION)
+    
+    IdP->>IdP: IdP tự động sinh cặp khóa mới (Key Rotation)
+    IdP->>IdP: Cập nhật IdP-Metadata.xml với Public Key mới
+    Note over SP: SP (đã cấu hình quét định kỳ - Periodic Polling)<br/>gọi HTTP GET tải lại IdP Metadata.
+    SP->>SP: Cập nhật Public Key mới của IdP mà không gây downtime.
 ```
 
----
+**Tại sao trao đổi Metadata động lại quan trọng?**
+Chứng chỉ mã hóa (X.509) có thời hạn (thường từ 1-3 năm) và cần được xoay vòng (Key Rotation) để đảm bảo bảo mật. Nếu trao đổi tĩnh bằng file, khi chứng chỉ hết hạn, quản trị viên phải hẹn lịch thức dậy lúc nửa đêm để tải file thủ công lên cả hai hệ thống. Nếu tải Metadata qua URL với cơ chế polling, quá trình này là hoàn toàn tự động (Zero-downtime key rotation).
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Chết Cứng Khi Khóa Chữ Ký Trượt Hết Hạn Certificate Expiration Cắt Oanh Khung Dịch Lụa)**
-> **Tội Ác Thiết Kế Giao Thức Đáy Mạch Lõi Tự Trị:** Thằng Admin Công Ty Cầm Cục File XML Bằng USB Nhựa Đem Đổi Cho Nhau Oanh Khung Bọc Lụa API. Và File XML Đó Bị Đóng Cứng Chết Tĩnh Lệnh Oanh Rỗng Chóp Trong Code Của SP (Spring Boot).
-> **Hậu Quả:** Một năm sau, Cái Khóa Public Key X.509 Của Keycloak Hết Hạn 365 Ngày Trút Lụa Nhựa Bọc (Bắt buộc phải xoay vòng khóa mới). Keycloak Đẻ Khóa Mới Sinh Bọt Tươi Oanh Mạch Rút Trọng. NHƯNG Thằng App Kế Toán Kia Nó Vẫn Đang Dùng Mảnh Bản Đồ Gốc Cổ Đại Của Năm Ngoái Nằm Cứng Dưới Ổ Đĩa Lõi DB! Khách Đăng Nhập Mạch Kẽ Trút Lụa, Trả Về Chữ Ký Khóa Mới, Kế Toán Giải Bằng Cờ Cũ Sai Lệch Rác Lập Tức Văng HTTP Lỗi Chết Trắng Nát Đứt Băng! Không Thể Login Được Toàn Tập Lỗ Lủng Bọt Khung Oanh!
-> **Biện Pháp Sống Còn Lớp Trọng Lực OIDC Đáy Lụa:** TUYỆT ĐỐI HẠN CHẾ Import Bằng Tệp Tin File Offline (Cầm Tay Tĩnh Cũ Rích Oanh Khung Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép).
-> PHẢI Dùng Tính Năng **Metadata URL (URL Tọa Độ Động Lực Sinh Oanh Tĩnh Bọt)**. 
-> Lệnh Spring Boot Trượt Khung Sẽ Tự Gọi Link GET Tải Bản Đồ Mới Nhất Mạch Cáp 1 Phiên Trút Code Từ Keycloak Đáy Lụa Cứ Mỗi 24 Giờ. Keycloak Xoay Vòng Khóa Oanh, App Tự Tải Lệnh Bản Đồ Mới Về Khớp Lệnh Cắt Khung Đứt Băng Không Hệ Rớt Rỗng Dịch Lụa Lỗ Bọt Tĩnh Oanh!
+> [!WARNING]
+> **Man-in-the-Middle (MitM) với Metadata:** Nếu lấy Metadata qua URL bằng HTTP không mã hóa, kẻ tấn công có thể thay thế Public Key của IdP trong file XML bằng Public Key của chúng. Từ đó, mọi chữ ký số của IdP sẽ bị từ chối, nhưng các chữ ký do kẻ tấn công giả mạo sẽ được chấp nhận!
 
----
+> [!IMPORTANT]
+> **Metadata Signature:** Tương tự như Assertion, bản thân file Metadata cũng BẮT BUỘC phải được ký điện tử (Signed Metadata). Điều này đảm bảo tính toàn vẹn của file cấu hình khi trao đổi qua môi trường mạng không đáng tin cậy.
+
+- **Dùng HTTPS cho Metadata URL:** Luôn dùng TLS/HTTPS với chứng chỉ CA hợp lệ khi chia sẻ hoặc fetch URL Metadata.
+- **Vô hiệu hóa Entity Expansion (XXE):** Khi tự viết mã (code) để parse file Metadata, phải bảo vệ bộ phân tích cú pháp XML khỏi các cuộc tấn công XXE, vì Metadata thường là đầu vào do đối tác hoặc bên thứ ba cung cấp.
+- **Kiểm tra thời hạn (ValidUntil):** Root element `<EntityDescriptor>` thường hỗ trợ các thuộc tính `validUntil` và `cacheDuration`. Hệ thống đọc metadata phải tuân thủ nghiêm ngặt: Không tin tưởng metadata đã hết hạn.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cấu Hình Xem Trực Tiếp Bề Mặt Của Cái Bản Đồ Thép IdP Metadata Khủng Khiếp Này:
-1. Mở Console Keycloak. Vào Menu Rỗng Đáy Tĩnh: **Realm Settings**.
-2. Tìm Tab Cuối Cùng Ở Cuối Góc Oanh Cáp Trọng Lõi Dịch Tễ: **`Endpoints`**.
-3. Bạn Sẽ Thấy Ngay Một Cái Link Oanh Lụa Có Tên Là **`SAML 2.0 Identity Provider Metadata`**.
-4. Bấm Mở Link Đó Ra Trình Duyệt Bọc Lệnh Cũ Cắt Cáp Lệnh. Khối Chóp XML Oanh Dữ Lụa Xuyên Mạch Kẽ Hiện Ra Nát Đứt Băng. Nhìn Xuống Nửa Thân Dưới Chữ Cốt Lõi.
-5. Bạn Sẽ Thấy Những Cục Lệnh Khổng Lồ Này Trút Cáp Mạch Oanh Giao Dịch Đỉnh Đáy Oanh Mạng Bắt Lụa:
+Đây là ví dụ cấu trúc rút gọn của một **IdP Metadata** sinh ra từ Keycloak:
+
 ```xml
-<!-- KHÓA CÔNG KHAI DÙNG ĐỂ CHECK CHỮ KÝ DỊCH CŨ RÍCH OANH KHUNG -->
-<ds:X509Certificate>MIICljCCAX4CBgGLH7b....ChuỗiRấtDàiKhungTĩnhOanhKhớp</ds:X509Certificate>
-
-<!-- TỌA ĐỘ LỆNH ĐĂNG NHẬP GỐC MẠCH SSO CẮT BỌT -->
-<SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="http://kc.com/realms/master/protocol/saml"/>
-
-<!-- TỌA ĐỘ LỆNH ĐĂNG XUẤT CẮT PHIÊN KHÚC TỚI CHẶT OANH TĨNH -->
-<SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://kc.com/realms/master/protocol/saml"/>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" 
+                  entityID="https://idp.example.com/auth/realms/master"
+                  cacheDuration="PT10H"
+                  validUntil="2025-10-10T12:00:00Z">
+    
+    <!-- IDPSSODescriptor định nghĩa khả năng làm IdP -->
+    <IDPSSODescriptor WantAuthnRequestsSigned="true" 
+                      protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+        
+        <!-- Khóa công khai (Public Key) dùng cho Signature -->
+        <KeyDescriptor use="signing">
+            <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+                <ds:X509Data>
+                    <ds:X509Certificate>
+                        MIICmzCCAYMCBgF... (Base64 Encoded Cert) ...p7m8=
+                    </ds:X509Certificate>
+                </ds:X509Data>
+            </ds:KeyInfo>
+        </KeyDescriptor>
+        
+        <!-- Các Endpoints của IdP -->
+        <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" 
+                             Location="https://idp.example.com/auth/realms/master/protocol/saml"/>
+        
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" 
+                             Location="https://idp.example.com/auth/realms/master/protocol/saml"/>
+    </IDPSSODescriptor>
+</EntityDescriptor>
 ```
 
----
+**Cấu hình trên Keycloak (Làm SP và nhập IdP Metadata):**
+Nếu Keycloak làm Identity Broker (đóng vai trò SP kết nối tới một ADFS IdP):
+1. Vào mục `Identity Providers` -> Chọn `SAML v2.0`.
+2. Cuộn xuống phần `Import external IDP config`.
+3. Có 2 cách:
+   - Paste URL của ADFS IdP Metadata (Khuyến nghị).
+   - Hoặc upload trực tiếp file `xml` từ máy tính cục bộ.
+4. Keycloak sẽ tự điền tất cả các URL `Single Sign-On Service URL` và `Validating X509 Certificates`.
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
-**1. Trong Cục Bản Đồ IdP Metadata Lệnh Đáy Oanh Mạch Rút Trọng Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Bơm. Tại Sao Sếp Thấy Có Tới 2 Cái Thẻ Khóa 'KeyDescriptor' Một Cái Ghi Bằng Thuộc Tính 'use=signing' Và Một Cái Ghi Bằng 'use=encryption'? Sự Phân Vai Trò Của Chúng Cấu Trúc Khung Rỗng Kéo Sóng Ngầm Khác Nhau Dữ Lụa Lỗ Bọt Cắt Trắng Oanh Tĩnh Ra Sao?**
-- **Senior:** Dạ thưa sếp, Đây Chính Là Uy Quyền 2 Tầng Của SAML Mà OIDC Lệnh JSON Xưa Khó Làm Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ:
-  - **`use=signing` (Dùng Cho Việc Ký Chữ Mạch Oanh Giao Dịch):** Đây Là Khóa Công Khai (Public Key) Phục Vụ Cho Việc Xác Thực Nguồn Gốc. SP Cầm Cái Khóa Này Đưa Lên Băng Tần Để Dò Xem Chữ Ký Cắt Khung Nằm Ở Cục XML Assertion Có Đúng Sự Thật Là Do Thằng Keycloak Đẻ Ra Không Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò. (Chỉ để xem nó Fake Hay Real Khớp Lệnh Oanh Rỗng).
-  - **`use=encryption` (Dùng Cho Việc Mã Hóa Bịt Mắt Oanh Cáp Trọng Lõi Tự Trị):** Đây Là Khóa Công Khai Phục Vụ Việc Đóng Hòm Bí Mật Trút Lụa Bọt Kẽ Mã Đáy! Giả Sử Sếp Không Cần Check Ký Nữa, Mà Sếp Gửi Một Cục Data Bí Mật Oanh Mạng Tới Keycloak Đáy Lõi DB Trút Cắt Khung. Sếp Lấy Cái Khóa Encryption Này Khóa Mã Hóa Data (AES). Lúc Data Trượt Bọt Rỗng Đáy Chóp Lên Tới Keycloak, Chỉ Có ĐÚNG DUY NHẤT Private Key Nằm Ở RAM Của Lãnh Chúa KC Mới Đủ Khóa Riêng Cắt Mạch Đứt Kẽ Giải Mã Cục Thép Đó Đọc Được Chữ Oanh Dữ Lụa! Chống Sniffer Soi Mạng Bất Chấp HTTP Trần Kẽ Oanh Khung Dịch Lụa Đỉnh Chóp!
+- **Self-signed Certificates không khớp tên miền:** Đôi khi SP từ chối metadata vì chứng chỉ X.509 nằm bên trong nó là Self-signed. Thực tế, SAML Trust không phụ thuộc vào PKI (Public Key Infrastructure) hay CA của trình duyệt. Sự tin cậy được thiết lập *bằng cách* file Metadata được chia sẻ an toàn ra sao (ví dụ admin tải trực tiếp vào console). Chứng chỉ trong file SAML Metadata tự nó là "Trust Anchor", không nhất thiết phải do VeriSign hay Let's Encrypt cấp.
+- **Nhiều chứng chỉ (Multiple Keys):** Trong quá trình xoay vòng khóa, thẻ `<IDPSSODescriptor>` sẽ chứa ĐỒNG THỜI 2 block `<KeyDescriptor use="signing">` (một khóa cũ, một khóa mới). Nếu thư viện SP cũ/kém chất lượng chỉ đọc thẻ khóa đầu tiên và bỏ qua khóa thứ hai, nó sẽ gây ra lỗi xác minh chữ ký. **Khắc phục:** Nâng cấp thư viện SAML của SP để hỗ trợ mảng Multi-keys.
 
----
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
 
-## 6. Tài liệu tham khảo (References)
-- **OASIS SAML V2.0:** Metadata Profile.
-- **Keycloak Documentation:** Client Import & Export Metadata.
+1. **Junior:** Mục đích chính của việc trao đổi SAML Metadata là gì?
+   *Đáp án:* Để tự động hóa việc chia sẻ cấu hình giữa IdP và SP, bao gồm các URL giao tiếp (Endpoints), và đặc biệt là các khóa công khai (Public Keys/Certificates) dùng để mã hóa và xác minh chữ ký.
+2. **Junior:** Sự khác biệt giữa `IDPSSODescriptor` và `SPSSODescriptor` trong file Metadata là gì?
+   *Đáp án:* `IDPSSODescriptor` chứa cấu hình khi thực thể đó hoạt động với tư cách là Identity Provider (chứa SingleSignOnService url). `SPSSODescriptor` chứa cấu hình khi nó làm Service Provider (chứa AssertionConsumerService url).
+3. **Senior:** Tại sao nên dùng Dynamic Metadata URL (với cơ chế fetch định kỳ) thay vì tải file XML thủ công?
+   *Đáp án:* Hỗ trợ Key Rotation tự động với Zero-downtime. Khi IdP thay khóa ký mới (thường là để tăng cường bảo mật hoặc do khóa hết hạn), nó chỉ cần cập nhật Metadata của chính nó. Các SP sẽ tự động polling (tải lại) file từ URL, lấy được khóa mới mà không cần thao tác thủ công của kỹ sư hệ thống.
+4. **Senior:** Giao thức SAML có quy định chứng chỉ X.509 bên trong Metadata phải được cấp bởi một Public CA (Certificate Authority như DigiCert) không? Tại sao?
+   *Đáp án:* Không. Mô hình SAML dùng Explicit Trust (tin cậy rõ ràng). Khi Admin tải thủ công file hoặc URL Metadata cấu hình vào SP, SP đã xác nhận sự tin cậy vào toàn bộ nội dung file đó. Khóa X.509 bên trong đóng vai trò tự định danh. Việc dùng Self-signed certs là hoàn toàn chuẩn và hợp lệ trong kiến trúc SAML.
+5. **Senior:** Lỗ hổng XML External Entity (XXE) có thể bị khai thác như thế nào qua quá trình Import Metadata?
+   *Đáp án:* Kẻ tấn công lợi dụng việc Admin có thể cung cấp URL Metadata cho SP. Kẻ tấn công tạo một server độc hại chứa file Metadata XML, trong đó có các thẻ DOCTYPE độc hại trích xuất file `/etc/passwd`. Nếu máy chủ SP đọc XML mà không tắt tính năng giải quyết Entity bên ngoài, nó sẽ thực thi các mã độc này.
+
+## 7. Tài liệu tham khảo (References)
+
+- [OASIS SAML V2.0 Metadata Specification](https://docs.oasis-open.org/security/saml/v2.0/saml-metadata-2.0-os.pdf)
+- [OWASP XML Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/XML_Security_Cheat_Sheet.html)
+- [Keycloak Official Documentation - Identity Providers](https://www.keycloak.org/docs/latest/server_admin/#_saml)

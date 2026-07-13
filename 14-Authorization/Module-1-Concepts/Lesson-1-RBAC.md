@@ -1,82 +1,132 @@
-# Lesson 1: Phân Quyền Theo Vai Trò (RBAC - Role-Based Access Control)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** RBAC là mô hình phân quyền "quốc dân" xuất hiện ở mọi framework. Mặc dù dễ học, nhưng RBAC thường bị thiết kế sai cách, dẫn đến hiện tượng "Bùng nổ Role" (Role Explosion). Bài học này không dạy bạn cách tạo Role (vì đã học ở Chapter 8), mà dạy bạn tư duy thiết kế RBAC chuẩn mực trong hệ thống lớn.
+> **Category:** Theory
+> **Goal:** Hiểu sâu về mô hình Role-Based Access Control (RBAC), cách Keycloak phân loại Roles, và luồng hoạt động của RBAC trong việc cấp quyền cho các ứng dụng.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. RBAC Bản Chất Là Gì?
-Role-Based Access Control (RBAC) là mô hình cấp quyền truy cập dựa trên **Vai trò (Role)** của người dùng trong tổ chức. 
-Thay vì gán trực tiếp Quyền (Permission) cho Người dùng (User): `User A -> Quyền Xóa Báo Cáo`, người ta sẽ gán qua một cầu nối trung gian gọi là Role: `User A -> Role Kế Toán -> Quyền Xóa Báo Cáo`.
-- **Ưu điểm:** Dễ hiểu, dễ cài đặt. Phù hợp với cấu trúc phòng ban công ty (Admin, User, Manager).
-- **Nhược điểm:** Cực kỳ thiếu linh hoạt. Không thể xử lý ngữ cảnh (Context). (Ví dụ: "Kế toán chỉ được xóa báo cáo do chính họ tạo ra" -> RBAC thuần túy hoàn toàn bó tay).
+**Role-Based Access Control (RBAC)** hay "Kiểm soát truy cập dựa trên vai trò" là một mô hình ủy quyền (Authorization) phổ biến nhất trong các hệ thống phần mềm. Thay vì gán trực tiếp từng quyền (permission) cho từng người dùng (ví dụ: "User A được phép xóa bài viết"), hệ thống RBAC sẽ định nghĩa các **Vai trò (Roles)** (ví dụ: "Admin", "Manager", "User"). Người dùng sẽ được gán vào các vai trò này, và các ứng dụng sẽ kiểm tra xem người dùng có giữ vai trò thích hợp hay không để cho phép thực hiện hành động.
 
-### 1.2. Vấn Nạn "Role Explosion" (Bùng Nổ Vai Trò)
-Đây là "căn bệnh ung thư" của các lập trình viên khi dùng RBAC.
-Khi gặp yêu cầu mới từ Sếp: "Tạo quyền cho ông Kế toán nhưng ổng chỉ được xem báo cáo khu vực Miền Bắc thôi".
-- **Lập trình viên non tay:** Sẽ lao vào tạo ngay một Role mới tinh là `KeToan_MienBac_XemBaoCao`.
-- **Hậu quả:** 1 năm sau, hệ thống sinh ra 500 cái Roles: `KeToan_MienNam_Sua`, `Admin_Tầng1_Delete`,... Việc quản lý trở thành thảm họa không thể cứu vãn. Token phình to quá giới hạn Header HTTP (4KB).
+**Trong Keycloak, RBAC được chia thành hai cấp độ chuyên biệt:**
+1. **Realm Roles:** Đây là các vai trò mang tính toàn cục trong một Realm. Nếu một người dùng được gán Realm Role, vai trò đó sẽ có ý nghĩa và có thể được chia sẻ, nhận diện bởi TẤT CẢ các Client (ứng dụng) nằm trong Realm đó. 
+   - *Ví dụ:* `global-admin`, `premium-user`.
+2. **Client Roles:** Đây là các vai trò thuộc sở hữu riêng của một Client cụ thể. Nó giúp giới hạn phạm vi của quyền lực. Một `admin` của hệ thống Báo cáo (Reporting App) không có nghĩa là `admin` của hệ thống Kế toán (Accounting App).
+   - *Ví dụ:* Client `reporting-app` có role `view-report`. Client `accounting-app` có role `approve-invoice`.
 
----
+**Composite Roles (Vai trò phức hợp):** Keycloak cho phép một Role (Realm hoặc Client) bao gồm nhiều Role khác bên trong nó. Khi gán Composite Role cho User, User đó tự động thừa hưởng mọi Role con bên trong. Điều này giúp dễ dàng quản lý phân cấp (Hierarchical RBAC).
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Token Bơm Data RBAC Vào Backend API:
+Khi một User đăng nhập bằng giao thức OpenID Connect (OIDC), cơ chế kiểm tra RBAC sẽ được nhúng trực tiếp vào token và sau đó được Backend (Client) xác thực.
 
 ```mermaid
-flowchart TD
-    A[User Request Login] --> B[Keycloak Load Danh Sách Roles Của User]
-    B --> C{Mapper: Role Mapper}
-    C --> D[Nhúng Danh Sách Roles Vào Mảng 'realm_access.roles' Trong JWT Token]
-    
-    D --> E[User Nhận Token Mang Đi Gọi API Backend]
-    
-    E --> F[API Backend (Spring Boot / Nodejs)]
-    F --> G{Trình Đọc Lệnh Nội Bộ: @RolesAllowed('admin')}
-    G -- Token Có Chữ 'admin' --> H[Cho Phép Vào Tầng Service Data]
-    G -- Token Không Có 'admin' --> I[Ném Lỗi HTTP 403 Forbidden - Cấm Truy Cập]
+sequenceDiagram
+    participant User as Browser / User
+    participant KC as Keycloak Engine
+    participant App as Backend API (Resource Server)
+
+    User->>KC: Đăng nhập (username/password)
+    KC->>KC: Lấy thông tin User từ Database
+    KC->>KC: Lấy danh sách Realm Roles & Client Roles của User
+    KC->>KC: Tính toán Composite Roles (Khai triển cây role)
+    KC->>KC: Mapping (Sử dụng Client Scopes / Protocol Mappers) <br> để nhúng Roles vào JWT
+    KC-->>User: Trả về Access Token (JWT)
+
+    User->>App: Gửi Request (Header: Authorization Bearer Token)
+    App->>App: Validate JWT Signature
+    App->>App: Đọc Claim `realm_access` và `resource_access` từ Token
+    alt Token có chứa Role yêu cầu (vd: "admin")
+        App-->>User: 200 OK (Thực thi hành động)
+    else Token KHÔNG chứa Role
+        App-->>User: 403 Forbidden
+    end
 ```
 
----
+**Cơ chế cấp thấp (JWT Payload Payload Structure):**
+Bên trong JWT, Keycloak lưu trữ Role ở các trường (claims) được định nghĩa sẵn bởi OIDC Protocol Mappers.
+```json
+{
+  "realm_access": {
+    "roles": [ "offline_access", "uma_authorization", "global-admin" ]
+  },
+  "resource_access": {
+    "accounting-app": {
+      "roles": [ "approve-invoice" ]
+    }
+  }
+}
+```
+Các Adapter của Keycloak (như Spring Security Keycloak Adapter) sẽ tự động giải mã cấu trúc JSON phức tạp này và chuyển đổi (map) chúng thành các `GrantedAuthority` chuẩn của Framework (thường thêm tiền tố `ROLE_`).
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!IMPORTANT]
-> **Tuyệt Đỉnh An Toàn Thiết Kế (Chỉ Dùng RBAC Cho Phân Quyền Thô - Coarse-Grained)**
-> **Quy Tắc Vàng:** Trong hệ thống hiện đại, KHÔNG BAO GIỜ dùng Role để chứa Data hoặc Ngữ Cảnh (Context). 
-> - **Tội Ác Thiết Kế:** Tạo Role có tên là `admin_công_ty_A`. Nếu có 100 công ty, bạn phải sinh 100 Role? Thật tệ hại.
-> - **Biện Pháp Sống Còn:** Role chỉ mang tính chất **Chức Danh**. Bạn chỉ nên tạo Role tên là `Company_Admin`. Sau đó, việc kiểm tra xem User này có phải là Admin của "Công ty A" hay không thì KHÔNG PHẢI việc của RBAC. Đó là việc của Logic Backend (so sánh ID công ty) hoặc chuyển sang dùng ABAC/PBAC. RBAC chỉ dùng làm cánh cửa sơ cấp ngoài cùng (Coarse-Grained). 
+- **Tránh phình to Token (Token Bloat):** Nếu bạn có hàng ngàn Role, không nên nhét tất cả vào JWT vì kích thước Token sẽ quá lớn, vượt quá giới hạn HTTP Header. Thay vào đó, sử dụng tính năng **Client Scopes** để chỉ nhúng các Role liên quan đến Client cụ thể đang thực hiện đăng nhập.
+- **Ưu tiên Client Roles hơn Realm Roles:** Để tuân thủ nguyên tắc quyền tối thiểu, hãy luôn sử dụng Client Roles thay vì Realm Roles, trừ khi một Role thực sự cần được nhận diện trên mọi nền tảng trong Realm.
+- **Sử dụng Group Mapping:** Thay vì gán Role lẻ tẻ cho từng User, hãy tạo các **Groups** (ví dụ: `IT Department`), gán Roles cho Group, sau đó thêm User vào Group. Quản lý ở quy mô lớn sẽ dễ dàng hơn rất nhiều.
 
 > [!WARNING]
-> **Hiểm Họa Token Phình To Kéo Sập Server Lỗi 431**
-> Khi số lượng Role của một người dùng quá lớn (Ví dụ: Một tổng giám đốc kiêm nhiệm 50 cái Role), mảng String Roles bị nhét vào JWT Token sẽ làm kích thước Token vượt quá 4KB. Lúc này, các Reverse Proxy như Nginx hay Apache sẽ lập tức văng lỗi `HTTP 431 Request Header Fields Too Large` chặn sạch mọi yêu cầu của sếp tổng!
-> **Khắc Phục:** 
-> 1. Xóa bớt Role thừa bằng cách dùng Composite Role (Gộp nhóm).
-> 2. Đừng nhét tất cả Role vào Access Token. Dùng Token Scope để Client chỉ yêu cầu nhóm Role nó cần.
-
----
+> RBAC là một mô hình Tĩnh. Keycloak cấp Token mang các Role, nhưng nếu Admin xóa Role của User trong Admin Console, Token đang sống (chưa hết hạn) ở phía client VẪN HỢP LỆ và có chứa Role đó cho đến khi token đó hết hạn. Luôn set thời gian sống của Access Token (Lifespan) ngắn gọn.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cơ Chế RBAC Mềm Mỏng Thông Qua Groups Chống "Role Explosion":
-1. Bạn có 3 Role cơ bản trên Keycloak: `read_report`, `write_report`, `delete_report`. (Đây là quyền thô, không gắn tên chức danh vào nó).
-2. Tới menu **Groups**, bạn tạo Group `Phòng Kế Toán`.
-3. Tới Tab Role Mapping của Group `Phòng Kế Toán`, bạn gán 2 Role `read_report` và `write_report` vào Group này.
-4. Tới menu **Users**, bạn gán nhân viên Nguyễn Văn A vào Group `Phòng Kế Toán`.
-5. Vậy là A tự động có 2 Role. Nếu A chuyển sang phòng Giám Đốc, bạn chỉ cần tháo A khỏi Group Kế Toán và ném qua Group Giám Đốc. Không cần phải tự đi mò 100 cái Role để tháo gỡ thủ công. Đây là thiết kế chuẩn mực RBAC cấp độ doanh nghiệp lớn.
+Ví dụ cấu hình Spring Security kiểm tra Role từ Keycloak JWT bằng annotation:
 
----
+```java
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+@RestController
+public class InvoiceController {
 
-**1. Sếp Yêu Cầu Tính Năng Cấp Quyền Đọc/Sửa Bài Viết Báo Chí. Ban Đầu Cậu Thiết Kế RBAC Với 2 Role: 'Editor' (Được Sửa) Và 'Reader' (Được Đọc). Nhưng Sếp Đổi Yêu Cầu: "Thằng Editor Chỉ Được Sửa Bài Báo Do Chính Tay Nó Viết Ra Thôi, Bài Của Đứa Editor Khác Thì Cấm Chạm Vào". Cậu Sẽ Giải Quyết Bằng Mô Hình RBAC Này Thế Nào?**
-- **Junior:** Dạ dễ ợt, em sẽ tạo ra role động theo ID bài viết. Ví dụ `Editor_Sua_BaiViet_101`. Nếu bài ID 102 thì em tạo `Editor_Sua_BaiViet_102`.
-- **Senior:** Dạ thưa sếp, Yêu cầu "Chỉ được sửa bài của CHÍNH MÌNH" gọi là "Resource Ownership" (Quyền Sở Hữu Tài Nguyên). Yêu cầu này ĐÃ VƯỢT QUÁ KHẢ NĂNG của mô hình RBAC thuần túy. Nếu cố đấm ăn xôi sinh ra Role có ID Bài Viết sẽ gây ra Role Explosion (Có 1 triệu bài viết thì sinh 1 triệu cái Role). 
-  - Cách giải quyết chuẩn là: RBAC chỉ đứng ngoài làm "Bảo vệ cổng" (Kiểm tra mày có role Editor không). 
-  - Sau khi vào cửa, em sẽ chặn cấp độ "Bảo vệ phòng" (Fine-Grained) ngay tại Code Backend Hoặc Database: Mệnh đề `WHERE author_id = {user_id_trong_token}` để đảm bảo nó chỉ query được data của chính nó! RBAC không thể và không nên dùng để giữ bảo mật tầng Resource!
+    // Spring Security yêu cầu Role phải bắt đầu bằng ROLE_ theo mặc định
+    // Bạn cần viết JwtAuthenticationConverter để map "approve-invoice" thành "ROLE_approve-invoice"
+    @PreAuthorize("hasRole('approve-invoice')")
+    @GetMapping("/api/invoices/approve")
+    public String approveInvoice() {
+        return "Hóa đơn đã được duyệt thành công!";
+    }
+    
+    // Nếu sử dụng Realm role
+    @PreAuthorize("hasRole('global-admin')")
+    @GetMapping("/api/admin/dashboard")
+    public String adminDashboard() {
+        return "Bảng điều khiển hệ thống";
+    }
+}
+```
 
----
+Một cấu hình `JwtAuthenticationConverter` phổ biến trong Spring Security 6 để parse Realm Roles từ chuỗi JSON của Keycloak:
+```java
+@Bean
+public JwtAuthenticationConverter jwtAuthenticationConverter() {
+    JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+    // Thay đổi từ claim mặc định của Spring sang claim cấu trúc của Keycloak
+    grantedAuthoritiesConverter.setAuthoritiesClaimName("realm_access");
+    // Code tuỳ chỉnh lấy array "roles" trong "realm_access" và thêm "ROLE_" prefix
+    ...
+}
+```
 
-## 6. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Administration Guide - Roles.
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Tên Role có khoảng trắng hoặc ký tự đặc biệt:** Một số framework phía Backend không thể parse được các Role có chứa khoảng trắng (ví dụ `Super Admin`). **Khắc phục:** Luôn sử dụng kebab-case hoặc snake_case khi đặt tên role (`super-admin`).
+- **User có quá nhiều Roles nhưng Token không có:** Do cấu hình **Role Mapper** trong Client Scope của Client đang bị tắt chức năng "Add to access token". **Khắc phục:** Vào Client Scopes, chọn `roles` mapper và đảm bảo công tắc "Add to access token" là ON.
+- **Lỗ hổng leo thang đặc quyền (Privilege Escalation):** Khi có một ứng dụng Frontend (Single Page Application) sử dụng lại Token cho một ứng dụng Backend khác, và Backend kiểm tra nhầm Client Role của ứng dụng kia do không kiểm tra kỹ trường `resource_access`.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **(Junior)** Trình bày sự khác biệt cơ bản giữa Realm Role và Client Role trong Keycloak.
+   - *Đáp án:* Realm Role có phạm vi toàn cục trong Realm, mọi client đều thấy. Client Role thuộc về một client duy nhất, có phạm vi hẹp hơn để phân quyền riêng cho một ứng dụng.
+2. **(Junior)** Làm sao để một người dùng tự động có được nhiều Roles cùng lúc mà không phải gán thủ công từng Role một?
+   - *Đáp án:* Gán thông qua Groups (User thuộc Group, Group chứa nhiều Role) hoặc dùng tính năng Composite Roles (Role A chứa các Role con B, C).
+3. **(Senior)** Trong mô hình RBAC với OIDC, nếu Admin tước đi quyền (Role) của User trên Keycloak, người dùng đó có ngay lập tức bị từ chối truy cập ở phía Resource Server (Backend API) không? Tại sao?
+   - *Đáp án:* Không. RBAC với JWT là phi trạng thái (stateless). Token đã cấp vẫn chứa Role cũ và vẫn được Backend tin tưởng cho đến khi token hết hạn, trừ phi Backend gọi về endpoint Introspection của Keycloak cho mỗi request.
+4. **(Senior)** Nếu chuỗi JWT Access Token quá lớn vượt quá mức cho phép của HTTP Header do chứa hàng ngàn Roles, giải pháp xử lý trong Keycloak là gì?
+   - *Đáp án:* Sử dụng Scope-based RBAC. Cấu hình Client Scopes để Keycloak chỉ đính kèm những Role thực sự cần thiết vào token, hoặc Backend chỉ giữ ID trong token và tự gọi Database để lấy Role thay vì nhúng vào token.
+5. **(Senior)** Tại sao Spring Security mặc định không đọc được các Client Roles từ Access Token của Keycloak?
+   - *Đáp án:* Vì cấu trúc JWT của Keycloak đặt Client Roles bên trong claim `resource_access.{client_id}.roles`, không theo chuẩn mảng `scope` hoặc `scp` mặc định mà Spring Security sử dụng. Cần phải code `Converter` tùy chỉnh để parse.
+
+## 7. Tài liệu tham khảo (References)
+
+- Keycloak Server Administration Guide: [Roles](https://www.keycloak.org/docs/latest/server_admin/#_roles)
+- OWASP: [Access Control Vulnerabilities](https://owasp.org/www-project-top-ten/2017/A5_2017-Broken_Access_Control)

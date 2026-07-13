@@ -1,60 +1,87 @@
-# Lab 1: Ánh xạ Lý thuyết IAM vào Thực tế Máy chủ Keycloak
-
 > [!NOTE]
-> **Category:** Labs (Thực hành)
-> **Goal:** Học Lái Xe Trên Máy Tập Bắn. Khởi động Máy Chủ Keycloak và dùng chuột "Sờ tận tay" các Khái Niệm Tối Cao của Chương 2: Identity, Môi Giới Federation, MFA Cây Quyết Định, và Hạt Giống của Least Privilege.
+> **Category:** Practical/Lab
+> **Goal:** Làm quen với các khái niệm IAM cơ bản thông qua việc tạo Realm, Client, User và thực hiện luồng lấy Token (OAuth 2.0 Authorization Code Flow) qua Postman.
 
-## 1. Chuẩn bị Môi trường và Khởi Động Động Cơ
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-Sử dụng nguyên file `docker-compose.yml` có sẵn trong thư mục `02-IAM-Fundamentals/code/` để dựng lại Máy Chủ Giống Chương 1.
-```bash
-cd 02-IAM-Fundamentals/code/
-docker compose up -d
-```
-Truy cập `http://localhost:8080/`, Đăng nhập Admin Console (Username `admin` / Pass `admin`).
+Giả sử bạn đang phát triển một ứng dụng nội bộ có tên là `Employee Portal`. Bạn cần tích hợp ứng dụng này với Keycloak để quản lý việc đăng nhập của nhân viên. Yêu cầu đặt ra là bạn phải tạo một vùng không gian quản lý độc lập (Realm) cho công ty, tạo một Client đại diện cho ứng dụng, tạo một nhân viên thử nghiệm và cuối cùng là đóng vai người dùng để lấy được Access Token thành công bằng quy trình chuẩn Authorization Code Flow.
 
----
+Bài lab này là bước đệm quan trọng để hiểu rõ toàn bộ vòng đời tương tác của một ứng dụng (Client) đối với hệ thống IAM (Keycloak).
 
-## 2. Truy Tìm Các Khái Niệm Lõi Trên Bảng Điều Khiển
+## 2. Chuẩn bị Môi trường (Prerequisites)
 
-Vào Giao diện Admin, hãy Tự tay truy tìm và Thực Hiện các hành động sau:
+- Một máy chủ Keycloak đang chạy (có thể chạy trên Docker tại `http://localhost:8080`).
+- Trình duyệt web (Chrome, Firefox, Edge).
+- Phần mềm **Postman** (phiên bản Web hoặc Desktop) để thực thi các HTTP Requests lấy Token.
+- Đã có tài khoản quản trị tối cao (Admin) của Keycloak.
 
-### Tọa Độ 1: Identity vs Account (Bản Thể Khác Trái Mật Khẩu)
-1. Ở Menu trái, Chọn **Users** -> Bấm Nút **Add user**. Tạo một Identity: Username `alice`, Email `alice@cyber.com`. Bấm Save.
-2. Lúc này ALICE ĐÃ TỒN TẠI TRONG VŨ TRỤ (Identity Sinh Ra). Nhưng cô ấy KHÔNG THỂ ĐĂNG NHẬP (Chưa Có Account/Credential).
-3. Sang Táp **Credentials** của cô Alice. Bấm **Set Password**. Nhập Pass `123456`, TẮT CỜ `Temporary` đi. Bấm Save.
-*(Lý thuyết Chứng Minh: Mật Khẩu Chỉ Là Lớp Áo Khoác Đắp Lên Bản Thể Bất Tử Ở Dưới).*
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-### Tọa Độ 2: MFA - Xác Thực Đa Yếu Tố
-1. Vẫn ở tài khoản của cô Alice. Chuyển sang Táp **Details**.
-2. Tìm hộp thoại **Required User Actions** (Các Hành Động Ép Buộc Khách Phải Làm).
-3. Chọn tính năng **Configure OTP**. Bấm Save.
-4. Mở Tab Trình duyệt ẩn danh. Vào `http://localhost:8080/realms/master/account/`.
-5. Đăng Nhập Bằng Nick `alice / 123456`.
-6. BÙM! Màn hình KHÔNG VÀO TRONG, Bị Khóa Đứng Bằng 1 Mã QR Bắt Quét Google Authenticator. (MFA Cưỡng Chế 100% Hoàn Tất Dài Chưa Tới 1 Phút).
+### Bước 3.1: Tạo Realm mới
+1. Đăng nhập vào Keycloak Admin Console (`http://localhost:8080/admin`).
+2. Ở menu dropdown góc trên bên trái (đang hiển thị chữ `master`), nhấp vào đó và chọn **Create Realm**.
+3. Điền `Realm name`: `Company-Corp`.
+4. Nhấn **Create**. 
 
-### Tọa Độ 3: Bàn Đàm Phán Ngoại Giao (Federation / Identity Provider)
-1. Ở Menu Trái, Tắt tab User. Mở tab **Identity Providers**.
-2. Bấm Nút **Add provider**. Bạn sẽ thấy sự Hiện Diện Vĩ Đại Của OIDC, SAML, Google, GitHub, Facebook.
-3. Nếu bạn click vào GitHub, Keycloak chỉ đòi 2 Thông tin Sinh tử: `Client ID` và `Client Secret`. 
-4. Nếu điền xong. Ra lại trang Login của Master Realm. Nút "ĐĂNG NHẬP BẰNG GITHUB" Tự Động Mọc Lên Một Cách Thần Thánh. (IdP Brokering Hoạt động hoàn hảo).
+### Bước 3.2: Tạo User (Nhân viên)
+1. Đảm bảo bạn đang ở Realm `Company-Corp`. Ở menu bên trái, chọn **Users**.
+2. Nhấn nút **Add user**.
+3. Điền `Username`: `alice`.
+4. Điền `First name`: `Alice`, `Last name`: `Smith`.
+5. Nhấn **Create**.
+6. Sau khi tạo, chuyển sang tab **Credentials**.
+7. Nhấn **Set password**. Điền mật khẩu (ví dụ: `password123`).
+8. Tắt nút gạt **Temporary** (để Keycloak không bắt Alice đổi mật khẩu ở lần đăng nhập đầu tiên).
+9. Nhấn **Save** và xác nhận bằng nút **Save password**.
 
-### Tọa Độ 4: Tách Bạch Rạch Ròi AuthN và AuthZ (Clients và Roles)
-1. Menu Trái, Chọn **Clients** (Đây chính là Tọa Độ Của Service Provider - SP / App Khách Gõ Cửa).
-2. Khi Bấm Tạo Client, bạn đang Phân Vùng Quyền Lực Chứ Không Phải Xác Thực.
-3. Chọn Menu **Realm Roles**. Tạo Role `SUPER_VIP`.
-4. Gán Role `SUPER_VIP` cho cô Alice. (Authorization Phân Quyền). JWT Của Alice từ Giờ Mọc Thêm Đôi Cánh SUPER_VIP Bên Trong Bụng.
+### Bước 3.3: Tạo Client (Ứng dụng)
+1. Ở menu bên trái, chọn **Clients**. Nhấn **Create client**.
+2. **General Settings:** 
+   - `Client type`: `OpenID Connect`
+   - `Client ID`: `employee-portal-client`
+   - Nhấn **Next**.
+3. **Capability config:**
+   - Kích hoạt **Client authentication** (Bật ON) -> Hành động này sẽ yêu cầu ứng dụng phải có Client Secret.
+   - Standard flow: Đảm bảo đã Bật (ON).
+   - Nhấn **Next**.
+4. **Login settings:**
+   - `Valid redirect URIs`: Nhập `https://oauth.pstmn.io/v1/callback` (Đây là URL callback của Postman để nhận Authorization Code).
+   - Nhấn **Save**.
+5. Sau khi tạo xong, chuyển sang tab **Credentials**. Sao chép (Copy) giá trị trong ô **Client secret** để dùng cho bước sau.
 
----
+### Bước 3.4: Cấu hình Postman để lấy Token
+1. Mở Postman, tạo một Request mới. Chuyển sang tab **Authorization**.
+2. Chọn Type: `OAuth 2.0`.
+3. Trong phần **Configure New Token**, điền các thông tin sau:
+   - `Token Name`: `My Keycloak Token`
+   - `Grant Type`: `Authorization Code`
+   - `Callback URL`: Check vào ô `Authorize using browser` (hoặc để mặc định nếu dùng Postman Desktop). Nếu dùng URL tĩnh, nhập đúng giá trị `https://oauth.pstmn.io/v1/callback`.
+   - `Auth URL`: `http://localhost:8080/realms/Company-Corp/protocol/openid-connect/auth`
+   - `Access Token URL`: `http://localhost:8080/realms/Company-Corp/protocol/openid-connect/token`
+   - `Client ID`: `employee-portal-client`
+   - `Client Secret`: Nhập Client secret đã copy ở bước 3.3.
+   - `Scope`: `openid profile email`
+4. Cuộn xuống, nhấn nút **Get New Access Token**.
 
-## 3. Tắt Máy Dọn Dẹp Chiến Trường
+### Bước 3.5: Đăng nhập giả lập
+1. Sau khi nhấn "Get New Access Token", Postman sẽ bật lên một trình duyệt nội bộ hiển thị trang đăng nhập của Keycloak.
+2. Nhập `Username`: `alice` và `Password`: `password123`.
+3. Nhấn **Sign In**.
+4. Postman sẽ thông báo Authentication Complete và hiển thị cấu trúc của Access Token nhận được.
 
-Thực hành xong, trở lại Terminal và Hủy Diệt Vũ Trụ Ảo Để Tiết Kiệm RAM Máy Tính:
-```bash
-docker compose down -v
-```
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-> [!NOTE] 
-> **HOÀN THÀNH CHƯƠNG 02 (THE HARDEST PART):**
-> Chúc Mừng Bạn Đã Tốt Nghiệp Phần Lõi Tư Duy Nặng Nhất. Kể từ giờ phút này, Bạn không còn là Một Cậu Thợ Gõ Lệnh. Bạn đã sỡ hữu Hệ Ngôn Từ và Triết Lý Thượng Thừa Của Một Kiến Trúc Sư An Ninh (Security Architect).
-> Ở Chương sau (Chương 03), Chúng ta Sẽ Bổ Đôi Con Quái Vật Keycloak, Chui Vào Ruột Nó, Xem Từng Bánh Răng Nội Tại Chạy Bằng Cái Gì. Chuẩn Bị Tinh Thần Đi!
+**Nghiệm thu (Verification):**
+1. Copy chuỗi Access Token dài từ Postman.
+2. Truy cập trang web giải mã JWT: [jwt.io](https://jwt.io).
+3. Dán chuỗi Token vào khung Encoded.
+4. Nhìn sang phần **Payload (Data)**. Bạn sẽ phải thấy các trường như:
+   - `"iss"`: `http://localhost:8080/realms/Company-Corp` (Nguồn phát hành token)
+   - `"azp"`: `employee-portal-client` (Bên ủy quyền/ứng dụng)
+   - `"preferred_username"`: `alice` (Người dùng đích)
+   Nếu các thông tin này khớp, bạn đã cấu hình chuẩn xác luồng xác thực IAM.
+
+**Các lỗi thường gặp (Troubleshooting):**
+- **Lỗi Invalid Redirect URI:** Nếu Keycloak báo lỗi màn hình đỏ "Invalid redirect uri" khi Postman mở trình duyệt, hãy kiểm tra lại cấu hình Client trong Keycloak xem đã nhập chính xác URI callback của Postman hay chưa.
+- **Lỗi Client Secret không đúng:** Nếu trang web báo đăng nhập thành công nhưng Postman lại báo "Could not complete OAuth 2.0 login", rất có thể bước Postman dùng Authorization Code để gọi Token Endpoint bị thất bại do sai Client ID hoặc Client Secret. Hãy copy lại Client Secret từ Keycloak.
+- **Lỗi User không đăng nhập được:** Đảm bảo rằng bạn đã tắt thuộc tính Temporary lúc đặt mật khẩu, nếu không người dùng bị mắc kẹt ở màn hình yêu cầu đổi mật khẩu.

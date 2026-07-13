@@ -1,43 +1,121 @@
-# Lab 1: Máy Chủ Tạo User Bằng Code Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-
 > [!NOTE]
-> **Category:** Practical/Lab (Thực hành)
-> **Goal:** Thiết lập quyền Service Account trên Keycloak Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Dùng Spring Boot nhúng thư viện Admin Client để tạo ngay 1 Khách Hàng mới và Ép vai trò bằng Code Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh.
+> **Category:** Practical/Lab
+> **Goal:** Thiết lập Service Account trên Keycloak và sử dụng thư viện Keycloak Java Admin Client trong Spring Boot để thực hiện các thao tác CRUD (Tạo, Đọc, Cập nhật, Xóa) trên tài khoản người dùng một cách tự động.
 
-## 1. Chuẩn Bị Keycloak (Bắt Buộc) Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần
-1. Đăng nhập trang Admin Console `http://localhost:8180` Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-2. Vào Realm `my-company` Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa -> Tab Clients Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Tạo mới 1 Client Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:
-   - Client ID: `registration-service-client` Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề.
-   - Client Authentication (Confidential): Bật Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp **ON**
-   - Service Accounts Enabled: Bật Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy **ON**
-3. Lưu Lại Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề. Chọn Sang Tab **Service Account Roles** Của Chính Cái Client Đó Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-4. Bấm "Assign Role" Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Đổi Bộ Lọc Khung Chữ Thay Vì 'Filter by realm roles' Hãy Chuyển Sang Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh **Filter by clients** Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-5. Gõ Chữ Tìm Kiếm: `realm-admin` Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy (Thuộc Gốc Client Tên Là `realm-management`). Tick Bấm Nút Thêm Vào Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng!
-6. Sang Tab Credentials Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Copy Đoạn `Client-Secret` Ẩn Dấu Nhé Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## 2. Code Dự Án Spring Boot Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-Tạo Dự Án Spring Boot (pom.xml đã có ở thư mục code) Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Viết 1 Cái Dịch Vụ Cấp Phép Oanh Khung Dịch Lụa Mạch Lệnh:
+Bạn đang phát triển một hệ thống Backend bằng Spring Boot cho chức năng "Đăng ký thành viên". Khi người dùng điền form đăng ký trên Frontend, Backend sẽ tiếp nhận thông tin và cần tạo một tài khoản tương ứng trên hệ thống Keycloak. 
+Trong bài Lab này, bạn sẽ không dùng tài khoản quản trị viên thông thường, mà sẽ tạo một **Service Account** để đảm bảo ứng dụng Backend giao tiếp bảo mật (Machine-to-Machine) với Keycloak.
+
+## 2. Chuẩn bị Môi trường (Prerequisites)
+
+- **Keycloak Server** đang chạy (tại `http://localhost:8080`).
+- **Tài khoản Admin** của Keycloak để cấu hình (admin/admin).
+- Một Project **Spring Boot** (version 3.x) đã được khởi tạo bằng Maven/Gradle.
+- Java 17+.
+- Kiến thức cơ bản về Dependency Injection trong Spring.
+
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
+
+### Bước 3.1. Cấu hình Keycloak Client và Service Account
+
+1. Đăng nhập vào giao diện **Keycloak Admin Console** (`http://localhost:8080`).
+2. Chọn (hoặc tạo) một Realm, ví dụ `DemoRealm`.
+3. Đi đến menu **Clients** và chọn **Create client**.
+   - **Client ID:** `spring-backend-client`
+   - Bấm **Next**.
+   - Bật cờ **Client authentication** sang **ON**.
+   - Bật cờ **Service accounts roles** sang **ON**. (Bỏ check phần Standard flow nếu Backend không có giao diện đăng nhập cho user thường).
+   - Bấm **Save**.
+4. Chọn tab **Credentials** của Client vừa tạo, copy đoạn **Client secret** (Ví dụ: `wXyZ...`).
+5. Chuyển sang tab **Service account roles**:
+   - Nhấp vào **Assign role**.
+   - Trong dropdown `Filter by realm roles`, đổi thành `Filter by clients`.
+   - Tìm kiếm và chọn client `realm-management`.
+   - Chọn role `manage-users` và nhấp **Assign**.
+
+### Bước 3.2. Cấu hình Spring Boot Project
+
+Thêm thư viện `keycloak-admin-client` vào file `pom.xml` của Spring Boot. Chú ý version của client phải khớp với version của Keycloak server (ví dụ 22.0.0).
+
+```xml
+<dependency>
+    <groupId>org.keycloak</groupId>
+    <artifactId>keycloak-admin-client</artifactId>
+    <version>22.0.0</version>
+</dependency>
+```
+
+Thêm cấu hình vào file `application.properties` (hoặc `application.yml`):
+```properties
+keycloak.server-url=http://localhost:8080
+keycloak.realm=DemoRealm
+keycloak.client-id=spring-backend-client
+keycloak.client-secret=YOUR_COPIED_CLIENT_SECRET
+```
+
+### Bước 3.3. Viết mã nguồn tích hợp (Java Code)
+
+Tạo class cấu hình để khởi tạo đối tượng `Keycloak` dưới dạng một Bean Singleton:
 
 ```java
-@Service
-public class KeycloakAdminService {
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-    private final Keycloak keycloak;
-    private final String realm = "my-company";
+@Configuration
+public class KeycloakConfig {
 
-    // Khởi Tạo Mã Máy Móc Tự Động Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    public KeycloakAdminService() {
-        this.keycloak = KeycloakBuilder.builder()
-                .serverUrl("http://localhost:8180")
+    @Value("${keycloak.server-url}")
+    private String serverUrl;
+
+    @Value("${keycloak.realm}")
+    private String realm;
+
+    @Value("${keycloak.client-id}")
+    private String clientId;
+
+    @Value("${keycloak.client-secret}")
+    private String clientSecret;
+
+    @Bean
+    public Keycloak keycloak() {
+        return KeycloakBuilder.builder()
+                .serverUrl(serverUrl)
                 .realm(realm)
-                .grantType(OAuth2Constants.CLIENT_CREDENTIALS) // Cờ Quan Trọng Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-                .clientId("registration-service-client")
-                .clientSecret("Nhập-Mã-Secret-Copy-Vào-Đây")
+                .grantType("client_credentials")
+                .clientId(clientId)
+                .clientSecret(clientSecret)
                 .build();
     }
+}
+```
 
-    public String createNewUser(String username, String email, String plainPassword) {
-        // 1. Dựng Khung Json Đại Diện Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh
+Tạo một Service class thực hiện tạo User:
+
+```java
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
+import jakarta.ws.rs.core.Response;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.util.Collections;
+
+@Service
+public class KeycloakUserService {
+
+    @Autowired
+    private Keycloak keycloak;
+
+    @Value("${keycloak.realm}")
+    private String realm;
+
+    public void createUser(String username, String email, String password) {
         UserRepresentation user = new UserRepresentation();
         user.setUsername(username);
         user.setEmail(email);
@@ -45,23 +123,59 @@ public class KeycloakAdminService {
 
         CredentialRepresentation credential = new CredentialRepresentation();
         credential.setType(CredentialRepresentation.PASSWORD);
-        credential.setValue(plainPassword);
+        credential.setValue(password);
         credential.setTemporary(false);
+
         user.setCredentials(Collections.singletonList(credential));
 
-        // 2. Chọc Tay Vào Nút Bấm Ảo Oanh Khung Dịch Lụa Mạch Lệnh
-        UsersResource usersResource = keycloak.realm(realm).users();
-        Response response = usersResource.create(user);
-
-        // 3. Phán Xét Định Mệnh Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+        Response response = keycloak.realm(realm).users().create(user);
+        
         if (response.getStatus() == 201) {
-            return "Thắng Lợi Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Người Dùng Tạo Xong Trên Cục Keycloak Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!";
-        } else if (response.getStatus() == 409) {
-            return "Kẹt Tên Rùi! Đã Có Đứa Chơi Tên Đỏ Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp!";
+            System.out.println("Tạo user thành công!");
+        } else {
+            System.err.println("Lỗi tạo user: " + response.getStatusInfo());
         }
-        return "Báo Động Đỏ Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh: " + response.getStatusInfo().getReasonPhrase();
+        
+        // CỰC KỲ QUAN TRỌNG: Luôn phải đóng Response để tránh rò rỉ kết nối
+        response.close(); 
     }
 }
 ```
 
-Hãy Viết 1 Cái Endpoint `GET` Gọi Hàm Tạo Đó Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Bạn Chỉ Cần Dùng Postman Bắn Vào API Spring Boot Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Chớp Mắt Vào Lại Keycloak Bạn Sẽ Thấy Tên Người Khách Bất Ngờ Có Mặt Trong Danh Sách Users Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị! Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+Tạo một Controller đơn giản để gọi thử nghiệm:
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    @Autowired
+    private KeycloakUserService keycloakUserService;
+
+    @PostMapping("/register")
+    public String registerUser(@RequestParam String username, 
+                               @RequestParam String email, 
+                               @RequestParam String password) {
+        keycloakUserService.createUser(username, email, password);
+        return "Yêu cầu đã được gửi. Kiểm tra console log.";
+    }
+}
+```
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+### 4.1. Nghiệm thu
+1. Khởi động ứng dụng Spring Boot.
+2. Mở Terminal (hoặc dùng Postman), gửi request tạo tài khoản:
+   ```bash
+   curl -X POST "http://localhost:8081/api/users/register?username=labuser&email=lab@example.com&password=labpass"
+   ```
+3. Kiểm tra log trên console của Spring Boot, bạn phải thấy dòng "Tạo user thành công!".
+4. Đăng nhập vào giao diện Keycloak Admin Console, vào Realm `DemoRealm` -> **Users**. Tìm `labuser` và xác nhận user này đã xuất hiện. Thử đăng nhập Account Console bằng `labuser/labpass` để đảm bảo mật khẩu hoạt động.
+
+### 4.2. Troubleshooting (Khắc phục sự cố)
+- **Lỗi HTTP 401 Unauthorized:** Spring Boot in ra lỗi này khi gọi Keycloak. Lỗi do cấu hình `client-id` hoặc `client-secret` sai trong file `application.properties`. Hãy copy lại chính xác.
+- **Lỗi HTTP 403 Forbidden:** Spring Boot kết nối được, nhưng không thể tạo user. Lỗi do bạn chưa cấp quyền (role) `manage-users` thuộc client `realm-management` cho Service Account ở Bước 3.1.5.
+- **Ứng dụng Spring Boot chạy một lúc rồi treo (Timeout/Connection Pool Exhausted):** Do quên gọi lệnh `response.close()` trong hàm `createUser`. Đây là lỗi rất nguy hiểm trên production. Luôn đảm bảo đóng response.

@@ -1,83 +1,122 @@
-# Lesson 4: Luật Lệ Thép Phủ Đầu (PBAC - Policy-Based Access Control)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Khi bạn đã có kiến trúc 4 Cột Trụ của Fine-Grained Authorization, cột trụ quan trọng nhất là **Policy (Chính sách)**. PBAC là khái niệm mở rộng bao hàm cả RBAC và ABAC, cho phép bạn thiết lập những bộ luật phức tạp, từ kiểm tra nhóm, giới hạn thời gian, chạy Javascript, đến ném lệnh HTTP tới server bên thứ 3 để xin phép. Bài học này sẽ giới thiệu các "Loại Policy" (Policy Types) mạnh mẽ nhất trong Keycloak.
+> **Category:** Theory
+> **Goal:** Hiểu khái niệm Policy-Based Access Control (PBAC/ABAC) là gì, tại sao nó vượt trội hơn RBAC trong các bài toán phức tạp và cách Keycloak Authorization Services áp dụng các loại Policy.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. PBAC Là Gì?
-Policy-Based Access Control (PBAC) là mô hình kiểm soát truy cập định hướng hoàn toàn bởi các Bộ Luật (Policies). Thay vì hardcode các đoạn lệnh if/else trong code Backend (Java/NodeJS), bạn trừu tượng hóa tất cả chúng thành các "Chính sách" nằm trên Keycloak.
-Lợi ích vĩ đại nhất: Khi Luật Công Ty thay đổi, bạn vào Giao Diện Keycloak sửa Policy và bấm Save. Ngay lập tức hàng chục ứng dụng (Clients) đằng sau răm rắp tuân theo mà **KHÔNG CẦN DEPLOY LẠI CODE** Backend!
+Trong mô hình **RBAC (Role-Based Access Control)** truyền thống, việc cấp quyền hoàn toàn phụ thuộc vào "Người dùng là ai" (Role: Admin, User, Manager). Tuy nhiên, trong môi trường doanh nghiệp hiện đại, bạn có những yêu cầu cấp quyền cực kỳ tinh vi: 
+- "Người dùng chỉ được phép rút tiền nếu số dư tài khoản > 0 và họ đăng nhập từ một địa chỉ IP nội bộ."
+- "Giám đốc chỉ được xem báo cáo tài chính trong giờ hành chính từ 8:00 AM đến 5:00 PM."
 
-### 1.2. Kho Vũ Khí Policy Types Của Keycloak
-Keycloak cung cấp sẵn những loại Cảnh Sát (Policy Types) sau để bạn xây luật:
-1. **Role Policy:** (Áp dụng RBAC). Trả về TRUE nếu Token khách chứa Role tương ứng (Ví dụ: Đòi role `admin`).
-2. **User Policy:** Luật cứng đầu nhất. Chỉ đích danh tên của một người. (Ví dụ: Chỉ cho phép tài khoản `nguyenvana`).
-3. **Group Policy:** Trả về TRUE nếu User nằm trong phòng ban (Group) cụ thể (Ví dụ: Nằm trong group `Kế toán`).
-4. **Client Policy:** Trả về TRUE nếu truy cập xuất phát từ 1 phần mềm (Client) cụ thể. (VD: Cấm không cho phép Mobile App truy cập xóa data, chỉ Web App mới được phép).
-5. **Time Policy:** Luật thời gian (ABAC). Cho phép truy cập vào khoảng giờ, ngày, tháng cụ thể.
-6. **Aggregated Policy (Luật Gộp):** Khối lượng lớn. Nó cho phép bạn Gom các luật lẻ tẻ ở trên lại thành 1 siêu luật (VD: Vừa phải có Role Admin AND Vừa phải nằm trong Group Kế Toán).
+RBAC không thể giải quyết được các yêu cầu này (hoặc phải tạo ra hàng ngàn Role phức tạp như `admin_at_8am_with_ip`). Để giải quyết, chúng ta sử dụng **Policy-Based Access Control (PBAC)** hoặc **Attribute-Based Access Control (ABAC)**. 
 
----
+Trong Keycloak, PBAC cho phép bạn định nghĩa các **Chính sách (Policies)** - đây là các điều kiện động (Dynamic rules). Một Policy không trực tiếp cấp quyền, mà nó định nghĩa "Điều kiện nào phải thỏa mãn để Quyền (Permission) được cấp".
+
+**Các loại Policy phổ biến trong Keycloak:**
+- **Role Policy:** Yêu cầu User phải có Role cụ thể (để tương thích ngược với RBAC).
+- **User Policy:** Cấp quyền cho một User đích danh (ví dụ `alice`).
+- **Time Policy:** Chỉ cấp quyền trong một khoảng thời gian nhất định (Giờ hành chính, Tháng cụ thể).
+- **Client Policy:** Yêu cầu Request phải xuất phát từ một Client cụ thể.
+- **JavaScript Policy (JS Policy):** Sức mạnh lớn nhất. Bạn có thể viết code JavaScript chạy trên Engine của Keycloak để phân tích bất cứ thông tin gì: Thuộc tính người dùng (User Attributes), Thông tin Môi trường (IP, Browser), Thông tin Request.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Của Bộ Não Máy Cắt Lưới Luật Chạy JavaScript Policy:
+Khác với RBAC mà Resource Server (Backend API) tự đọc Token để kiểm tra Role, với PBAC theo chuẩn User-Managed Access (UMA), toàn bộ logic kiểm tra quyền đều nằm tại Keycloak Server. Keycloak trở thành một **Policy Decision Point (PDP)**.
 
 ```mermaid
-flowchart TD
-    A[Hành Động Khách Hàng Gọi Gõ Cửa API Đòi Action Vào Đáy Resource] --> B[Keycloak Kích Hoạt Lõi Permission Đánh Thức Policy]
+sequenceDiagram
+    participant User as Client / User
+    participant App as Resource Server (Enforcer/PEP)
+    participant KC as Keycloak (PDP)
+
+    User->>App: Gửi request truy cập Resource "Báo cáo Q1" (Kèm Access Token)
+    App->>App: (PEP) Phát hiện Resource bị bảo vệ
+    App->>KC: Gửi Access Token + ID Resource xin quyền truy cập <br> POST /authz/entitlement
+    KC->>KC: Lấy các Policies gắn với Resource "Báo cáo Q1"
     
-    B --> C{Cục Policy: Loại JavaScript Script (Cực Tàn Bạo Trọng Lực Đáy Lõi)}
-    C --> D[Load File Script .js Vào Môi Trường Động Cơ Rhino/Nashorn Của Java Xử Lý Lệnh Tĩnh]
+    alt Có Time Policy (Yêu cầu Giờ hành chính)
+        KC->>KC: Engine kiểm tra giờ hệ thống hiện tại
+    end
     
-    D --> E{Code JS Truy Cập Đối Tượng '$evaluation'}
-    E --> F{Hỏi 1: $evaluation.getContext().getAttributes() - Tìm Địa Chỉ IP?}
-    F -- Khớp IP Ngoài Nước --> G[Kích Lệnh Dưới Tầng Đáy Mã JS: $evaluation.deny()]
+    alt Có JS Policy (Yêu cầu User Attribute 'Department' == 'Finance')
+        KC->>KC: Khởi chạy Nashorn/GraalVM chạy script JavaScript
+    end
     
-    E --> H{Hỏi 2: Thẻ Tín Dụng Khách Hàng Còn Hạn Không API?}
-    H -- Trả Tiền Đủ Số Lượng Lớn --> I[Kích Lệnh Dưới Tầng Đáy Mã JS: $evaluation.grant()]
+    KC->>KC: Đánh giá tổng hợp (Decision Strategies: Affirmative/Consensus)
     
-    G --> J[Máy Chặt Mạch Văng 403 HTTP Cấm Cửa Trắng Tinh Không Trải Lụa]
-    I --> K[Bộ Máy Nhả Tầng Token Cấp Phép RPT Vào API Trút Dữ Liệu Báo Lệnh Pass Chóp]
+    alt Thỏa mãn tất cả điều kiện của Policies
+        KC-->>App: Trả về RPT (Requesting Party Token) chứa quyền
+        App-->>User: 200 OK (Trả về dữ liệu báo cáo)
+    else Không thỏa mãn (VD: đang là 11:00 PM)
+        KC-->>App: 403 Forbidden (Deny)
+        App-->>User: Báo lỗi "Không có quyền truy cập vào giờ này"
+    end
 ```
 
----
+**Cơ chế cấp thấp:**
+- Keycloak Evaluation Engine thực thi các Policies dựa trên luồng đánh giá cây (Tree Evaluation). Các Policies có thể được lồng nhau (Aggregated Policy).
+- JavaScript Policies được thực thi bằng engine **Nashorn** (trong các phiên bản cũ) hoặc bộ chứa bảo mật nhỏ trên **GraalVM** (Keycloak bản mới) để ngăn chặn mã độc chạy trên máy chủ (Sandbox).
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!IMPORTANT]
-> **Tuyệt Đỉnh An Toàn Cấp Kiến Trúc (Tuyệt Đối Không Lạm Dụng JAVASCRIPT POLICY)**
-> **Tội Ác Thiết Kế:** Bạn phát hiện ra Keycloak cho phép nhúng JS để làm Policy (Script Policy). Thấy hay quá, bạn nhét toàn bộ logic kiểm duyệt nghiệp vụ Database dơ bẩn của Backend (như Query số dư tài khoản, kiểm tra nợ xấu) vào thẳng mớ code JS này bắt Keycloak chạy.
-> **Hậu Quả:** Khủng khiếp ở 2 mặt. Thứ 1: Code JS chạy trong lòng Java Engine của Keycloak bị cô lập (Sandbox), nó chạy siêu chậm và tiêu tốn CPU khổng lồ khi Traffic cao, làm sập Auth Server. Thứ 2: Quá trình Maintain (Bảo trì) mã nguồn trở thành ác mộng vì đống Logic Tài Chính lẽ ra phải nằm ở Core Bank Backend thì lại bị ném vào Server Xác Thực.
-> **Biện Pháp Sống Còn Lớp Trọng:** Authorization Server Keycloak chỉ làm Nhiệm Vụ Phân Quyền dựa vào Context (Ngữ Cảnh Mạng/Identity) Của OIDC Nhả Về Trọng Lực API! Mọi logic Nghiệp Vụ Chuyên Sâu, Logic Kinh Doanh (Kế Toán, Trừ Tiền, So Sánh Số Dư) BẮT BUỘC PHẢI CODE Ở BACKEND (Spring Boot, Node). Nếu dùng Rule Policy Script, chỉ để kiểm tra các JSON Claims Nhẹ Nhàng Bắn Nhanh Có Sẵn Trong Token Header Trút Kéo Cắt Nhanh API!
+- **Hiệu năng hệ thống (Performance):** PBAC xử lý rất nặng. Việc đánh giá hàng trăm JS Policies lồng nhau sẽ tiêu tốn CPU. Hãy chỉ dùng PBAC ở những tài nguyên (Resources) cực kỳ quan trọng đòi hỏi bảo mật động; đối với các tài nguyên cơ bản, hãy dùng RBAC thuần để Backend tự xử lý bằng cách đọc Token.
+- **Bảo mật JavaScript Policy:** Keycloak hiện tại mặc định VÔ HIỆU HÓA tính năng JS Policy vì lý do bảo mật (Remote Code Execution risks). Nếu bật, chỉ có quản trị viên cao cấp nhất mới được viết JS script. Không bao giờ gán quyền tạo JS Policy cho người dùng thường.
+- **Tái sử dụng (Reusability):** Tạo các Policy nhỏ mang tính cấu thành (ví dụ Policy `is-manager`, Policy `is-working-hours`) và kết hợp chúng bằng **Aggregated Policy**, tránh việc viết lại cùng một luật JS nhiều lần.
 
----
+> [!WARNING]
+> Nếu bạn thay đổi thiết lập đồng hồ hệ thống (System Time) của máy chủ Keycloak bị lệch, Time Policy sẽ đánh giá sai lệch toàn bộ, gây gián đoạn hệ thống. LUÔN sử dụng NTP (Network Time Protocol) để đồng bộ giờ máy chủ.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Hệ Thống Aggregated Policy (Luật Gộp Hỗn Hợp) Cho Tính Năng Trọng Lực An Toàn Siêu Cấp:
-1. Bạn có 2 Luật lẻ đã tạo từ trước (Tạo từ Menu Policies): 
-   - `Policy-1-Role-Vip`: Loại Role, yêu cầu phải có Role tên là `vip`.
-   - `Policy-2-Office-Hours`: Loại Time, yêu cầu chỉ cho pass trong khung giờ 08:00 AM đến 05:00 PM.
-2. Bây giờ bạn cần 1 luật thứ 3 cho một Permission Xóa Báo Cáo, đòi hỏi phải CÓ CẢ 2 thứ trên. Nếu bạn gắn lộn xộn 2 cái vào 1 Permission thì sẽ khó quản lý sự AND/OR logic.
-3. Ở màn hình Policies, bấm **Create** -> Chọn Loại (Type) là **`Aggregated`**.
-4. Đặt tên siêu luật này là: `Vip-And-Office-Hours-Policy`.
-5. Trong giao diện cấu hình của nó, ở cột **Apply Policy**, bạn thả móc kéo chọn 2 thằng Đàn Em nhỏ bé vừa nhắc ở trên (`Policy-1-Role-Vip` và `Policy-2-Office-Hours`).
-6. Kéo xuống dòng cấu hình **Decision Strategy**. BẠN PHẢI CHỌN ĐÚNG Lệnh (Xem bài tiếp theo để rõ hơn), tạm thời hãy chọn: **`Unanimous`** (Toàn thể nhất trí bằng phép AND toán học).
-7. Save Lại. Lúc này bạn đã lắp xong 1 Bộ Trục Lệnh Thép Đáy Hỗn Hợp! Gắn nó vào Permission Xóa Dữ Liệu là Sếp Vip nếu xóa ngoài giờ hành chính cũng bị chặn đứt đuôi.
+Ví dụ mã nguồn của một **JavaScript Policy** trên Keycloak Admin Console dùng để kiểm tra xem một User có địa chỉ IP từ mạng nội bộ `192.168.x.x` hay không và thuộc phòng ban `Finance`.
 
----
+```javascript
+// Biến có sẵn do Keycloak Engine cung cấp: $evaluation
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+var context = $evaluation.getContext();
+var identity = context.getIdentity();
+var attributes = identity.getAttributes();
 
-**1. Trong Cấu Hình PBAC Của Keycloak UMA. Nếu Em Thiết Kế Một Cục 'Role Policy' Đòi Hỏi Role 'admin'. Khi API Gửi Bắn Request Lên Xin Phép OIDC Máy Chủ. Hệ Thống Sẽ Truy Vấn (Query) Bảng Database Xem Thằng Này Đang Sở Hữu Role Hay Sẽ Bóc Cục JWT Token Access Của Nó Ra Đọc Text Lớp Chữ Nghĩa Token Để Ra Quyết Định Nhanh Trút Kéo Lụa?**
-- **Senior:** Dạ thưa sếp, Chìa khóa thiết kế cốt lõi của PBAC Keycloak là nó **BÓC TOKEN BẰNG ENGINE ĐỊNH TUYẾN MẠCH NỘI BỘ (Claims Evaluation)**.
-  - Khi một Client gửi kèm chuỗi Bearer Token (RPT/Access Token) lên cổng kiểm duyệt (PEP). Cái Token đó sẽ bị giải mã phần ruột Payload JSON. Keycloak sẽ dùng Cục Policy kiểm tra đối chiếu trực tiếp dữ liệu đang mang theo ở các field Claims trong cái JSON đó (Ví dụ mảng chuỗi string `roles: ["admin"]`) thay vì phải mở Connection Chọt thẳng xuống cục Postgres DB để soi xét nhằm giảm thiểu Độ Trễ I/O Khủng Khiếp DB Bound Mạch Khớp Lệnh Đáy!
-  - Điều này giải thích tại sao Token cũ (Chưa Cập Nhật Role Mới Được Gán Ở DB) sẽ vẫn làm Client Trượt Khớp Lệnh Oanh Mạng Báo Lỗi 403 API Mù Lòa! Vì Bề Mặt Máy Chỉ Đọc Nhãn Chữ Đóng Dấu Trên Cái Token Đang Cầm Ở Tay!
+// Kiểm tra phòng ban (Custom User Attribute)
+var department = attributes.getValue('department');
+var isFinance = department != null && department.asString(0) === 'Finance';
 
----
+// Lấy IP của Client Request (Cần Keycloak cấu hình Reverse Proxy Trust)
+var clientIp = context.getAttributes().getValue('remote.address').asString(0);
+var isInternalIP = clientIp.startsWith('192.168.');
 
-## 6. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Authorization Services - Policies.
+if (isFinance && isInternalIP) {
+    $evaluation.grant();  // Cấp quyền
+} else {
+    $evaluation.deny();   // Từ chối
+}
+```
+
+Để sử dụng mã trên, Admin sẽ:
+1. Bật tính năng (Feature Profile) `scripts` khi khởi động Keycloak (`bin/kc.sh start --features=scripts`).
+2. Vào Client có bật Authorization, tab Policies, tạo JavaScript Policy và dán đoạn script này.
+3. Liên kết Policy này với một Permission trên Resource cụ thể.
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Nashorn Engine bị loại bỏ:** Từ Java 15+, Nashorn JS engine bị xóa khỏi JDK. Nếu Keycloak chạy trên JDK 17, JS Policy có thể bị lỗi không chạy được nếu không bật các cấu hình thay thế (hoặc đóng gói thư viện Rhino/GraalVM).
+- **Thiếu Trust Proxy Config:** Policy kiểm tra IP hoạt động sai, luôn trả về IP của bộ cân bằng tải (Load Balancer) thay vì IP người dùng thật. **Khắc phục:** Cấu hình Keycloak để đọc đúng Header `X-Forwarded-For` bằng cách bật cờ proxy (ví dụ: `proxy=edge`).
+- **Vòng lặp vô hạn (Infinite Loop) trong JS Policy:** Lập trình viên viết nhầm vòng `while(true)` trong JS Policy. Điều này làm chết CPU của Keycloak. Keycloak có bộ Timeout cho Script, nhưng vẫn là một nguy cơ tốn tài nguyên.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **(Junior)** PBAC/ABAC giải quyết vấn đề gì mà RBAC không làm được?
+   - *Đáp án:* Cấp quyền linh hoạt và động dựa trên bối cảnh (thời gian, IP, thuộc tính) thay vì chỉ phụ thuộc vào vai trò tĩnh.
+2. **(Junior)** Ai là người thực hiện kiểm tra quyền lợi (đưa ra quyết định cấp quyền) trong mô hình PBAC của Keycloak? Resource Server (Backend API) hay Keycloak Server?
+   - *Đáp án:* Keycloak Server đóng vai trò là Policy Decision Point (PDP) để đánh giá và đưa ra quyết định.
+3. **(Senior)** Lấy ví dụ khi một JavaScript Policy kiểm tra thuộc tính người dùng, nó lấy dữ liệu "Attributes" từ đâu? Có phải query Database không?
+   - *Đáp án:* Các thuộc tính này được nạp vào bộ nhớ (hoặc cache) trong quá trình xác thực và được engine bơm vào biến `$evaluation.getContext().getIdentity()`.
+4. **(Senior)** Nếu tôi cần triển khai quy tắc "Chỉ được xem tài liệu nếu người dùng là tác giả của tài liệu đó" (Owner-based policy) bằng Keycloak Authorization, tôi làm thế nào?
+   - *Đáp án:* Khi Resource Server tạo Resource trên Keycloak qua API (ví dụ tạo tài liệu), nó gán thuộc tính `owner` của tài liệu là ID của User. Trong Keycloak, tạo Resource-based Policy kiểm tra xem `$identity.getId()` có bằng với `resource.getOwner()` hay không.
+5. **(Senior)** Rủi ro bảo mật lớn nhất khi bật tính năng JavaScript Policies trên môi trường Production là gì?
+   - *Đáp án:* Remote Code Execution. Kẻ tấn công nếu có quyền tạo/sửa Policy có thể viết JS gọi ra ngoài các command hệ thống qua Java Reflection nếu bộ Sandbox của Keycloak không khóa chặt.
+
+## 7. Tài liệu tham khảo (References)
+
+- NIST Special Publication 800-162: [Guide to ABAC](https://csrc.nist.gov/publications/detail/sp/800-162/final)
+- Keycloak Authorization Services Guide: [Policies](https://www.keycloak.org/docs/latest/authorization_services/#_policy)

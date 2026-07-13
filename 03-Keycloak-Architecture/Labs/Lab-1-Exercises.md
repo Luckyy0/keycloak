@@ -1,67 +1,92 @@
-# Lab 1: Giải phẫu Lõi Database và Các Cấu trúc Cách ly
-
 > [!NOTE]
-> Bài Lab này sẽ giúp bạn Dựng một Cụm Keycloak hoàn chỉnh chạy trên PostgreSQL. Sau đó, chúng ta sẽ chui thẳng vào Lõi Database (Bằng công cụ DBeaver/pgAdmin) để soi xem Keycloak tổ chức Realms, Users, Roles như thế nào dưới dạng các Bảng RDBMS. Mắt thấy Tai nghe mới ngộ đạo.
+> **Category:** Practical/Lab (Thực hành)
+> **Goal:** Thành thạo cách khởi chạy độc lập Keycloak cùng với External Database (PostgreSQL) sử dụng Docker, qua đó kiểm chứng mô hình dữ liệu bên trong cấu trúc lưu trữ của Keycloak.
 
-## Chuẩn bị
-- Đã cài đặt Docker và Docker Compose.
-- Đã cài đặt một phần mềm quản trị Database (khuyến nghị DBeaver, TablePlus, hoặc pgAdmin).
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## Bước 1: Chạy Cụm Keycloak + PostgreSQL
+Keycloak mặc định (khi chạy ở chế độ dev) sẽ sử dụng cơ sở dữ liệu in-memory H2. Tuy nhiên, trong môi trường sản xuất (Production), H2 không được phép sử dụng. Thay vào đó, chúng ta phải sử dụng một RDBMS chuyên dụng như PostgreSQL hoặc MySQL.
+Trong bài lab này, bạn sẽ thiết lập môi trường hoàn chỉnh bao gồm một container PostgreSQL và một container Keycloak được kết nối nối tiếp thông qua mạng Docker, sau đó tiến hành phân tích các bảng (tables) quan trọng sinh ra bên trong Database.
 
-1. Mở Terminal, di chuyển vào thư mục `03-Keycloak-Architecture/code/`.
-2. Quan sát file `docker-compose.yml`. Bạn sẽ thấy chúng ta cấu hình 2 dịch vụ (Keycloak và Postgres), kết nối bằng biến `KC_DB_URL`. Chú ý Keycloak đang chạy bằng lệnh `start-dev` cho tiện lab.
-3. Khởi động bằng lệnh:
-```bash
-docker-compose up -d
+## 2. Chuẩn bị Môi trường (Prerequisites)
+
+- Công cụ **Docker** và **Docker Compose** đã cài đặt.
+- Công cụ **DBeaver** (hoặc pgAdmin) để kết nối và kiểm tra Database từ máy Host.
+- Terminal / PowerShell.
+
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
+
+### Bước 3.1: Viết tệp Docker Compose
+Tạo một thư mục mới có tên `keycloak-postgres-lab`. Trong thư mục này, tạo tệp `docker-compose.yml` với nội dung sau:
+
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: kc_postgres
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - kc_network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: kc_server
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - kc_network
+
+networks:
+  kc_network:
+    driver: bridge
+
+volumes:
+  pgdata:
 ```
-4. Đợi khoảng 10 giây để Keycloak tự động khởi tạo Bảng dữ liệu thông qua Liquibase.
 
-## Bước 2: Tương tác qua Giao diện để Tạo Mầm Dữ liệu
+### Bước 3.2: Khởi động hệ thống
+1. Mở terminal, đi vào thư mục vừa tạo.
+2. Chạy lệnh: `docker-compose up -d`.
+3. Đợi vài phút để Keycloak khởi động. Kiểm tra logs để đảm bảo Keycloak đã nhận được Database:
+   `docker logs -f kc_server`
+   Khi bạn thấy dòng `Listening on: http://0.0.0.0:8080`, tức là dịch vụ đã chạy.
 
-1. Truy cập: `http://localhost:8080/admin` (Admin: `admin` / Pass: `admin`).
-2. **Tạo Realm Mới:** Bấm góc trái trên, tạo Realm tên là `Vingroup`.
-3. **Tạo Client:** Trong Realm Vingroup, tạo 1 Client tên `Ketoan-App`. (Loại OpenID Connect).
-4. **Tạo Role:** Trong Realm Vingroup, tạo Realm Role tên là `Giam_Doc`.
-5. **Tạo User:** Tạo User tên `Alice`. Ở tab Credentials, đặt pass `123456` (Nhớ tắt nút Temporary).
-6. Ở tab Role Mapping của Alice, gán Role `Giam_Doc` cho cô ấy.
+### Bước 3.3: Tạo dữ liệu mẫu trên UI
+1. Mở trình duyệt, truy cập `http://localhost:8080/admin`.
+2. Đăng nhập bằng `admin` / `admin`.
+3. Tạo một Realm mới tên là `company-realm`.
+4. Đi vào **Users** của `company-realm`, tạo một user tên là `johndoe`, điền First Name và Last Name.
 
-## Bước 3: Mổ Xẻ Dưới Đáy PostgreSQL
-
-1. Mở DBeaver. Kết nối vào PostgreSQL:
-   - Host: `localhost`
-   - Port: `5432`
+### Bước 3.4: Kiểm tra cấu trúc CSDL bằng DBeaver
+1. Mở **DBeaver**. Tạo kết nối mới (PostgreSQL).
+2. Thông số kết nối: 
+   - Host: `localhost`, Port: `5432`
    - Database: `keycloak`
-   - User: `keycloak`
-   - Password: `password`
-2. Mở Schema `public` -> `Tables`. Bạn sẽ thấy hơn 100 bảng được Keycloak quản lý. (Không được tự ý INSERT/UPDATE trực tiếp vào đây kẻo hỏng Cache).
+   - Username: `keycloak`, Password: `password`
+3. Sau khi kết nối thành công, mở danh sách Tables.
+4. Tìm và Mở bảng `REALM`. Truy vấn (`SELECT * FROM REALM;`), bạn sẽ thấy 2 dòng là `master` và `company-realm`.
+5. Tìm bảng `USER_ENTITY`. Truy vấn, bạn sẽ thấy thông tin của tài khoản `admin` và tài khoản `johndoe` bạn vừa tạo (kèm theo password hash, không lưu plain-text).
 
-### Khám phá 1: Sự vĩ đại của Multi-tenancy (Bảng `REALM`)
-- Chạy lệnh `SELECT * FROM REALM;`
-- Bạn sẽ thấy 2 dòng: `master` và `Vingroup`. Chú ý cột `ID` là một mã UUID dài. Hãy copy mã UUID của `Vingroup` ra Notepad (Ví dụ: `1a2b3c...`). Cột ID này chính là Khóa Cách Ly cho mọi bảng khác.
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-### Khám phá 2: Bản thể User và Thuộc tính (Bảng `USER_ENTITY` và `USER_ATTRIBUTE`)
-- Chạy lệnh `SELECT * FROM USER_ENTITY WHERE REALM_ID = 'mã-uuid-của-Vingroup';`
-- Bạn sẽ thấy dòng chứa tên `Alice`. Hãy chú ý các cột chỉ có Email, Username. KHÔNG HỀ CÓ CỘT PASSWORD ở đây.
-- Bây giờ bạn về lại Giao diện Admin, gắn 1 Attribute `chuc_vu` = `CEO` cho Alice.
-- Chạy lệnh `SELECT * FROM USER_ATTRIBUTE;` để thấy Data được lưu dạng Key-Value (Dọc) trỏ về ID của Alice ra sao.
-
-### Khám phá 3: Cỗ Máy Mã Hóa Mật Khẩu (Bảng `CREDENTIAL`)
-- Chạy lệnh `SELECT * FROM CREDENTIAL;`
-- Nhìn vào dòng của Alice. Cột `SECRET_DATA` chứa một chuỗi JSON băm bằng thuật toán `pbkdf2-sha256`. Rõ ràng Keycloak không lưu Pass trần (Plaintext) và tách hẳn nó ra một bảng riêng (Bảng Nhạy cảm) để chống Dump Full DB lộ pass.
-
-### Khám phá 4: Mạng Lưới Nhện của Phiên (Bảng `USER_SESSION`)
-- Đăng nhập thử bằng tài khoản Alice ở Account Console (http://localhost:8080/realms/Vingroup/account).
-- Chạy lệnh `SELECT * FROM USER_SESSION;`
-- KẾT QUẢ SẼ LÀ RỖNG!!! (0 dòng). 
-- **Lý giải bài học lý thuyết:** Chẳng phải ta đã học Session được lưu ở RAM (Infinispan) sao? PostgreSQL không thèm lưu Session hiện tại để né Nút thắt Cổ chai Băng thông.
-- **Để phá vỡ lý thuyết:** Đăng nhập lại, nhưng lần này cấu hình App phát sinh 1 cái **Offline Session** (Kéo dài vĩnh viễn). Chạy xem lệnh `SELECT * FROM OFFLINE_USER_SESSION;`. Giờ thì Session đã Đâm Thẳng Xuống Đĩa SSD Postgres Trú Ẩn an toàn qua mùa đông.
-
-## Bước 4: Dọn Dẹp
-Kết thúc quan sát, tắt cụm Docker:
-```bash
-docker-compose down -v
-```
-
-> [!TIP]
-> **Bài học rút ra:** Không bao giờ gõ lệnh `ALTER TABLE` vào DB của Keycloak, vì Liquibase sẽ cắn nát hệ thống khởi động ở lần sau do Checksum không khớp. DB Keycloak sinh ra là để ĐỌC TRỘM, KHÔNG PHẢI ĐỂ GHI ĐÈ BẰNG TAY. Mọi tương tác phải qua Admin REST API.
+- **Xác nhận sự bền vững của dữ liệu:** Để chứng minh Postgres đang hoạt động thay cho H2, bạn hãy tắt Keycloak (`docker stop kc_server`) rồi xóa cả container đi (`docker rm kc_server`). Sau đó chạy lại `docker-compose up -d`. Truy cập giao diện, nếu `company-realm` vẫn tồn tại, chúc mừng, dữ liệu đã được Persistent thành công.
+- **Troubleshooting - Lỗi Timeout kết nối:** Đôi khi Keycloak khởi động quá nhanh và cố kết nối đến DB trước khi Postgres kịp chạy xong (mặc dù đã có `depends_on`). Nếu `kc_server` báo lỗi kết nối từ chối (Connection Refused), bạn chỉ cần khởi động lại tiến trình Keycloak bằng lệnh: `docker restart kc_server`.
+- **Lỗi Port Conflict:** Nếu hệ thống báo Port 5432 đã được sử dụng, có thể máy ảo của bạn đã chạy sẵn Postgres local. Bạn cần đổi Port trong tệp docker-compose thành `5433:5432` (Ánh xạ từ 5433 trên host vào 5432 trong container).

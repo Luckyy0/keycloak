@@ -1,16 +1,41 @@
-# Lab 1: Tự Code Lõi Backend API Chắn Cửa JWT 
-
 > [!NOTE]
-> **Category:** Practical/Lab (Thực hành)
-> **Goal:** Thiết lập một Backend Spring Boot Resource Server không trạng thái hoàn chỉnh, tự tay code Lớp Đổi Quyền Converter và phán quyết truy cập ngay tại cửa controller.
+> **Category:** Practical/Lab  
+> **Goal:** Thực hành tích hợp hoàn chỉnh một ứng dụng Spring Boot đóng vai trò vừa là OAuth2 Client (để đăng nhập) vừa là Resource Server (để bảo vệ API) sử dụng Keycloak.
 
-## 1. Yêu cầu (Prerequisites)
-- Dự án Spring Boot Java 17+ (Bật Web Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Security Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, OAuth2 Resource Server Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề).
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## 2. Các bước thực hiện (Step-by-step)
+Bạn được giao nhiệm vụ xây dựng một hệ thống Web Portal nội bộ cho công ty bằng Spring Boot. Yêu cầu đặt ra:
+1. Khi người dùng truy cập vào trang chủ `/home`, họ phải bị điều hướng sang trang đăng nhập của Keycloak.
+2. Sau khi đăng nhập thành công, Keycloak trả về một JWT Access Token.
+3. Portal có một API nội bộ `/api/manager` chỉ cho phép những người dùng có Role `MANAGER` truy cập. 
+4. Bạn phải ánh xạ đúng Role từ Keycloak để Spring Boot có thể cấp quyền bằng `@PreAuthorize`.
 
-### Bước 1: Khai Cáo URL Xác Nhận Với Đại Đế (application.yml)
-Tạo file `code/application.yml` Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, dán cục khai báo vào:
+## 2. Chuẩn bị Môi trường (Prerequisites)
+
+Để thực hiện bài Lab này, bạn cần có:
+- **Keycloak Server:** Đang chạy tại `http://localhost:8080`.
+- **JDK 17+** và **Maven**.
+- **IDE:** IntelliJ IDEA hoặc Eclipse.
+- **Dữ liệu Keycloak (Tạo trước):**
+  - Tạo Realm: `company-realm`.
+  - Tạo Client: `portal-app` (bật "Standard Flow" và "Client authentication").
+  - Tạo Realm Role: `MANAGER`.
+  - Tạo User: `john_doe` (mật khẩu `123456`), gán role `MANAGER` cho user này.
+
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
+
+### Bước 1: Khởi tạo Project Spring Boot
+
+Sử dụng Spring Initializr (hoặc IDE) tạo dự án với các Dependencies sau:
+- Spring Web (`spring-boot-starter-web`)
+- Spring Security (`spring-boot-starter-security`)
+- OAuth2 Client (`spring-boot-starter-oauth2-client`)
+- OAuth2 Resource Server (`spring-boot-starter-oauth2-resource-server`)
+
+### Bước 2: Cấu hình `application.yml`
+
+Mở file `src/main/resources/application.yml` và nhập cấu hình kết nối tới Keycloak:
+
 ```yaml
 server:
   port: 8081
@@ -18,68 +43,130 @@ server:
 spring:
   security:
     oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: portal-app
+            client-secret: <COPY_SECRET_TU_KEYCLOAK_VAO_DAY>
+            scope: openid, profile, email
+            authorization-grant-type: authorization_code
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8080/realms/company-realm
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/realms/my-company
+          issuer-uri: http://localhost:8080/realms/company-realm
 ```
 
-### Bước 2: Tự Đúc Chiếc Phễu (Converter) Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-Viết file `KeycloakRoleConverter.java` Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Bạn móc vào Bụng Tệp Dữ Liệu `realm_access` Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề.
-```java
-public class KeycloakRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
-    @Override
-    public Collection<GrantedAuthority> convert(Jwt jwt) {
-        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null) return Collections.emptyList();
-        
-        Collection<String> roles = (Collection<String>) realmAccess.get("roles");
-        return roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role)) // Bắt buộc thêm ROLE_ Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh
-                .collect(Collectors.toList());
-    }
-}
-```
+### Bước 3: Viết logic Ánh xạ Role (Role Mapping)
 
-### Bước 3: Dựng Thiết Giáp Ở Màn Config Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-Viết file `SecurityConfig.java` Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Gắn Cái Phễu Này Vào Trong Ngực Lõi Chạy `jwt()` Của Spring Security Oanh Khung Dịch Lụa Mạch Lệnh:
+Tạo file `SecurityConfig.java` để tùy chỉnh JwtConverter chuyển đổi thuộc tính `realm_access.roles` của Keycloak thành `ROLE_` của Spring Security:
+
 ```java
+package com.example.portal.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.SecurityFilterChain;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Phải có cờ này thì @PreAuthorize mới chạy Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh
+@EnableMethodSecurity
 public class SecurityConfig {
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+        http
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/public").permitAll()
+                .anyRequest().authenticated()
+            )
+            // Kích hoạt OAuth2 Login (Client) cho truy cập Web
+            .oauth2Login(oauth2 -> {})
+            // Kích hoạt Resource Server cho các truy cập gọi API bằng Bearer Token
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter()))
-            )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+            );
+        
         return http.build();
     }
 
     private Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthConverter() {
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(new KeycloakRoleConverter());
-        return converter;
+        return jwt -> {
+            Map<String, Object> realmAccess = jwt.getClaim("realm_access");
+            Collection<GrantedAuthority> authorities = Collections.emptyList();
+            if (realmAccess != null && realmAccess.containsKey("roles")) {
+                List<String> roles = (List<String>) realmAccess.get("roles");
+                authorities = roles.stream()
+                        .map(roleName -> "ROLE_" + roleName)
+                        .map(SimpleGrantedAuthority::new)
+                        .collect(Collectors.toList());
+            }
+            return new JwtAuthenticationToken(jwt, authorities);
+        };
     }
 }
 ```
 
-### Bước 4: Viết Controller Lấy Tương Lai Ra Thử Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-Bạn Tạo Bừa 1 API `HelloController.java` Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bịt Đầu Hàm Bằng 1 Quyền Cao Cấp Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị.
+### Bước 4: Viết Controller
+
+Tạo file `PortalController.java` để định nghĩa các Endpoint:
+
 ```java
+package com.example.portal.controller;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 @RestController
-@RequestMapping("/api")
-public class HelloController {
-    
-    @GetMapping("/admin-only")
-    @PreAuthorize("hasRole('admin')") // Role này khai báo ở Keycloak Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh
-    public String bossSay() {
-        return "You are the Boss!";
+public class PortalController {
+
+    @GetMapping("/public")
+    public String publicEndpoint() {
+        return "Trang này ai cũng xem được.";
+    }
+
+    @GetMapping("/home")
+    public String home(@AuthenticationPrincipal OidcUser user) {
+        return "Chào mừng " + user.getFullName() + ". Bạn đã đăng nhập thành công!";
+    }
+
+    @PreAuthorize("hasRole('MANAGER')")
+    @GetMapping("/api/manager")
+    public String managerApi() {
+        return "Dữ liệu mật chỉ dành cho Quản lý.";
     }
 }
 ```
-**Chạy thử nghiệm:**
-1. Khởi động Keycloak Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Tạo 1 User Bình Thường và 1 User gán Quyền "admin".
-2. Bật Postman Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Gửi API Lấy Code Đăng Nhập JWT Bằng User Bình Thường Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Cầm JWT Nhét Vào Cửa Backend Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa => Kết Quả Nhận 403 Forbidden Xoáy Mặt Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần!
-3. Lấy Code JWT Bằng User Admin Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Nhét Vào Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp => Vào Trong Trót Lọt Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chúc Mừng Bạn Đã Hoàn Thành Cảnh Cảnh Giới Cao Cấp Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+### 4.1. Nghiệm thu
+1. Mở trình duyệt ẩn danh, truy cập `http://localhost:8081/public`. Trình duyệt sẽ hiển thị nội dung lập tức mà không bị điều hướng.
+2. Đổi URL sang `http://localhost:8081/home`. Trình duyệt lập tức bị Redirect tới trang đăng nhập của Keycloak.
+3. Đăng nhập với tài khoản `john_doe` / `123456`.
+4. Nếu thành công, trang sẽ điều hướng về `/home` hiển thị dòng chữ "Chào mừng...".
+5. Truy cập tiếp `http://localhost:8081/api/manager`. Bạn sẽ thấy dòng "Dữ liệu mật chỉ dành cho Quản lý".
+
+### 4.2. Khắc phục sự cố (Troubleshooting)
+- **Lỗi 403 Forbidden khi truy cập `/api/manager`:** Bạn có thể đã quên gán quyền `MANAGER` cho user trong Keycloak, hoặc quên thêm đoạn `jwtAuthConverter` để thêm tiền tố `ROLE_`. Kiểm tra console log hoặc in token payload ra màn hình.
+- **Lỗi Connection Refused trong Log Spring Boot:** Spring Boot không gọi được `http://localhost:8080`. Kiểm tra xem Keycloak có đang chạy không, hoặc tên miền cấu hình trong `issuer-uri` có chính xác không.
+- **Lỗi Invalid Redirect URI:** Đảm bảo trong cấu hình Client `portal-app` trên Keycloak, ô `Valid Redirect URIs` đã được điền là `http://localhost:8081/login/oauth2/code/keycloak`. Mặc định Spring Boot sử dụng đường dẫn này để nhận mã Code.

@@ -1,32 +1,135 @@
-# Lesson 4: Cổng Vòm Giao Thương Khổng Lồ (Ingress & HPA)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Thiết lập cánh cổng mạng Layer 7 (Ingress) để dẫn luồng khách từ Internet vào Cluster. Đồng thời cài hệ thống Tự Động Nhân Bản Phân Thân (HPA) khi Traffic dâng cao.
+> **Category:** Architecture/Design (Kiến trúc/Thiết kế)
+> **Goal:** Nắm bắt cơ chế đưa Keycloak ra internet một cách an toàn thông qua Ingress, giải quyết các bài toán liên quan đến TLS termination, Forwarded Headers, và tự động mở rộng theo tải (Horizontal Pod Autoscaling).
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Ingress (Cổng Chào Đế Chế Layer 7)
-Mặc định Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, các Ứng Dụng Nằm Trong Kubernetes Bị Nhốt Kín Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề.
-Để Đưa Cái Giao Diện Của Keycloak Ra Cho Khách Ngoài Đời Truy Cập (VD: `https://auth.company.com` Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy), Ta Sẽ KHÔNG XÀI Service LoadBalancer Vì Nó Rất Đắt Tiền Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa (Nó Hoạt Động Ở Layer 4 Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Mỗi 1 Ứng Dụng Là Phải Bỏ Tiền Thuê 1 Cổng IP Độc Lập Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa).
-**Tuyệt Kỹ Cloud Native Gọi Tên: Ingress Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh!**
-Ingress (Ví dụ: Nginx Ingress Controller Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp) Hoạt Động Ở Layer 7 Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Nó Giống Như 1 Bác Bảo Vệ Thông Minh Đứng Ở Cửa Khu Đô Thị Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. 
-- Khách Báo Địa Chỉ: `api.company.com`, Bác Bảo Vệ Đẩy Sang Phân Khu Chứa Tòa Nhà Backend API Oanh Khung Dịch Lụa Mạch Lệnh.
-- Khách Báo Địa Chỉ: `auth.company.com`, Bác Bảo Vệ Bẻ Lái Sang Phân Khu Chứa Lâu Đài Keycloak Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
-Nhờ Ingress Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Cả Cụm 100 App Của Bạn Chỉ Phải Tốn Tiền Nuôi ĐÚNG 1 CÁI ĐỊA CHỈ IP Public Duy Nhất Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh! Ngoài Ra Ingress Cởi Trói SSL (SSL Termination Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) Ngay Tại Cửa Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Keycloak Ở Bên Trong Bụng K8s Chỉ Cần Chạy Bằng Giao Thức HTTP Trơn Siêu Nhẹ Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
+Khi triển khai Keycloak trên Kubernetes, các Pod thường nằm trong mạng nội bộ (private network). Để người dùng từ Internet có thể truy cập trang đăng nhập, ta cần một cổng giao tiếp ngoại vi.
 
-### 1.2. HPA - Phép Nhân Bản Phân Thân (Horizontal Pod Autoscaler)
-Sự Đỉnh Cao Cuối Cùng Của K8s Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Khi Có Sự Kiện Khuyến Mãi Flash Sale (Mùng 8 Tháng 3 Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh), Số Lượng Khách Vô Login Keycloak Xoáy Trào Từ 1.000 Lên 100.000 Người Trong 3 Phút Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề!
-HPA Sẽ Liên Tục Chọc Vào Mạch Đập Metric Server Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Nó Đọc Thấy: "Căng Rồi Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng! CPU Của 2 Thằng Keycloak Hiện Tại Đã Vượt Ngưỡng Đỏ 80% Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!". 
-Không Cần Bất Kỳ Một Bàn Tay Kỹ Sư Nào Can Thiệp Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, HPA Lập Tức Bóp Cò Ra Lệnh: Kéo Băng Đạn Scaling! Từ 2 Pod Keycloak Nó Kéo Một Nhát Vọt Lên 10 Pod Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Tải Trọng Hệ Thống Ngay Lập Tức Được Làm Mát Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Khách Hàng Đăng Nhập Vẫn Mượt Như Không Có Chuyện Gì Xảy Ra Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa 
-Đến Sáng Hôm Sau Khi Flash Sale Kết Thúc Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. HPA Đọc Thấy Nhịp Tim CPU Của 10 Pod Rơi Xuống Dưới 20% Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Nó Bắt Đầu Đốt Hủy Đi Các Thằng Dư Thừa Để Trả Máy Chủ Lại Cho Cloud (Scale-in Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) Về Lại Ngưỡng 2 Thằng Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Tiết Kiệm Hàng Nghìn Đô La Tiền Thuê Máy Chủ Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+- **Ingress Controller:** Là một reverse proxy (như NGINX, Traefik, HAProxy) chạy trong K8s. Khác với LoadBalancer (thường cấp 1 IP cho mỗi Service tốn kém), Ingress có thể định tuyến nhiều tên miền (Host) và đường dẫn (Path) vào chung một IP duy nhất. Với Keycloak, Ingress đóng vai trò sống còn trong việc **TLS Termination** (chấm dứt mã hóa SSL tại proxy) để giảm tải cho Keycloak.
+- **Horizontal Pod Autoscaling (HPA):** Hệ thống IAM thường đối mặt với các đỉnh tải (Traffic Spikes) bất ngờ (ví dụ: giờ vào ca sáng, mọi nhân viên cùng đăng nhập). HPA là một K8s Controller giám sát tài nguyên (CPU, RAM) hoặc metrics tùy chỉnh (HTTP requests) để tự động tăng số lượng Pod Keycloak khi tải tăng, và giảm khi tải giảm.
 
----
+Việc thiết lập Ingress cho Keycloak đặc biệt nhạy cảm do giao thức OIDC yêu cầu sự khớp nối tuyệt đối về tên miền (Issuer URL) và đường dẫn chuyển hướng (Redirect URIs).
 
-## 2. Câu hỏi Phỏng vấn (Interview Questions)
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-**1. Em Vừa Khoe Cơ Chế Autoscaling Bật Bọt Phình To Mở Rộng 10 Pod Keycloak Để Đỡ 100.000 Request Flash Sale Oanh Khung Dịch Lụa Mạch Lệnh. Sếp Lắc Đầu Cười Khẩy Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần: "Keycloak Của Em Dùng Băng Chuyền Trạng Thái Distributed Cache Của Infinispan. Lúc Nó Scale Lên 10 Đứa Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, 10 Đứa Tranh Nhau Đồng Bộ Cache Sẽ Gây Bão Mạng (Split-Brain Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp). Hơn Nữa Khi Flash Sale Hết Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Scale-Down Co Rút Lại Giết Chết 8 Thằng Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Thì Cái Mảng Session Cache Nằm Trong Bụng Của 8 Thằng Vừa Chết Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Sẽ Lôi Theo Hàng Ngàn Khách Hàng Bị Văng Đăng Xuất (Logout) Rớt Đáy Mạng Lưới Nhện Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Autoscaling Với Thằng Cache Bộ Nhớ Nó Khốc Liệt Lắm Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Chứ Cứ Lôi CPU Ra Mà Scale Là Nát!". Em Chữa Cháy Ca Này Thế Nào Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh?**
-- **Senior:** Dạ Thưa Sếp Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Lu Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Chỗ Này Đúng Là Tử Huyệt Của Vận Hành Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Nếu Chỉ Cấu Hình HPA Thô Thiển Dựa Trực Tiếp Bằng Lõi CPU Thì Chắc Chắn Sẽ Nổ Cache (Infinispan Rebalance Storm Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Để Xài Đỉnh Cao Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Bọn Em Dùng Thiết Kế Phân Tách Bơm Trống Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng:
-  - **Tách Infinispan Ra Khỏi Bụng Keycloak Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh:** Ở K8s Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Bọn Em Không Chạy Infinispan Embedded Kẹp Chung Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bọn Em Dựng Hẳn Một Cụm **External Infinispan Cluster Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa** Chạy StatefulSet Độc Lập Ở Ngoài (Với Ngưỡng 3 Node Ổn Định Chết Bền Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy). 
-  - Đám K8s Keycloak Deployment Bật Tính Năng Remote Cache Chọc Thẳng Ra Cụm Ngoài Oanh Khung Dịch Lụa Mạch Lệnh. 
-  - Lúc Đó Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề, Cái Thằng App Keycloak Lúc Này Trở Thành Máng Gỗ "Hoàn Toàn Không Trạng Thái - 100% Stateless Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh" Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Thằng K8s HPA Có Kéo Lên 100 Pod Hay Đập Nát Xuống Còn 2 Pod Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Dữ Liệu Session Của Khách Hàng Cũng Không Mất Mát Vì Nó Đã Được Neo Chặt Ở Mũi Tàu Đảo Infinispan Bên Ngoài Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề! Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Đó Mới Là Kiến Trúc Cloud Native Triệu Đô Sếp Ạ Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần!
+Khi sử dụng Ingress thực hiện TLS Termination, Keycloak bên trong K8s sẽ nhận traffic dạng HTTP (không mã hóa). Nếu không cấu hình đúng, Keycloak sẽ sinh ra các Token với `iss` (Issuer) là `http://...` thay vì `https://...`, dẫn đến toàn bộ ứng dụng bị lỗi `Invalid Token`.
+
+```mermaid
+sequenceDiagram
+    participant User as Web Browser
+    participant LB as Cloud Load Balancer
+    participant Ingress as NGINX Ingress Controller
+    participant Service as Keycloak Service
+    participant KC as Keycloak Pods (Quarkus)
+
+    User->>LB: HTTPS Request (auth.company.com)
+    LB->>Ingress: Chuyển tiếp HTTPS
+    Note over Ingress: Thực hiện TLS Termination<br/>Giải mã SSL/TLS bằng Certificate
+    Ingress->>Ingress: Thêm Header `X-Forwarded-For` (IP User)<br/>Thêm Header `X-Forwarded-Proto: https`
+    Ingress->>Service: Định tuyến HTTP (Port 80/8080)
+    Service->>KC: Phân tải Round-robin tới các Pod
+    KC->>KC: Quarkus đọc Header `X-Forwarded-Proto`
+    KC->>KC: Nhận thức Request gốc là HTTPS
+    KC->>KC: Sinh Issuer URL `https://auth.company.com`
+    KC->>User: HTTP 302 Redirect về Client App (https)
+```
+
+**Cơ chế cấp thấp Proxy Forwarding:**
+Keycloak (Quarkus) phải được chạy với tham số `PROXY_ADDRESS_FORWARDING=true` (bản cũ) hoặc `--proxy=edge` (bản mới). Khi đó, engine HTTP nội bộ (Vert.x) sẽ tin tưởng và phân tích các header `X-Forwarded-*` do Ingress bơm vào. Điều này giúp Keycloak biết được IP thực của người dùng (phục vụ Brute-force protection) và Protocol thực tế (HTTPS).
+
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
+
+> [!IMPORTANT]
+> **Edge Proxy vs Re-encrypt:** Nếu mạng K8s nội bộ không tin cậy (Zero Trust), bạn không được dùng `TLS Termination` (`--proxy=edge`), mà phải dùng `--proxy=reencrypt`. Nghĩa là Ingress nhận HTTPS, giải mã, sau đó LẠI mã hóa HTTPS để đẩy vào Keycloak. Điều này yêu cầu Keycloak Pod cũng phải có chứng chỉ tự ký (self-signed cert).
+
+> [!WARNING]
+> **HPA và Infinispan:** Khi HPA tự động scale up Keycloak (từ 3 lên 6 Pods) hoặc scale down (từ 6 về 3 Pods), cụm Infinispan sẽ liên tục phải bầu lại Leader và rebalance (chia lại) dữ liệu cache. Quá trình rebalance này rất tốn CPU và Network. Hãy đặt `behavior` trong HPA với `scaleDown.stabilizationWindowSeconds` lớn (ví dụ: 300s) để tránh hiện tượng dội ngược (flapping).
+
+- **Health Checks:** Ingress phụ thuộc vào Readiness Probe của K8s để đưa traffic vào. Với Keycloak, Probe phải trỏ tới `/health/ready` (chỉ mở cổng sau khi DB và Infinispan đã sẵn sàng), KHÔNG dùng trang `/`.
+- **WAF Integration:** Khuyến khích bật ModSecurity hoặc AWS WAF tại Ingress để chặn SQL Injection và XSS trước khi traffic chạm đến Keycloak.
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+
+**Cấu hình Ingress với NGINX và Let's Encrypt (Cert-Manager):**
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # Báo cho NGINX biết backend đang chạy HTTP
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    # Kích hoạt cookie affinity để ghim request (tùy chọn)
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+spec:
+  tls:
+  - hosts:
+    - auth.company.com
+    secretName: keycloak-tls-cert
+  rules:
+  - host: auth.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: keycloak-service
+            port:
+              number: 8080
+```
+
+*Lưu ý:* Biến môi trường trong Pod Keycloak phải có:
+`KC_HOSTNAME=auth.company.com` và `KC_PROXY=edge`.
+
+**Cấu hình HPA (Autoscaling) dựa trên CPU:**
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: keycloak-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet # Hoặc Deployment
+    name: keycloak
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Lỗi Mixed Content / Infinite Redirect Loop:** Người dùng truy cập HTTPS, Ingress chuyển thành HTTP vào Keycloak, nhưng Keycloak không cấu hình `--proxy=edge`. Keycloak nghĩ rằng đang bị truy cập HTTP nên trả về lệnh `302 Redirect` tới HTTPS. Ingress nhận, lại đẩy vào HTTP -> Lặp vô hạn (ERR_TOO_MANY_REDIRECTS). Khắc phục: Phải bật mode proxy edge và đảm bảo Ingress gửi đúng header `X-Forwarded-Proto`.
+- **HPA Kill Pod đang xử lý request:** Khi HPA giảm số Pod, K8s gửi SIGTERM. Keycloak cần thời gian để hoàn thành các request đang dở và ngắt kết nối DB an toàn. Cần cấu hình `terminationGracePeriodSeconds` (ví dụ: 60s) trong Pod spec.
+- **Mất Session khi scale down:** Nếu không dùng distributed cache storage (như external Redis/Infinispan) hoặc số bản sao cache (owner) nhỏ hơn số pod bị hủy do HPA, User sẽ bị văng (đăng xuất). Giải pháp: Tăng `owners=2` hoặc `3` trong cấu hình Infinispan cache.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior:** Tính năng HPA trong K8s dùng để làm gì đối với Keycloak?
+   - *Đáp án:* HPA tự động tăng hoặc giảm số lượng Pod Keycloak dựa trên mức độ sử dụng tài nguyên (như CPU đạt 70%) nhằm đảm bảo hệ thống không bị sập khi có lượng đăng nhập đột biến và tiết kiệm tài nguyên khi thấp điểm.
+2. **Junior:** Nếu cài Ingress và Keycloak, tại sao URL Issuer trong Token lại hiển thị là IP nội bộ của K8s thay vì tên miền?
+   - *Đáp án:* Do chưa cấu hình biến `KC_HOSTNAME` (hoặc `KEYCLOAK_FRONTEND_URL` ở bản cũ) cho Keycloak, nên nó tự lấy IP nội bộ làm gốc.
+3. **Senior:** Tại sao khi đứng sau NGINX Ingress Controller, Keycloak lại ghi nhận IP của tất cả người dùng bị ban (Brute Force) đều là cùng một IP nội bộ của Ingress? Cách khắc phục?
+   - *Đáp án:* Do proxy đã che giấu IP thực. Cần cấu hình Keycloak chạy với tham số `--proxy=edge` để nó phân tích Header `X-Forwarded-For`. Đồng thời phía Ingress cũng phải được cấu hình `use-forwarded-headers: "true"` để nó lấy IP thực từ Cloud Load Balancer (nếu có) truyền tiếp vào Pod.
+4. **Senior:** Bạn định cấu hình HPA cho Keycloak dựa trên Memory (RAM) utilization thay vì CPU. Có hợp lý không?
+   - *Đáp án:* Không hợp lý. Keycloak chạy trên Java/JVM. JVM có xu hướng giữ lại bộ nhớ đã cấp phát (Heap) chứ không trả lại ngay cho hệ điều hành (K8s). Do đó, Memory Utilization của Pod luôn ở mức cao ảo, làm cho HPA liên tục scale up hoặc không bao giờ scale down. Nên dùng CPU hoặc metrics ứng dụng (ví dụ: requests/sec qua Prometheus Adapter).
+5. **Senior:** Mô tả quy trình "Re-encrypt" khi dùng Keycloak Ingress.
+   - *Đáp án:* Client -> (HTTPS) -> Ingress -> (Giải mã để inspect, gán header, check WAF) -> Ingress tạo HTTPS mới -> (HTTPS) -> Keycloak Pod. Keycloak lúc này dùng `--proxy=reencrypt` và phải có cấu hình keystore chứa chứng chỉ cho mạng nội bộ.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak Guide: Configuring reverse proxies](https://www.keycloak.org/server/reverseproxy)
+- [Kubernetes Ingress Controllers](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)
+- [Horizontal Pod Autoscaling - K8s Docs](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)

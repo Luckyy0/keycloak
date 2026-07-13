@@ -1,78 +1,101 @@
-# Lesson 7: Hộp Đen Lồng Hộp Đen (Sub-Flow)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Khi tạo những kịch bản xác thực phức tạp (vừa đòi WebAuthn, vừa đòi OTP nếu WebAuthn xịt, vừa kết hợp kiểm tra IP mạng), màn hình quản lý Flow của bạn sẽ rối tung như bãi mìn. Để thiết kế gọn gàng và đóng gói logic, Keycloak mang đến khái niệm **Sub-flow (Luồng Phụ)**. Cùng xem cách nhét "Hộp đen lồng Hộp đen" để bẻ khóa mọi bài toán.
+> **Goal:** Hiểu rõ khái niệm Sub-Flow (luồng phụ), các loại Sub-Flow và cách chúng định tuyến (routing) logic của một quá trình xác thực đa bước phức tạp trong Keycloak.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Sub-Flow Là Gì?
-Luồng Phụ (Sub-Flow) Thực Chất Là Một Khối Flow Con Được Nằm Gọn Bên Trong Lõi Của Một Flow Mẹ (Ví Dụ Browser Flow).
-- Giống Chức Năng Group (Nhóm Lại) Của Phần Mềm Đồ Họa Photoshop. Bạn Kéo Nhiều Execution (Khối Chức Năng Rời Rạc) Nhét Cùng Vào Một Sub-Flow Của Nó.
-- Bạn Có Quyền Chỉ Cần Thao Tác Trạng Thái (`Required`, `Alternative`, `Conditional`) Lên Chính Lớp Vỏ Sub-Flow Mẹ Đo Đó Thay Vì Chạy Lòng Vòng Sửa Từng Cái Execution Bên Trong Nó.
+Hệ thống xác thực của Keycloak không phải là một danh sách phẳng (flat list) các bước xử lý liên tiếp. Để mô hình hóa được các yêu cầu phức tạp ngoài đời thực, Keycloak áp dụng cấu trúc cây (Tree-based Structure) cho các luồng. Trong đó, Root Flow (Luồng gốc) là luồng cao nhất, và bên trong nó có thể chứa các **Sub-Flows (Luồng phụ)** lồng nhau.
 
-### 1.2. Phân Loại Type Của Lớp Vỏ Sub-Flow
-1 Cái Vỏ Sub-Flow Cung Cấp 3 Lựa Chọn Toán Học Để Dẫn Dắt Dòng API Json Đi Vào Bên Trong:
-1. **Generic (Cũ Basic):** Chạy Theo Trục Dọc Tuyến Tính Bình Thường. Các Execution Nằm Bên Trong Sub-flow Này Cứ Thứ Tự Từ Trên Xuống Dưới Mà Vượt Qua Thử Thách Cảnh Sát Giao Thông.
-2. **Form Flow (Browser Forms):** Một Lớp Vỏ Cực Kỳ Đặc Biệt Chuyên Trị Dùng Để Gói Những Cái UI Vẽ Tương Tác Của Trình Duyệt Bắt Password Với Người Dùng, Cấp Các Giao Diện Chứa Form. Trình Duyệt Browser Của Browser Flow Bắt Buộc Có Khối Vỏ Bọc Hình Form Này Để Rendering Dữ Liệu Lên DOM.
-3. **Client Flow:** Dùng Khối Vỏ Riêng Nhằm Tính Toán Token Để Giải Quyết Bảo Mật Máy Chủ. Không Dùng Cho User.
+Một **Sub-Flow** đóng vai trò như một nhóm logic (logical container) chứa nhiều Authenticator Executions bên trong hoặc thậm chí chứa các Sub-Flows con khác. Nó giúp định nghĩa các quy tắc rẽ nhánh (branching rules) như:
+- Nếu người dùng cung cấp đúng User/Password, thì bắt đầu kiểm tra luồng cấp 2 (MFA).
+- Cho phép người dùng chọn *một trong nhiều* cách xác minh: Gửi OTP qua SMS, dùng Google Authenticator, hoặc WebAuthn (Security Key).
 
----
+Có 2 loại Sub-Flow cơ bản trong Keycloak:
+1. **Generic Sub-Flow**: Loại phổ biến nhất. Các Execution bên trong được chạy tuần tự. Mỗi Execution có thể render giao diện (Form) riêng, hoàn thành xong mới qua Form tiếp theo.
+2. **Form Sub-Flow**: Được thiết kế để nhóm nhiều Execution thành phần lại, tạo ra *một màn hình HTML Form duy nhất* gom tất cả trường dữ liệu (ví dụ: gộp trường nhập Username và Password vào chung 1 form). Form Sub-Flow cực kỳ hữu ích để tối ưu UX, tránh việc màn hình reload quá nhiều lần.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Bắn Dòng Cục Json Qua Mô Hình Các Hộp Đen Gói Sub-Flow:
+Quá trình đánh giá luồng trong Keycloak dựa trên thuộc tính **Requirement** của mỗi Sub-Flow hoặc Execution (`REQUIRED`, `ALTERNATIVE`, `CONDITIONAL`, `DISABLED`). Thuật toán chạy ngầm là một bộ phân giải cây đệ quy (Recursive Tree Resolver).
 
 ```mermaid
-flowchart TD
-    A[Luồng Xác Thực Vỏ Mẹ 'Browser-Flow' Bắt Khách Mở Màn Hình Browser] --> B{Execution: Cookie}
-    B -- Pass Thành Công Do Có SSO --> C[Nhả Token Mượt, End Luồng]
-    B -- Fail Không Thấy Cookie Đâu Cả --> D[Luồng Rơi Xuống Dòng Cảnh Sát Dưới Tương Lai]
+graph TD
+    Root[Root Authentication Flow]
+    Root -->|REQUIRED| SubFlow1(Sub-Flow: Credential Validation)
+    Root -->|CONDITIONAL| SubFlow2(Sub-Flow: MFA Check)
     
-    D --> E[Trượt Vào Khối Hộp Vỏ Mẹ: 'Browser Forms' (Sub-Flow)]
-    E --> F{Execution Trong Vỏ: Password Form}
-    F -- Nhập Đúng Pass --> G[Trượt Tiếp Vào Vỏ Sub-Flow Khác Bọc Bên Trong Nhánh]
+    SubFlow1 -->|REQUIRED| UnamePwd(Username Password Form)
     
-    G --> H[Vỏ 'MFA-Checks' (Sub-Flow Gắn Lệnh Alternative Gói Rất Cẩn Thận Mảng Conditional)]
-    H --> I{Execution Vỏ MFA: WebAuthn Check Passwordless Mắc Tiền}
-    I -- Chạy Fail Do Khách Lười Cắm USB Vào --> J{Execution Vỏ MFA Cứu Bồ: OTP Form (Alternative Đón Lõng Ở Dưới Khối Cùng Chung Vỏ Nhau)}
+    SubFlow2 -->|CONDITIONAL| CondOTP(Condition: User Configured OTP)
+    SubFlow2 -->|REQUIRED| OTPSelect(Sub-Flow: OTP Methods)
     
-    J -- Quét OTP Pass Thành Công Giao Ước Trong Vỏ Gói Hộp Đen -> Trả Tín Hiệu TRUE Lên Mặt Vỏ 'MFA-Checks' --> C
+    OTPSelect -->|ALTERNATIVE| AuthApp(Authenticator App)
+    OTPSelect -->|ALTERNATIVE| SMSOTP(SMS OTP)
+    OTPSelect -->|ALTERNATIVE| WebAuthn(WebAuthn)
+    
+    style Root fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style SubFlow1 fill:#cce5ff,stroke:#007bff
+    style SubFlow2 fill:#cce5ff,stroke:#007bff
+    style OTPSelect fill:#f8d7da,stroke:#dc3545
 ```
 
----
+**Cơ chế đánh giá các toán tử Requirement:**
+- **REQUIRED**: Phải hoàn thành thành công. Nếu thất bại, toàn bộ luồng gốc lập tức thất bại.
+- **ALTERNATIVE**: Ít nhất MỘT execution hoặc sub-flow mang nhãn ALTERNATIVE trong cùng một cấp (sibling) phải thành công. Các ALTERNATIVE còn lại sẽ bị bỏ qua (Skip). Keycloak sẽ ưu tiên thử cái đầu tiên, nếu có tuỳ chọn "Try Another Way", người dùng có thể chọn cái ALTERNATIVE thứ hai.
+- **DISABLED**: Hoàn toàn bị vô hiệu hoá, engine coi như nó không tồn tại trên cây phân giải.
+- **CONDITIONAL**: Chỉ chạy nếu có một `Condition Execution` đánh giá là `True`. Nó kết hợp linh hoạt cho các tình huống như "Chỉ yêu cầu OTP nếu User IP không thuộc dải mạng công ty".
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!IMPORTANT]
-> **Tuyệt Đỉnh An Toàn Mạng Bọc (Luôn Gói Các Cơ Chế Cứu Cánh Dự Phòng Backup MFA Vào Chung 1 Cục Vỏ Sub-flow Thống Nhất!)**
-> **Tội Ác Thiết Kế Thẳng Đuột Không Hộp Hóa:** Bạn Cố Cài Đặt Passkeys Sinh Trắc Học Tương Lai (WebAuthn Passwordless) Trộn Chung Cùng Tầng Đáy Trực Diện Với OTP Điện Thoại. Nghĩa Là Nó Nằm Rải Rác Ở Mặt Phẳng Không Gian Luồng Của Browser Flow. Bạn Setup Cục Passkeys: `Alternative`. Xong Gắn OTP Dưới Đáy Cũng: `Alternative`.
-> **Hậu Quả:** Engine Của Keycloak Xét Lệnh Random Lộ Liễu Tới Mức: Thay Vì Đẩy UI Của Passkey Chạm Vân Tay Xịn Xò Lên Cho Khách Trải Nghiệm Mượt, Nó Random Hiển Thị Quả Màn Hình Hỏi Mã Chữ Số OTP 6 Số Ra Cho Thằng Chạm Tay Passkey Nhìn Lên Bức Xúc "Máy Hỏng Vân Tay À Bắt Nhập Số Thủ Công Ngứa Mắt!".
-> **Biện Pháp Sống Còn Nhét Vào Hộp Đen:** LUÔN Tạo Một Sub-Flow Mang Tên: `MFA-Alternative-Wrapper`. Chỉnh Cái Subflow Này Cấp Độ `Required` Lên Flow Mẹ. Nhét Cục Execution Passkey Vân Tay Và Cục OTP Vô Cùng 1 Vỏ Đó, Đẩy Trạng Thái Tất Cả Tụi Trong Vỏ Đó Thành Cùng Cờ `Alternative`. Keycloak Khi Đụng Phải Cái Vỏ Kén Hộp Đen Wrapper Này, Nó Sẽ Thông Minh Ưu Tiên Ném Thử Vân Tay Chạm Ra Trước, Nếu Khách Đè Cái Chạm Vân Tay Xóa Thì Nó Lấy List Alternative Nằm Chung Vỏ Ra Thả Lên Cứu Cánh Thay Thế Backup Liền Tay Nhẹ Nhàng Bằng Nhập Mã Số 6 Chữ Cũ!
+> **Nhóm các ALTERNATIVE đúng cách**: Tuyệt đối không đặt một execution `REQUIRED` xen kẽ vào giữa danh sách các `ALTERNATIVE` cùng cấp bậc. Điều này phá vỡ thuật toán đánh giá nhánh của Keycloak và dẫn đến những lỗi logic khó lường (Unreachable Code Path). Các `ALTERNATIVE` nên được đặt liền kề nhau và nên được bọc (wrap) bên trong một Generic Sub-Flow mang cờ `REQUIRED`.
 
----
+- **Mức độ sâu của cây**: Hạn chế lồng quá 3 tầng Sub-Flow. Cây luồng quá sâu khiến UI Admin Console trở nên khó nhìn, khó debug khi có sự cố, và tăng độ phức tạp khi migrate luồng qua các môi trường (Dev -> Prod).
+- **Fallback Cơ chế (Cơ chế dự phòng)**: Luôn xây dựng Sub-Flow MFA dưới dạng Alternative có ít nhất 2 cơ chế (ví dụ OTP App và Recovery Codes). Nếu Sub-Flow MFA chỉ có duy nhất một `REQUIRED` Execution (OTP App) và user bị mất điện thoại, họ sẽ bị khóa vĩnh viễn khỏi hệ thống (Lockout).
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Hệ Thống MFA Nhựa Bọc Kén Sub-flow Lọc Ưu Tiên:
-1. Bạn Tạo Một Flow Nhân Bản Mới Hoàn Toàn Tên `My-Browser-Multi-MFA` Kế Thừa Từ Browser Flow Cũ Của Hãng.
-2. Tại Dòng Khối Cuối Nhất Đang Chứa Password Thường Cũ, Ấn Nhẹ Khung: `Add Sub-flow`. Đặt Tên: `MFA-Secure-Wrapper`.
-3. Để `MFA-Secure-Wrapper` Này Là Lệnh **`Required`** Hoặc **`Conditional`** Tuỳ Doanh Nghiệp Setup Mở Rộng Bắt Buộc Mọi Dân Cày Quét QR MFA Hay Tắt!
-4. Ấn Vô Nút `Add execution` Bên Trong Ruột Của Cái `MFA-Secure-Wrapper`.
-5. Kiếm Và Chọn Tên Module Execution: **`WebAuthn Passwordless Authenticator`** (Sinh Trắc Học).
-6. Tương Tự Tiếp Nhấn Nút Add Ruột Subflow: Chọn Thêm Execution Lấy Tên Là: **`OTP Form`** (Mã OTP Truyền Thống Số Học).
-7. Điều Chỉnh Hai Khối Vừa Lọt Vào Ruột Của Nhau Thành Cùng Trạng Thái Khớp Toán Bool Tên Lệnh Là **`Alternative`** (Để Giành Thay Thế Nhau Giữa Hai Sự Lựa Chọn).
-8. Nếu Bạn Kéo Luồng Nhựa Của WebAuthn Trượt Nằm Lên Dòng Trực Tràng Phía Trên Dòng Trọng Lượng OTP. Máy Keycloak Sẽ Tự Bật Kính Hiển Vi So Chiếu Ưu Tiên Màn Hình Chạm Sinh Trắc WebAuthn. Khách Nhấn Thử Backup Trả Về Thì Nó Thụt Xuống Dòng Dưới Lấy Cục OTP Lên Cover Lỗ Hổng Hỏng Vân Tay Ảo Vượt Mặt Bot Nhựa.
+Tạo một luồng yêu cầu Nhập Username/Password (Bắt buộc), sau đó cho phép người dùng chọn giữa OTP hoặc WebAuthn.
 
----
+**Cấu hình trên Admin Console:**
+1. Tạo luồng (Flow) mới tên: `My-Advanced-Browser-Flow`.
+2. Thêm Execution: `Username Password Form` -> Chuyển thành `REQUIRED`.
+3. Thêm một **Generic Sub-Flow**, đặt tên `MFA-Sub-Flow` -> Chuyển thành `REQUIRED`.
+4. Trong `MFA-Sub-Flow`, thêm các execution con:
+   - `OTP Form` -> Chuyển thành `ALTERNATIVE`.
+   - `WebAuthn Authenticator` -> Chuyển thành `ALTERNATIVE`.
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+*Khi luồng chạy, sau khi điền đúng mật khẩu, Keycloak sẽ đánh giá MFA-Sub-Flow (vì nó REQUIRED). Trong Sub-Flow này, nó nhận thấy có 2 lựa chọn ALTERNATIVE. Nó sẽ hiển thị OTP Form trước, đồng thời cung cấp link "Try Another Way" để user có thể chuyển sang dùng WebAuthn.*
 
-**1. Trong Flow Browser, Bạn Chèn Thêm Khối Execution Form Password Đứng Lẻ Loi Trơ Trọi Ở Ngoài Cùng Mặt Phẳng Dưới Cùng Của Khung Logic Trục Chính Của Trình Duyệt. Khi Khởi Động Đăng Nhập Lại Không Vẽ Form Mà Văng Thông Báo Báo Lỗi Trắng Trang HTTP 500 Chạm Lõi Dòng Code Code NullPointerException Từ Form Browser. Lý Do Là Gì Khi Khối Này Được Keycloak Phân Quyền Hợp Cấu Trúc Khung Rỗng?**
-- **Senior:** Lỗi Nằm Ở Vỏ Bọc Rendering Forms Browser OIDC Trực Tiếp! Khối Execution `Password Form` Có Chứa Thuộc Tính HTML Tương Tác. Keycloak Có Tính Năng Cứng Nhắc Trong Core Đáy Java, Nó KHÔNG CHO PHÉP Vẽ Trực Tiếp Bất Cứ Form Tương Tác Màn Hình HTML Nhập Dữ Liệu Nào Nếu Khối Lõi Thực Thi Đó Không Được Gói Vô Trọng Một Khối Sub-Flow Bọc Kén Chứa Type Tên Mang Thuộc Tính Mang Nhãn **`Form Flow`** (Hoặc Tên Gốc Default `Browser Forms` Đáy Kẽ Lớn Nguồn Cấp).
-Bạn Vứt Trơ Trọi Execution Đòi Nhập Form Ra Tầng Mẹ Nhất Type Generic Chứa Toán Trực Tiếp Không Hiểu Engine Form OIDC Khiến Bắn HTTP Lỗi Tự Hủy Token Rendering Cấp Tốc Lõi Máy Chủ!
+Mã định dạng cấu hình qua Keycloak Admin CLI để cấu hình Requirement (VD: sửa MFA-Sub-Flow):
+```bash
+# Đổi mức requirement của 1 execution
+/opt/keycloak/bin/kcadm.sh update authentication/executions/<execution-id> \
+  -r myrealm \
+  -s requirement=ALTERNATIVE
+```
 
----
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
-## 6. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Administration Guide - Sub Flows.
+- **Lỗi hiển thị "Try Another Way"**: Nút "Try Another Way" (Thử cách khác) chỉ xuất hiện khi Keycloak phát hiện có từ 2 Authenticator mang nhãn `ALTERNATIVE` ở cùng một cấp độ (cùng nằm chung một Sub-Flow) và trạng thái của user cho phép sử dụng cả 2 (user đã thiết lập cấu hình OTP và đã đăng ký WebAuthn). Nếu 1 trong 2 chưa được cấu hình, nhánh Alternative đó sẽ ẩn, và nút "Try Another Way" sẽ biến mất.
+- **Form Sub-Flow Conflict**: Form Sub-Flow yêu cầu các Authenticator bên trong phải hỗ trợ render chung form. Nếu bạn chèn một Authenticator phức tạp (ví dụ yêu cầu redirect ra IdP ngoài) vào Form Sub-Flow, nó sẽ ném lỗi 500 hoặc hiển thị giao diện vỡ nát vì xung đột Response Stream.
+- **Authentication Bypass Vulnerability**: Xảy ra khi quản trị viên đặt toàn bộ các bước kiểm tra (Password, OTP) thành `ALTERNATIVE` ở cấp cao nhất Root Flow. Hậu quả là kẻ tấn công chỉ cần bypass một cơ chế yếu nhất, và hệ thống sẽ cấp quyền đăng nhập thành công vì chỉ cần 1 `ALTERNATIVE` đỗ là Root Flow đỗ.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior**: Nêu điểm khác nhau giữa Generic Sub-Flow và Form Sub-Flow?
+   - *Đáp án*: Generic Sub-Flow là vùng chứa logic chung, chạy các step theo chuỗi và mỗi step render giao diện của riêng nó. Form Sub-Flow chỉ chuyên dụng để nhóm nhiều trường dữ liệu của các Authenticators khác nhau vào chung một màn hình (Form) duy nhất để gửi đi trong 1 lần Submit.
+2. **Junior**: Trong Keycloak, toán tử Requirement `ALTERNATIVE` hoạt động như thế nào?
+   - *Đáp án*: `ALTERNATIVE` đánh dấu các bước là tùy chọn dự phòng cho nhau. Trong một danh sách các nhánh Alternative đồng cấp, chỉ cần MỘT nhánh chạy thành công thì toàn bộ nhóm Alternative đó được coi là thành công.
+3. **Senior**: Tôi có một Authentication Flow. Tôi muốn rằng mọi User đăng nhập thì phải kiểm tra Password (Bắt buộc). Nhưng đối với MFA, tôi muốn chỉ những User có Role "Admin" mới bị yêu cầu nhập OTP. Tôi nên sử dụng cấu trúc Sub-Flow như thế nào?
+   - *Đáp án*: Tạo luồng Root Flow chứa Password Execution (REQUIRED). Tiếp theo, tạo một Generic Sub-Flow mang requirement là `CONDITIONAL`. Trong Sub-Flow này: Bước 1 là execution `Condition - User Role` (kiểm tra role Admin), Bước 2 là execution `OTP Form` (REQUIRED).
+4. **Senior**: Tại sao Keycloak khuyến cáo luôn phải bọc (wrap) các nhánh `ALTERNATIVE` vào trong một Sub-Flow mang cờ `REQUIRED` thay vì đặt trực tiếp ngang hàng với bước kiểm tra mật khẩu?
+   - *Đáp án*: Nếu để ngang hàng, ví dụ: [Password=REQUIRED, OTP=ALTERNATIVE, WebAuthn=ALTERNATIVE]. Keycloak đánh giá từ trên xuống, xong Password là pass. Tuy nhiên với cụm Alternative phía sau, nếu nó fail thì luồng vẫn pass, nếu nó đỗ thì luồng pass. Điều này phá vỡ logic kiểm soát chặt chẽ và gây khó hiểu. Nếu bọc cụm Alternative trong Sub-Flow (REQUIRED), thì bắt buộc phải qua nhóm MFA, và trong MFA chỉ cần chọn 1.
+5. **Senior**: Thuật toán đánh giá luồng xử lý thế nào nếu toàn bộ luồng trong một Sub-Flow `REQUIRED` bị bỏ qua (Skip) do người dùng chưa cấu hình bất kỳ tính năng `ALTERNATIVE` nào bên trong nó?
+   - *Đáp án*: Tùy thuộc vào thiết lập `Required Actions`. Nếu Authenticator có đăng ký action tương ứng (vd: Update OTP), Keycloak sẽ dừng luồng, kích hoạt thẻ tạm (Challenge) yêu cầu người dùng phải setup tính năng đó trước khi có thể đi tiếp.
+
+## 7. Tài liệu tham khảo (References)
+
+- Keycloak Server Administration Guide: Authentication Flows and Sub-flows
+- User Interface Customization for Form Sub-flows
+- IAM Design Patterns: Multi-Factor Authentication Architecture

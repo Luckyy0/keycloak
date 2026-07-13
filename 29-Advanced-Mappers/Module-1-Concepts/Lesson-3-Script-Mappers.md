@@ -1,84 +1,110 @@
-# Lesson 3: Phép Thuật Javascript (Script Mappers)
-
 > [!NOTE]
-> **Category:** Theory & Practical (Lý thuyết & Thực hành)
-> **Goal:** Trong chương 24 (Protocol Mapper SPI), bạn phải tạo cả 1 Project Java Maven to đùng, Compile ra cục `.jar`, Copy vào Docker chỉ để viết một logic gắn Dữ liệu phức tạp vào Token. Quá rườm rà! Bài học này hướng dẫn bạn dùng **Javascript Script Mapper** - Công cụ cho phép viết trực tiếp Code Logic ngay trên Giao Diện Web Của Keycloak! Lưu ý: Tính năng này bị Khóa Mặc Định vì lý do bảo mật. Chúng ta sẽ mở khóa nó.
+> **Category:** Theory (Lý thuyết)
+> **Goal:** Nắm vững kiến trúc, cách hoạt động của Script Mappers (JavaScript/Rhino) trong Keycloak. Hiểu cách tùy biến sâu Token payload bằng mã lập trình, các hạn chế kỹ thuật và rủi ro bảo mật đi kèm.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Sức Mạnh Của Khối Code Lưng Chừng Đồi
-**Script Mapper** sử dụng một công nghệ của nền tảng Java gọi là Nashorn (hoặc GraalVM Polyglot trong các bản Java/Quarkus mới) để biên dịch trực tiếp mã Javascript của bạn ngay trong lúc Keycloak đang chạy (Runtime).
-Khi bạn gắn một Script Mapper vào OIDC Client. Bạn sẽ được cung cấp một cái Ô Vuông to bự trên Giao diện. Bạn gõ code Javascript vào đó.
-Mỗi khi Token được cấp phát, đoạn code này sẽ được kích hoạt!
+Mặc dù Keycloak cung cấp rất nhiều Mappers mặc định (như User Attribute, Role, Hardcoded), đôi khi logic nghiệp vụ để chèn dữ liệu vào Token cực kỳ phức tạp. Ví dụ:
+- Bạn cần nối chuỗi `first_name` và `last_name` thành `full_name`.
+- Cần thực hiện các phép toán điều kiện (if-else): Nếu User thuộc Group A thì lấy Claim X, nếu thuộc Group B thì lấy Claim Y.
+- Cần tính toán (Math) tuổi dựa trên ngày sinh trong thuộc tính.
 
-Nó cho bạn toàn quyền sinh sát:
-- Bạn nắm trong tay biến `user` (Đại diện cho Khách Hàng đang đăng nhập). Bạn có thể lôi Tên, Họ, Email, Attribute, Role ra đọc.
-- Bạn nắm trong tay biến `realm` (Cấu hình toàn cục).
-- Bạn nắm trong tay biến `token` (Chính là Bụng của Cục JWT).
-Và bạn chỉ cần dùng Javascript viết logic: `if (user.firstName == "Teo") { token.setOtherClaims("luu_y", "Thằng này ăn cắp vặt"); }`
+**Script Mapper** ra đời để giải quyết những bài toán này. Nó cho phép quản trị viên hoặc lập trình viên viết trực tiếp các đoạn mã JavaScript để thao tác (manipulate) trên Token ngay tại thời điểm nó được sinh ra (Token Issuance). 
 
-Bùm! Token ra lò đã có ngay dòng cảnh báo đó. Mọi thứ làm nóng 100% không cần Build File Jar! Cực kỳ hợp cho dân Bào Nhanh (Fast Prototyping).
-
-### 1.2. Mở Khóa Tấm Phong Ấn Bị Nguyền Rủa (Enable Feature)
-RedHat/Keycloak Cực Kỳ Ghét Cái Script Mapper Này! (Vì nó quá nguy hiểm, cho phép chèn Code thẳng từ Giao diện Admin - Nếu Lộ Tài Khoản Admin là Hacker thả Trình Đào Coin hoặc Xóa Sạch DB bằng Javascript Java-Interop!).
-Nên mặc định họ Tắt và Khóa chặt nó lại.
-Để mở nó, bạn PHẢI đính kèm 2 tham số lúc bật máy chủ (Docker command):
-1. `--features=scripts` (Mở khóa tính năng Tương Thích Script Preview).
-2. Tùy thuộc vào phiên bản JDK của Quarkus, phải thêm các tham số `--spi-...` nếu cần (Ở bản mới 24.0, chỉ cần bật tính năng Preview Scripts là đủ).
-
----
+**Nền tảng thực thi:** Keycloak không sử dụng Node.js hay V8 engine để chạy script. Nó sử dụng **Nashorn** (trong các bản Java cũ) hoặc **Rhino/GraalVM JavaScript** (trong Java mới). Điều này có nghĩa là bạn đang chạy JavaScript trên JVM, bạn có quyền truy cập vào các đối tượng Java (Java classes, Keycloak API objects) cung cấp sẵn trong Context.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Biến Biên Dịch Sinh Sát Tức Thời:
+Quá trình thực thi Script Mapper phức tạp và tốn kém tài nguyên (CPU) hơn so với các mapper thông thường do phải khởi tạo môi trường Scripting Engine.
 
 ```mermaid
 sequenceDiagram
-    participant Web as Lập Trình Viên (Màn Hình Admin)
-    participant DB as Keycloak Database
-    participant Engine as Java Scripting Engine (GraalVM)
-    participant Auth as Luồng Đúc Token
-    
-    Web->>DB: Cóp Paste 1 Đoạn Mã JS Tính Toán Tuổi, Bấm Nút LƯU!
-    DB->>DB: Mã JS được lưu xuống Bảng Cấu Hình Dưới Dạng String Thô.
-    
-    Note over Auth, DB: Khách Hàng Thực Tế Tiến Hành Đăng Nhập Lấy Token...
-    
-    Auth->>Auth: Lệnh Bài Sắp Ra Lò, Kích Hoạt Bộ Phận Script Mapper!
-    Auth->>DB: Lôi Dòng Mã JS String Thô Lên Đây!
-    
-    Auth->>Engine: Nhồi Biến `user` (Java Object UserModel), `token` (Java Object JsonWebToken) VÀ Dòng JS Thô Vào Máy Xay GraalVM!
-    Engine->>Engine: Chuyển Ngữ Tốc Độ Ánh Sáng Từ Javascript Sang Java Bytecode Gọi Ngược Lại Các Hàm Của Keycloak!
-    
-    Engine->>Auth: Tính Toán Xong! Bụng Cục Token Đã Được Sửa Chữa Đính Kèm Cấu Trúc Json Dị Dạng!
-    Auth->>Khách: Giao Token.
+    participant App as Client
+    participant KC as Keycloak Core
+    participant SE as JavaScript Engine (GraalVM/Rhino)
+    participant AuthZ as Keycloak Model (User/Realm API)
+
+    App->>KC: Token Request
+    KC->>KC: Load Script Mapper Configuration
+    KC->>SE: Kích hoạt Script Context (Binding Variables)
+    SE->>AuthZ: Tiêm đối tượng: user, realm, token, clientSession
+    SE->>SE: Thực thi mã JavaScript
+    Note over SE, AuthZ: Script có thể gọi ngược lại Java API:<br/>user.getAttributes(), realm.getName()
+    SE-->>KC: Trả về kết quả (exports)
+    KC->>KC: Chèn kết quả vào JWT Payload
+    KC->>KC: Ký Token
+    KC->>App: Trả về Token (JWT)
 ```
 
----
+**Cơ chế Binding Context (Các biến môi trường có sẵn trong Script):**
+Khi script được chạy, Keycloak tự động chèn (inject) các đối tượng (Java Objects) sau vào global scope của JavaScript:
+- `user`: Đối tượng `UserModel`.
+- `realm`: Đối tượng `RealmModel`.
+- `token`: Đối tượng Token (thường là `OIDCIDToken` hoặc `AccessToken`).
+- `userSession`: Đối tượng `UserSessionModel`.
+- `keycloakSession`: Đối tượng `KeycloakSession`.
+
+Để xuất giá trị ra ngoài claim, biến `exports` phải được gán giá trị cuối cùng.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Chết Rỗng Bụng JVM Hố Đen)**
-> **Tội Ác Viết Vòng Lặp Vô Hạn Trong Script:** Bạn viết một Script Mapper có một dòng Code While ngây thơ: `while(true) { ... }` hoặc gọi Đệ Quy Lầm Lạc vòng vo để đếm số Role của User. Bạn ung dung Save lại trên Giao Diện.
-> **Hậu Quả Chết Phanh Thây:** 
-> Vài giây sau Khách Đăng Nhập. Cái Luồng Token đó đập vào Máy Xay GraalVM. Máy Xay Cuốn Vào Hố Đen Vòng Lặp Vô Hạn CPU Thread 100%! Một Vài Khách Khác Đăng Nhập Cùng Lúc -> Cuốn Chết Hết Số Lượng Thread Trong Cổng! Nguyên Con Server Keycloak Máy Chủ Bị Treo Đơ Bốc Khói (CPU Spike), Tê Liệt Toàn Hệ Thống Mà Không Báo Bất Cứ 1 Dòng Lỗi Nào Ra Log Console (Vì Thread Đang Chạy Mãi Mãi Chứ Chưa Chết Error)!
-> **Biện Pháp Sống Còn Cấp Thánh Nhân:**
-> Lời Nguyền Của Script Mapper Là KHÔNG BAO GIỜ CHO PHÉP BẠN DEBUG (Gắn Điểm Breakpoint Lỗi) NHƯ JAVA! Viết Sai Là Chết Nguyên Đám!
-> 1. Dùng Tính Năng Này Cực Kỳ Hạn Chế! Chỉ Dùng Để Xử Lý Các Câu Lệnh `if-else` String, Tính Toán Date Đơn Giản Dưới 10 Dòng Code.
-> 2. Đừng Có Dại Dột Dùng Javascript Giao Thức Gọi Java Class Để Chọc Xuống Database Hoặc Bắn Http Call Ra Ngoài Bằng Vòng Lặp Khối! Máy Chủ Sẽ Tự Sát!
-> 3. Nếu Logic Quá Phức Tạp Lớn Hơn 20 Dòng? Hãy Bóp Cổ Bỏ Ngay Cái JS Này Đi! Quay Lại Trở Về Với Bài Viết Java Protocol Mapper SPI Của Chương 24! Viết SPI Java Xịn Có Try-Catch, Có Unit Test, Có Timeout Đàng Hoàng! Đừng Sống Sót Bằng Ma Đạo!
+> **Rủi ro Remote Code Execution (RCE) / Lỗ hổng Sandbox:** Script Mapper cho phép thực thi mã tùy ý trên máy chủ Keycloak. Dù Keycloak chạy trong Sandbox, nếu Sandbox có lỗ hổng (như các CVE của Rhino/Nashorn), kẻ tấn công có thể thoát Sandbox và chiếm quyền điều khiển Server (RCE). Vì lý do này, Keycloak đã **VÔ HIỆU HÓA MẶC ĐỊNH (Disabled by default)** tính năng Scripts trong các phiên bản mới.
 
----
+> [!WARNING]
+> **Performance Bottleneck (Nghẽn cổ chai hiệu năng):** Script engine chạy chậm hơn Native Java Mappers hàng chục lần. Nếu hệ thống có hàng ngàn login/giây, Script Mapper sẽ gây ngốn CPU cực mạnh.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+**Best Practices:**
+1. **Tránh sử dụng nếu có thể:** Luôn luôn tìm cách sử dụng các Native Mappers hoặc viết Java Custom Mappers (Deploy qua file .jar) thay vì dùng Script Mapper.
+2. **Kích hoạt an toàn:** Nếu bắt buộc phải dùng (Profile: `preview` hoặc `scripts`), không bao giờ để quyền Upload Script cho các Admin cấp thấp (Realm Admin).
+3. **Cache & Tối ưu logic:** Mã JS phải cực kỳ tối ưu, tránh các vòng lặp lớn, không nên xử lý chuỗi quá lớn. Không bao giờ thử gọi mạng ngoài (HTTP Call) từ bên trong script mapper vì nó sẽ block luồng xử lý của Keycloak.
 
-**1. Sếp Yêu Cầu Gắn Thêm Cái `Tuoi_Cua_Khach_Hang` Vào Bên Trong Bụng Của Cục Token (Dựa Trên Ngày Sinh Khách Cung Cấp Khi Đăng Ký). Theo Em Nên Dùng `User Attribute Mapper` Có Sẵn (Chỉ Móc Dữ Liệu Raw Ra) Hay Là Em Viết 1 Cái `Script Mapper` JS Nhỏ Xíu Hàm Trừ (Năm Hiện Tại - Năm Sinh) Ra Cái Tuổi Sạch Đẹp Rồi Mới Gắn Vào Token? Giải Pháp Nào Mang Tính Kỹ Sư Cao Hơn Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa?**
-- **Senior:** Dạ Thưa Sếp, Em Xin Phép Dùng Cục Mapper Bình Thường Gắn Thẳng Cái Ngày Sinh Nguyên Thủy Vào Mặc Cho Trông Nó Rất Dơ Dáy Ạ! Em Tuyệt Đối Không Code Script Móc Tuổi Bằng JS Ở Trên Này Đâu Ạ!
-  - **Lý Do Kỹ Thuật Máy Móc:** Dữ Liệu Ở Trên Này Là Identity Provider (Người Cung Cấp Danh Tính Trung Tâm). Nhiệm Vụ Của Nó Là Cấp Sự Thật Rõ Ràng Nguyên Thủy Của User (The Absolute Truth). Khách Sinh Ngày 01/01/2000 Thì Nó Trả Đúng Ngày Đó! Còn Việc Cái Thằng Backend Đằng Sau Hoặc Thằng Frontend Nhận Được Cục Token Đó, Nó Cần Tuổi Âm, Tuổi Dương, Hay Số Ngày Sống Còn Lại... Thì Đó Là Logic Kinh Doanh (Business Logic) Của App Chúng Nó! Để Bọn Dưới Đó Tự Lấy Năm Trừ Đi Nhau! Đẩy Code Xuống Dưới!
-  - **Hậu Quả Sai Trách Nhiệm (Coupling):** Nếu Anh Gắn Logic Khúc Trừ Năm Ở Script Mapper. Hôm Giao Thừa Chuyển Năm Mới Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, Code JS Không Cập Nhật Kịp Kéo Theo Khách Bị Tính Sai Tuổi Ngay Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Lại Đè Cổ Server Keycloak Bắt Nó Gánh Trọng Trách Tính Toán Toán Học Mọi Lúc Sinh Token Sẽ Ăn Mất CPU Không Cần Thiết (Dù Ít Nhưng Vẫn Là Sai Phạm Về Cấu Trúc Bất Biến)! Identity Provider Chỉ Làm Đúng 1 Việc: Mày Có Quyền Gì VÀ Thông Số Nguyên Gốc Của Mày Là Gì Thôi Ạ!
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
----
+**Lưu ý:** Để dùng Script Mapper trong Keycloak (Quarkus), bạn phải khởi động với cờ:
+`kc.sh start --features=scripts`
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Developer Guide - Script Providers - JavaScript providers.
+**Kịch bản:** Tạo claim `greeting` có giá trị `Xin chào, [First Name]!`. Nếu không có tên, trả về `Xin chào, Khách!`.
+
+1. Vào **Client Scopes** -> `profile` -> **Mappers**.
+2. Add mapper -> **By configuration** -> **Script Mapper**.
+3. Điền cấu hình:
+   - **Name:** `greeting-script`
+   - **Token Claim Name:** `greeting`
+   - **Claim JSON Type:** `String`
+   - **Add to access token:** `ON`
+   - **Script:**
+   ```javascript
+   var firstName = user.getFirstName();
+   if (firstName === null || firstName.trim() === "") {
+       exports = "Xin chào, Khách!";
+   } else {
+       exports = "Xin chào, " + firstName + "!";
+   }
+   ```
+   *(Lưu ý: `user` là một đối tượng `UserModel` của Java, nên bạn phải dùng phương thức Getter `getFirstName()` thay vì `user.firstName`).*
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Biến `exports` không tương thích:** Nếu `exports` được gán bằng một mảng hoặc đối tượng JSON phức tạp không tương thích với Java Jackson Serializer, Keycloak sẽ bắn lỗi HTTP 500 khi cố gắng sinh token. Cần serialize bằng `JSON.stringify()` hoặc trả về List chuẩn của Java (`new java.util.ArrayList()`).
+- **NullPointerException:** Khi gọi `user.getFirstAttribute("phone")` mà người dùng không có thuộc tính đó, Java API sẽ trả về `null`. Nếu bạn gọi thêm `.toString()` hay `.length` trên giá trị `null` này trong JS, script sẽ văng lỗi `NullPointerException` (từ JVM) làm sập quá trình login. Phải luôn check null.
+- **Mất Context trong Offline Tokens:** Script Mapper có thể chạy khi Refresh Token offline (lúc này UserSession bị giới hạn). Việc cố gắng lấy session attributes hoặc các thông tin client có thể gây lỗi.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior:** Script Mapper khác gì với các Mapper thông thường, và nó dùng ngôn ngữ gì?
+   - *Đáp án:* Script Mapper cho phép viết logic động để thao tác payload thay vì cấu hình tĩnh. Nó dùng ngôn ngữ JavaScript, được biên dịch và thực thi bởi JavaScript Engine trên Java (như Rhino, GraalVM).
+2. **Junior:** Tại sao tính năng Script Mapper lại bị Keycloak tắt theo mặc định?
+   - *Đáp án:* Do các lo ngại về bảo mật (nguy cơ RCE qua lỗ hổng sandbox) và hiệu năng suy giảm nghiêm trọng khi lượng đăng nhập lớn.
+3. **Senior:** Bạn được giao cấu hình một Script Mapper để lấy dữ liệu từ một API bên ngoài vào Token. Bạn có làm không? Tại sao?
+   - *Đáp án:* Không. Việc gọi HTTP request đồng bộ (synchronous) từ trong Script Mapper sẽ chặn thread đang xử lý Token Issuance của Keycloak. Dẫn đến thread pool bị cạn kiệt và sập Server (Denial of Service). Cách đúng là dùng Custom Java Event Listener hoặc SPI để làm việc đó bất đồng bộ, hoặc giải quyết ở tầng Gateway.
+4. **Senior:** Tại sao khi viết mã trong Script Mapper, `user.username` lại lỗi `undefined`, mà phải gọi `user.getUsername()`?
+   - *Đáp án:* Vì đối tượng `user` được chèn vào Script Engine không phải là một Object JavaScript (JSON), mà là một đối tượng Java thuần túy (`org.keycloak.models.UserModel`). Do đó, phải sử dụng đúng cú pháp gọi Method của Java thông qua cơ chế Java-JS Interoperability.
+5. **Senior:** Giải pháp thay thế tốt nhất, an toàn và hiệu năng cao nhất cho Script Mapper là gì?
+   - *Đáp án:* Phát triển một Custom Protocol Mapper bằng Java (implement `ProtocolMapper` SPI), đóng gói thành file `.jar` và deploy vào thư mục `providers` của Keycloak. Cách này cho hiệu suất native và bảo mật tối đa.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak Server Administration - Script Mappers](https://www.keycloak.org/docs/latest/server_admin/#_script_mappers)
+- [Keycloak SPI Documentation - Custom Mappers](https://www.keycloak.org/docs/latest/server_development/#_protocol_mapper_spi)
+- [GraalVM JavaScript Implementation](https://www.graalvm.org/javascript/)

@@ -1,97 +1,97 @@
-# Lab 1: Máy Bơm Động & Javascript Injection
-
 > [!NOTE]
-> Lab này yêu cầu bạn trực tiếp nhào nặn cấu trúc Data của JWT Token. Bạn sẽ dựng Built-in Mapper và sau đó thử bật tính năng Javascript Engine (vốn bị khóa kín) để bơm Cột Tính Toán Động trực tiếp vào payload, mô phỏng nghiệp vụ cực khó của Khách Hàng.
+> **Category:** Practical/Lab (Thực hành)
+> **Goal:** Áp dụng lý thuyết Protocol Mappers để thực hành cấu hình các loại Mapper phổ biến: Hardcoded Claim, Role Mapper, và User Attribute Mapper nhằm tùy biến dữ liệu trong Access Token và ID Token.
 
-## Chuẩn bị
-- Máy có Docker và Docker-Compose.
-- JWT Decoder (trang `jwt.io`).
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## Bước 1: Ráp Khung Đáy Rễ Căn Cứ Và Bật Mã Nguồn Javascript
+Công ty của bạn đang phát triển một hệ thống Microservices sử dụng Keycloak làm máy chủ Identity Provider (IdP). Nhóm Backend yêu cầu bạn cấu hình Keycloak sao cho mỗi khi User đăng nhập và nhận được JSON Web Token (JWT), Token đó phải chứa các thông tin sau để Backend có thể xử lý nghiệp vụ:
+1. Một trường tĩnh `company_name` luôn mang giá trị `"TechCorp"`.
+2. Danh sách các quyền của User trong hệ thống, nằm trong biến `user_authorities`.
+3. Phòng ban của User, được lấy từ thuộc tính `department` của User profile.
 
-1. Đi vào thư mục `11-Protocol-Mappers/code`. 
-2. Mở file `docker-compose.yml`. 
-   > **Quan trọng:** File này đã được tôi cài sẵn biến `KC_FEATURES=scripts` để đánh thức Động cơ GraalVM JS vốn bị RedHat phong ấn từ bản 18+.
+Bạn cần sử dụng cơ chế Protocol Mappers trong Keycloak để giải quyết yêu cầu này mà không cần viết code phía backend để lấy thêm thông tin.
 
-## Bước 2: Bật Cụm Khung Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Cắt Rò Rụng
+## 2. Chuẩn bị Môi trường (Prerequisites)
 
-```bash
-docker-compose up -d
-```
-Mở UI: `http://localhost:8080/admin` (admin/admin).
-Tạo 1 Realm mới: `Vingroup_Mapper`.
+- Một máy chủ Keycloak (phiên bản 21+ trở lên) đang chạy cục bộ tại `http://localhost:8080`.
+- Tài khoản quản trị `admin` / `admin`.
+- Một Realm mới mang tên `Lab-Mappers-Realm`.
+- Một Client mang tên `frontend-app` với cấu hình:
+  - **Client Authentication**: Off (Public Client)
+  - **Standard Flow**: Enabled
+  - **Valid Redirect URIs**: `https://oidcdebugger.com/debug` (hoặc `http://localhost:8080/*`).
+- Một người dùng (User) mang tên `alice`:
+  - Thiết lập mật khẩu cho `alice` (ví dụ: `12345`).
+  - Thêm thuộc tính (`Attributes`): Key = `department`, Value = `Engineering`.
+  - Có Realm Role là `manager`.
 
-## Bước 3: Đưa Đạn Dữ Liệu (Data Attribute) Vào DB
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-1. Vô Bảng `Users`. Bấm Add user.
-   - Username: `khach_vip`. Bấm Save.
-   - Tab Credentials: Đặt mật khẩu `pass`.
-2. **Khai báo Cột NoSQL (Attribute):**
-   - Vô Tab `Attributes` của user `khach_vip`.
-   - Nhập Key: `ma_vach`
-   - Nhập Value: `BARCODE-888999`
-   - Bấm Save.
+### Bước 3.1: Tạo Hardcoded Claim Mapper cho Company Name
+Chúng ta sẽ thêm một Client Scope chuyên biệt cho các Mapper bài Lab này để tiện quản lý.
+1. Truy cập Keycloak Admin Console.
+2. Chọn menu **Client Scopes** -> Nhấn **Create client scope**.
+3. Điền **Name:** `lab-custom-claims`. **Type:** `Default` (hoặc có thể để Optional rồi assign sau). Nhấn **Save**.
+4. Vào Client Scope vừa tạo, chuyển sang tab **Mappers**.
+5. Nhấn **Configure a new mapper** -> Tìm và chọn **Hardcoded claim**.
+6. Điền thông tin cấu hình:
+   - **Name:** `company-name-mapper`
+   - **Token Claim Name:** `company_name`
+   - **Claim value:** `TechCorp`
+   - **Claim JSON Type:** `String`
+   - **Add to ID token:** `ON`
+   - **Add to access token:** `ON`
+7. Nhấn **Save**.
 
-## Bước 4: Chế Tạo Ống Bơm Built-in Chọc DB
+### Bước 3.2: Tạo Role Mapper cho Quyền người dùng
+1. Vẫn trong tab **Mappers** của Client Scope `lab-custom-claims`.
+2. Nhấn **Add mapper** -> **By configuration** -> Chọn **User Realm Role**.
+3. Điền thông tin:
+   - **Name:** `user-roles-mapper`
+   - **Realm Role prefix:** (Bỏ trống)
+   - **Token Claim Name:** `user_authorities`
+   - **Claim JSON Type:** `String`
+   - **Multivalued:** `ON` (Để xuất ra mảng).
+4. Nhấn **Save**.
 
-1. Vô Bảng `Clients`. Tạo 1 Client tên `app-mua-sam`. (Tắt Auth, Bật Direct access grants để xài `curl` cho lẹ).
-2. Chuyển Qua Cột Menubar Bên Trái, Vô `Client scopes`.
-3. Bấm **Create client scope**. Tên là `scope_thong_tin_ma_vach`. Loại Default. Save.
-4. Bấm Vô Thằng Scope Mới Này -> Chuyển Qua Tab **Mappers**.
-5. Bấm `Configure a new mapper` -> Chọn loại **User Attribute**.
-6. Điền Các Thông Số Sống Còn:
-   - Name: `bom_ma_vach`.
-   - User Attribute (Nguồn): `ma_vach`.
-   - Token Claim Name (Đích Json): `barcode_secret`.
-   - Add to access token: `ON`.
-   - Save Lại Bức Cắt Khung!
+### Bước 3.3: Tạo User Attribute Mapper cho Department
+1. Thêm một mapper nữa -> Chọn **User Attribute**.
+2. Điền thông tin:
+   - **Name:** `department-attribute-mapper`
+   - **User Attribute:** `department` (Khớp đúng tên khóa trong tab Attributes của User).
+   - **Token Claim Name:** `user_department`
+   - **Claim JSON Type:** `String`
+3. Nhấn **Save**.
 
-## Bước 5: Bắn Mã Javascript Vô Động Cơ Engine
+### Bước 3.4: Gán Client Scope vào Client
+1. Di chuyển tới menu **Clients** -> Chọn `frontend-app`.
+2. Chuyển sang tab **Client Scopes**.
+3. Nhấn **Add client scope**, chọn `lab-custom-claims` và ấn **Add** -> chọn **Default** (nếu bạn chưa cấu hình nó là default ở bước 3.1).
 
-1. Đứng nguyên ở tab Mappers của Scope `scope_thong_tin_ma_vach`.
-2. Bấm tiếp `Configure a new mapper` -> Lần Này Chọn **Script Mapper**. (Nếu không có `KC_FEATURES=scripts` ở Docker, bạn sẽ không bao giờ thấy nút này!).
-3. Điền Thông Số Bắn JS:
-   - Name: `bom_js_tinh_toan`.
-   - Script (Chép Nhờ Mã Này Vào):
-     ```javascript
-     var ma = user.getFirstAttribute("ma_vach");
-     if (ma != null && ma.startsWith("BARCODE-")) {
-         exports = true;
-     } else {
-         exports = false;
-     }
-     ```
-   - Token Claim Name: `is_vip_barcode`.
-   - Claim JSON Type: Chọn `boolean`. (Để in ra JSON không có dấu nháy kép `""`).
-   - Add to access token: `ON`.
-   - Bấm Save!
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-## Bước 6: Kích Hoạt API Trút Bão Mạng Sinh JWT
-
-Bật Terminal, ép Keycloak nhả JWT bằng lệnh:
-
-```bash
-curl -X POST \
-  http://localhost:8080/realms/Vingroup_Mapper/protocol/openid-connect/token \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=password' \
-  -d 'client_id=app-mua-sam' \
-  -d 'username=khach_vip' \
-  -d 'password=pass'
-```
-
-Copy chuỗi `access_token` cực dài, đem dán lên `jwt.io`. BÙM! Nhìn vào bụng JSON:
+**Kiểm tra qua tính năng Evaluate của Keycloak:**
+1. Trong màn hình Admin Console của Client `frontend-app`, chuyển sang tab **Client Scopes**.
+2. Tìm nút **Evaluate** (Đánh giá).
+3. Tại phần **User**, chọn `alice`.
+4. Nhấn **Evaluate**.
+5. Cuộn xuống và chọn tab **Generated Access Token**.
+6. Quan sát mã JSON được sinh ra. Bạn sẽ thấy các cấu trúc tương tự:
 ```json
 {
-  "barcode_secret": "BARCODE-888999",
-  "is_vip_barcode": true,
-  ...
+  "company_name": "TechCorp",
+  "user_department": "Engineering",
+  "user_authorities": [
+    "manager",
+    "default-roles-lab-mappers-realm"
+  ]
 }
 ```
-Bạn Đã Hoàn Toàn Làm Chủ Tuyệt Kỹ Bơm Mạch Của Xưởng Đúc Dữ Liệu Keycloak!
 
-## Bước 7: Dọn Lệnh Rác
+**Troubleshooting (Xử lý sự cố):**
+- **Lỗi không thấy `user_department`:** Hãy kiểm tra kỹ lại tab **Attributes** của user `alice`, đảm bảo bạn đã gõ đúng chữ `department` (phân biệt hoa/thường) và đã nhấn nút "Save" sau khi thêm attribute.
+- **Lỗi Token trả về `user_authorities` là chuỗi thay vì mảng:** Bạn đã quên bật tùy chọn `Multivalued` trong Role Mapper. Sửa lại thành ON và sinh lại Token.
+- **Mappers không hoạt động trên Client:** Đảm bảo Client Scope chứa các Mapper đã được gán vào tab `Client Scopes` của `frontend-app`. Nếu bạn gán nó dưới dạng `Optional`, Client phải gửi tham số `scope=lab-custom-claims` trong lúc gửi Authorization Request thì Keycloak mới kích hoạt các Mappers này.
 
-```bash
-docker-compose down -v
-```
+> [!TIP]
+> Việc sử dụng tính năng **Evaluate** ngay trong giao diện admin giúp các nhà phát triển Backend và IAM Admin kiểm thử các thay đổi Mapper lập tức mà không cần phải gọi API bằng Postman hay cấu hình ứng dụng web phức tạp.

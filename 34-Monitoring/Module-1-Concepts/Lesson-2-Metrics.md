@@ -1,81 +1,93 @@
-# Lesson 2-4: Hệ Sinh Thái Số Liệu (Metrics - Prometheus - Grafana)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Học cách bật đường truyền số liệu (Metrics). Thiết lập Prometheus đi hút (Scrape) dữ liệu từ Keycloak. Cuối cùng biến chúng thành những Biểu Đồ Trực Quan Mãn Nhãn trên Grafana.
+> **Category:** Theory
+> **Goal:** Nắm vững cơ chế xuất dữ liệu Metric chuẩn Prometheus bằng Micrometer trong Keycloak và các chỉ số đo lường sống còn đối với hiệu năng hệ thống.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Bộ Bơm Số Liệu (Micrometer Metrics)
-Bình thường Keycloak chạy lầm lũi không khai báo gì.
-Khi bạn bật tham số `kc.sh start --metrics-enabled=true`, Cổng không gian số liệu được mở ra ở đường dẫn `/metrics`.
-Bên trong đường dẫn đó, thay vì Json Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, nó phun ra hàng ngàn dòng Text với định dạng kỳ quái (OpenMetrics format) như thế này:
-`jvm_memory_used_bytes{area="heap",id="G1 Survivor Space"} 4194304.0`
-`hikaricp_connections_active{pool="keycloak"} 2.0`
-Những con số này vô nghĩa với mắt người Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Nhưng là Thức Ăn Hảo Hạng Cho Prometheus!
+Trong quản trị định lượng (Observability), **Metrics (Số liệu đo lường)** cung cấp cái nhìn tổng quan về "sức khỏe tổng thể" của hệ thống thông qua các con số thống kê theo thời gian (Time-series data).
 
-### 1.2. Kẻ Hút Máu (Prometheus Scraper)
-Prometheus là một cỗ máy (Time-Series Database) Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. 
-Cấu trúc hoạt động của nó dựa trên Cơ Chế "HÚT - PULL" Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Nghĩa là Keycloak Không Chủ Động Gửi Dữ Liệu Cho Nó Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! 
-Mà chính Prometheus (Sau khi được Bạn Viết Cấu Hình Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng) Sẽ Cử 1 Cái Vòi Cứ 15 Giây 1 Lần Đâm Thẳng Vào Cổng `/metrics` Của Keycloak Để Chép Hết Đống Chữ Nghĩa Kia Về Ghi Vào Bụng Nó Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! (Nó tự đóng mộc Timestamp thời gian Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp).
+Keycloak (Quarkus) sử dụng thư viện **Micrometer** (đóng vai trò như một facade - mặt tiền tương tự SLF4J cho logging) để thu thập dữ liệu và phơi bày chúng dưới định dạng văn bản chuẩn của **Prometheus**. Một số loại Metrics cốt lõi được xuất ra bao gồm:
 
-### 1.3. Bảng Vẽ Phép Thuật (Grafana)
-Khi Bụng Prometheus Chứa Hàng Tỷ Con Số Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Bạn Không Thể Đọc Bằng Mắt Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-Bạn Kết Nối Thằng Họa Sĩ Đám Mây "Grafana" Trỏ Về Nguồn Dữ Liệu Của Prometheus.
-Bạn Viết Mã Truy Vấn (PromQL Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa): `sum(hikaricp_connections_active)`. Lập Tức Grafana Sẽ Vẽ Thành Một Cái Đường Kẻ Chạy Uốn Lượn Báo Hiệu Số Kết Nối Database Đang Lên Hay Xuống Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
-Với Cộng Đồng Mã Nguồn Mở Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề, Bạn Chẳng Cần Phải Tự Vẽ Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bọn Tây Đã Vẽ Sẵn Những Cái Dashboard Đẹp Như Buồng Lái Đĩa Bay Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Bạn Chỉ Việc Lên Mạng Nhập Code (Ví Dụ Mã Dashboard Keycloak: `19248` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh) Là Nó Nhúng Bùm Một Phát Vào Màn Hình Của Bạn Oanh Khung Dịch Lụa Mạch Lệnh! 
+*   **JVM Metrics:** Trạng thái Heap Memory, Non-Heap, Garbage Collection (GC) pauses, số lượng active threads.
+*   **Hibernate & Agroal Metrics:** Tình trạng Connection Pool (số lượng connection đang dùng, đang rảnh), bộ đệm L2 Cache của Hibernate, thời gian thực thi Query.
+*   **HTTP Server Metrics:** Số lượng request (Requests count), thời gian phản hồi (Response latency), mã lỗi (HTTP 500, 4xx).
+*   **Infinispan / Cluster Metrics:** Trạng thái phân mảnh bộ nhớ (Cache replication), độ trễ đồng bộ dữ liệu giữa các node Keycloak.
 
----
+Cấu trúc một dòng metric chuẩn Prometheus:
+`<metric_name>{<label_name>="<label_value>", ...} <metric_value>`
+*Ví dụ:* `http_server_requests_seconds_count{method="GET", status="200"} 15423`
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Của Đường Máu Giám Sát:
+Hệ thống theo dõi Metrics vận hành theo mô hình **Pull-based** (kéo dữ liệu) thay vì Push (đẩy).
 
 ```mermaid
 sequenceDiagram
-    participant Admin as Mắt Người (Quản Trị)
-    participant Grafana as Bảng Vẽ (Port 3000)
-    participant Prom as Prometheus (Port 9090 Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)
-    participant KC as Cụm Máy Chụp Keycloak (Port 8080)
+    participant P as Prometheus Server
+    participant KC as Keycloak (Management Port 9000)
+    participant Micro as Micrometer Registry
+    participant JVM as JVM / Hibernate / Undertow
+
+    Note over JVM,Micro: Các hệ thống liên tục ghi đè/cộng dồn<br>con số vào bộ nhớ RAM (Counters/Gauges).
+    JVM->>Micro: Increment Request Count / Update Memory Gauge
     
-    Note over Prom, KC: Tiến Trình Hút Máu Định Kỳ (Scrape Loop Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh)
-    loop Cứ 15 Giây Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề
-        Prom->>KC: Bơm Vòi Khảo Sát Tới `/metrics`
-        KC->>KC: JVM Micrometer Đóng Gói Tất Cả Chỉ Số Hiện Tại Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-        KC->>Prom: Trả Ra Một Mớ Chữ Nghĩa OpenMetrics Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh!
-        Prom->>Prom: Ép Chữ Vào Time-Series Database (Lưu Kèm Số Mili-giây Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị) Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
-    end
+    Note over P,KC: Prometheus kích hoạt chu kỳ Scrape (vd: 15s/lần)
+    P->>KC: HTTP GET /metrics
+    KC->>Micro: Yêu cầu lấy Snapshot của toàn bộ Registry
+    Micro-->>KC: Format toàn bộ Counters/Gauges thành Text
+    KC-->>P: Response HTTP 200 (Text/Plain Prometheus Format)
     
-    Note over Admin, Prom: Hành Trình Nhìn Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    Admin->>Grafana: Mở Màn Hình Bảng Điều Khiển Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-    Grafana->>Prom: Dùng Lệnh PromQL Xin Data 1 Tiếng Vừa Qua Về Cột Memory! Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-    Prom->>Grafana: Ném Cục Khối Data Mảng Khổng Lồ Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    Grafana->>Admin: Vẽ Nét Cọ Thành Biểu Đồ Sắc Nét! Thấy Gợn Sóng RAM Chuẩn Bị Đụng Trần Nhà Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Admin Kịp Thời Bấm Lệnh Auto-Scale Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Cứu Thất Bại!
+    Note over P: Prometheus lưu dữ liệu vào Time-Series Database<br>(TSDB) trên đĩa cứng.
 ```
 
----
+*Cơ chế cực nhẹ (Lightweight):* Việc update giá trị metrics (ví dụ: `counter.increment()`) trong JVM được thực hiện bởi các nguyên hàm phần cứng (như thao tác CAS - Compare And Swap, Atomic integers), hoàn toàn không khóa (lock-free) gây ảnh hưởng tới tiến trình nghiệp vụ.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Rò Rỉ Bí Mật Qua Biểu Đồ Thống Kê)**
-> **Tội Ác Bật Full Metrics Mà Không Giới Hạn Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh:** Có Thêm Một Cái Metrics Nữa Không Kém Phần Nguy Hiểm Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Nếu Ban Quản Trị Cấu Hình Prometheus Hút Hết Sạch Không Suy Nghĩ. Và Khi Xem Trên Grafana Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Bạn Lại Phơi Cổng Grafana Ra Internet Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Hoặc Không Đặt Password Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. 
-> Bọn Hacker Đứng Ngoài Nhìn Thấy Cái Đường Biểu Đồ CPU Của Keycloak Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Chúng Nó Sẽ Nhận Ra Rằng: "À Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Khi Tao Bắn Cú DDoS Vào Cổng Lấy Token `/token` Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp, CPU Mày Tăng Lên Có 5% Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. NHƯNG Khi Tao Bắn Cú Bấm Giả Lập Forgot Password Oanh Khung Dịch Lụa Mạch Lệnh, CPU Mày Tăng Lên 15% Do Khâu Gửi Email Tốn Lực Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Chết Mày Rồi Con Ạ Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Tao Sẽ Thay Đổi Kịch Bản DDoS Nhắm Thẳng Vào Cổng Forgot Pass Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh!". 
-> Dữ Liệu Thống Kê Chính Là Thanh Kiếm Giúp Kẻ Thù Tối Ưu Hóa Sức Công Phá Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! 
-> **Biện Pháp Sống Còn Cắt Đứt Nguồn Sáng Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh:**
-> Grafana Phải Nằm Trong Mạng Riêng Ảo (VPN Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề). Nếu Lên Cloud Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Buộc Phải Dùng SSO (Dùng Chính Keycloak Để Làm Khóa Đăng Nhập Mở Grafana Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề). Hơn Thế Nữa Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Ở Cấu Hình Của Thằng Hút Prometheus Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Chặn Sạch Những Cái Label Chỉ Số Nào In Rõ Tên User, Tên App (Nhiều Hệ Thống Log Kém Bảo Mật Nó Bắn Ra Chữ `login_fail{user="boss"} 5` Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Chẳng Khác Nào Nói Cho Thiên Hạ Biết Tên Giám Đốc Của Tao Đang Bị Tấn Công Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Metrics Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Chỉ Được Phép Lưu Mức Tổng Hợp Ẩn Danh Thưa Sếp Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
+*   **Bảo mật đường truyền Metrics:** Route `/metrics` chứa cực kỳ nhiều thông tin nhạy cảm. Phải chạy cổng management 9000 trên mạng nội bộ (Internal VPC), hoặc cấu hình Mutual TLS (mTLS) và Token Authentication trên Prometheus Scraper.
+*   **Cẩn trọng với Cardinality Explosion (Sự bùng nổ thẻ gắn):** Không bao giờ đưa các dữ liệu động, ngẫu nhiên (ví dụ: User ID, Client ID động, Session ID) vào Label của Metric.
+    *   *Ví dụ xấu:* `http_requests{path="/api/users/123"}`, `http_requests{path="/api/users/456"}`
+    *   Việc này sẽ tạo ra hàng triệu chuỗi Time-series độc lập trong TSDB của Prometheus, làm cạn kiệt RAM và làm sập máy chủ giám sát (OOM Killed). Các đường dẫn cần được chuẩn hóa (Templated path: `/api/users/{id}`).
 
----
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+Kích hoạt Metrics trên Keycloak:
+`KC_METRICS_ENABLED=true`
 
-**1. Em Thấy Keycloak Nó Phun Ra Khá Đầy Đủ Số Lượng Active Session, User Mới Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng... Cho Metrics Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Nhưng Em Gặp Một Đám Đứt Mạch Chết Khách Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa: Cứ Mỗi Sáng Thứ Hai Là Lúc 8h Cả Ngàn Sinh Viên Lên App Trường Thi Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Keycloak Load Khét Lẹt Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Bắn Timeout Rớt Đài. Em Xem Biểu Đồ Metric Của Cái Pool Database (HikariCP) Thì Vẫn Chạy Mức Cực Thấp (Rất Còn Chỗ Trống Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp). Chắc Chắn Ko Lỗi Do Thiếu Connection Oanh Khung Dịch Lụa Mạch Lệnh! Vậy Có Cái Metric Kỳ Bí Nào Của JVM Ở Lõi Ẩn Của Java Đang Thắt Cổ Hệ Thống Trong Trận Cuồng Phong Đó Không Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị?**
-- **Senior:** Dạ Thưa Sếp Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Đây Chính Là Bản Cáo Trạng Kinh Điển Cho Việc Tối Ưu Hóa (Performance Tuning Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh) Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Nếu DB Nhàn Rỗi, Có Tức Là Ống Dẫn Vẫn To Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Nút Cổ Chai Nó Nằm Ngay Ở Nền Móng Threads (Công Nhân Làm Việc Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa)!
-  - **Kẻ Ám Sát Thầm Lặng (Worker Threads Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa):** Lõi Quarkus Nhận Được HTTP Request Từ Khách Hàng Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Cứ Mỗi Thằng Khách Phóng Cái Yêu Cầu Tới Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. JVM Của Keycloak Sẽ Giao Nhiệm Vụ Này Cho 1 Thằng Công Nhân Xử Lý Rác (Worker Thread Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy). Mặc Định Của Quarkus Là Số Công Nhân Này Được Cấp Khoảng 200 Đứa Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! 
-  - Khi 1000 Sinh Viên Tràn Vào Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Chỉ Có 200 Đứa Được 200 Công Nhân Bắt Đầu Bưng Bê Giải Quyết (Trong Đó Có Những Lệnh Nó Phải Gọi Gọi Trả DB Hay BCrypt Giải Mã Chữ Lâu 50ms Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng). 800 Thằng Sinh Viên Còn Lại Sẽ Bị Xếp Tràn Ra Đường Nhựa (Task Queue Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh). Hàng Dài Chờ Ở Cửa Quá Lâu Gây Timeout 504 Nginx Và Hủy Bỏ Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Dù Hệ Thống Memory RAM CPU Vẫn Chẳng Chạm Tới Đỉnh Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-  - **Mảnh Vá Phép Thuật Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp:** Em Sẽ Soi Ngay Vào Metric Có Chữ `jboss_undertow_worker_pool_active` (Của Bản Cũ) Hoặc `quarkus_http_server_active_requests` (Của Bản Mới Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa). Nếu Nhìn Thấy Cái Đường Kẻ Vẽ Thằng Công Nhân Này Nó Đi Lên Chạm Đỉnh Đúng Ngưỡng Max Oanh Khung Dịch Lụa Mạch Lệnh. Lập Tức Em Mở Biến Môi Trường Của Server: `KC_HTTP_WORKER_THREADS=500` (Gấp Hơn Đôi Mức Cơ Sở Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề). Tức Khắc Cổ Chai Ở Máy Chủ Này Phình To Ra Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Đón Toàn Bộ 1000 Yêu Cầu Vượt Dốc Khảo Thí Của Đại Học Sếp Ạ Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề! Chỉ Khi Nào Mình Đọc Rõ Các Mảnh Chỉ Số Ở Mức Sâu Sát Tầng Ứng Dụng Nhất (JVM Thread Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) Thì Mình Mới Vặn Được Cỗ Máy Của Keycloak Nó Bơm Nhạc Đỉnh Của Chóp!
+Ví dụ cấu hình một `Scrape Job` trong tệp `prometheus.yml` để Prometheus chủ động kéo dữ liệu từ Keycloak:
 
----
+```yaml
+scrape_configs:
+  - job_name: 'keycloak_metrics'
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['keycloak-server-ip:9000']
+```
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Administration Guide - Enabling Keycloak Metrics.
+Một mẫu đồ thị Grafana (PromQL) tính toán số lượng Request lỗi 5xx trên giây:
+`sum(rate(http_server_requests_seconds_count{status=~"5.."}[1m])) by (method)`
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+*   **Scrape Timeout do Keycloak quá tải:** Nếu server Keycloak đang bị "Stuck Thread" hoặc "100% CPU", tiến trình trả về nội dung của `/metrics` cũng sẽ bị đình trệ. Prometheus gửi request kéo dữ liệu và bị Timeout (mặc định 10s). TSDB sẽ bị thủng lỗ (Gaps in data) trên đồ thị vào những thời điểm quan trọng nhất (khi sự cố xảy ra). *Cách giảm thiểu:* Phân tách riêng các worker threads cho Management endpoint để nó không dùng chung thread-pool với Business traffic.
+*   **Metrics Reset do Pod Restart:** Dữ liệu trong Micrometer là lưu trên RAM. Khi Pod Keycloak bị khởi động lại, các bộ đếm (Counters) sẽ reset về 0. PromQL xử lý việc này bằng hàm `rate()`, tự động hiểu được sự sụt giảm đột ngột và bù đắp tính toán (handling counter resets).
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1.  **Junior:** Mô hình hoạt động của Prometheus để lấy dữ liệu từ Keycloak là Push hay Pull?
+    *   *Đáp án:* Là mô hình Pull. Prometheus chủ động gọi HTTP GET định kỳ tới endpoint `/metrics` của Keycloak.
+2.  **Junior:** Các định dạng (format) hiển thị dữ liệu của URL `/metrics` trông như thế nào?
+    *   *Đáp án:* Đó là văn bản thuần túy (Plain Text), mỗi dòng là một metric và giá trị, kết hợp với các dấu ngoặc nhọn `{}` để lưu danh sách nhãn (labels).
+3.  **Senior:** Hiện tượng "High Cardinality" trong hệ thống Metrics là gì và tại sao nó nguy hiểm?
+    *   *Đáp án:* Là việc có quá nhiều giá trị Label độc nhất cho một Metric (ví dụ: gắn User IP Address vào Label). Nó làm phình to cấp số nhân số lượng chuỗi thời gian (Time-Series) cần lưu trữ, phá hủy bộ nhớ RAM và làm giảm hiệu năng truy vấn của Prometheus Server.
+4.  **Senior:** Nếu muốn theo dõi hiện tượng "Memory Leak" trong Keycloak, bạn sẽ nhìn vào Metric nào?
+    *   *Đáp án:* Phân tích JVM Heap Memory Usage (`jvm_memory_used_bytes` kết hợp `area="heap"`). Biểu đồ của memory leak điển hình có dạng "Răng cưa đi lên" (Sawtooth up), các đợt rác bị gom (GC) không thể dọn dẹp sạch làm đáy của biểu đồ nâng dần theo thời gian cho tới khi gặp lỗi OOM.
+5.  **Senior:** Micrometer khác gì với OpenTelemetry Metrics?
+    *   *Đáp án:* Micrometer là một thư viện phổ biến (đặc biệt trong hệ sinh thái Spring/Quarkus) định dạng chủ yếu hỗ trợ Prometheus. OpenTelemetry là chuẩn công nghiệp W3C mới hơn, không chỉ tập hợp Metrics mà còn Traces và Logs. Tuy nhiên, Micrometer hiện đang hỗ trợ bridge dữ liệu để tương thích với hệ sinh thái OpenTelemetry.
+
+## 7. Tài liệu tham khảo (References)
+
+*   [Keycloak Observability Guide](https://www.keycloak.org/server/observability)
+*   [Micrometer Concept Documentation](https://micrometer.io/docs/concepts)
+*   [Prometheus Data Model & PromQL](https://prometheus.io/docs/concepts/data_model/)

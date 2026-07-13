@@ -1,73 +1,98 @@
-# Lesson 1: Nhồi Nhét Dữ Liệu Dị Biệt Vào Token (Custom Protocol Mapper)
-
 > [!NOTE]
-> **Category:** Theory & Practical (Lý thuyết & Thực hành)
-> **Goal:** Học cách đẻ ra một `OIDC Protocol Mapper` bằng Java Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Giải quyết bài toán: Dữ liệu cần bỏ vào Token KHÔNG NẰM TRONG KEYCLOAK Oanh Khung Dịch Lụa Mạch Lệnh, mà phải lấy theo thời gian thực (Real-time Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) từ một API hệ thống ngoài Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy.
+> **Category:** Theory (Lý thuyết)
+> **Goal:** Hiểu sâu về cấu trúc kiến trúc của Protocol Mapper trong Keycloak, cách thức nó hoạt động để nhúng các custom claims (dữ liệu tùy biến) vào Token (JWT) theo chuẩn OAuth2/OIDC.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Trong thế giới OAuth2.0 và OpenID Connect (OIDC), Token (như Access Token, ID Token) là phương tiện chuyên chở thông tin (claims) về người dùng và quyền hạn.
+**Protocol Mapper** trong Keycloak là các module chịu trách nhiệm ánh xạ (map) dữ liệu từ mô hình đối tượng nội bộ của Keycloak (User, Group, Role, Attributes) vào các Token được tạo ra.
 
-### 1.1. Sự Bất Lực Của Các Mapper Có Sẵn Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề
-Keycloak cung cấp sẵn rất nhiều Mapper trong giao diện (như lấy thuộc tính User Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp, lấy Role Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, lấy thông tin Client Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). 
-Nhưng nếu sếp yêu cầu: *"Tao muốn Access Token sinh ra phải chứa 1 trường (Claim Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) tên là `vip_level` Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Mà cái VIP Level này là cấp bậc tính toán realtime từ Hệ Thống Tích Điểm CRM (Customer Relationship Management Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề) viết bằng Node.js Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Mày lấy được không?"*
-Lúc này Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, các Mapper Mặc Định Bó Tay 100%! Vì nó không biết cách nào để Call REST API sang thằng Node.js kia Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Cứu Cánh Duy Nhất: **Custom Protocol Mapper Bằng Java**.
+Mặc định, Keycloak cung cấp sẵn nhiều mapper:
+- User Attribute Mapper: Đưa thuộc tính user (như `department`) vào token.
+- User Role Mapper: Đưa các Role vào token.
 
-### 1.2. Protocol Mapper Là Cái Gì Về Bản Chất Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa?
-Về mặt Code Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, một Custom Mapper là sự kết hợp của Class Abstract `AbstractOIDCProtocolMapper` Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy và Interface `OIDCAccessTokenMapper` Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa (nếu muốn móc vào Access Token).
-- Nó cung cấp 1 hàm có tên là `transformAccessToken()` Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
-- Hàm này sẽ chạy ĐÚNG 1 MILISECOND TRƯỚC KHI KEYCLOAK MÃ HÓA CHỮ KÝ GỬI VỀ CHO KHÁCH Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! (Khoảnh khắc nhồi nhét cuối cùng Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh).
-- Tại hàm này Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, bạn nhận được cái Vỏ Token Rỗng (JSON Object) Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Code của bạn tự viết logic gọi API sang CRM Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, lấy `vip_level` Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, rồi gõ lệnh `token.getOtherClaims().put("vip_level", level)` Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. Xong!
-
----
+Khi các cấu hình mặc định không đáp ứng đủ logic phức tạp (ví dụ: cần gọi đến một API từ External CRM hoặc chạy một thuật toán mã hóa tùy biến để tính toán giá trị Claim rồi nhúng vào Token), chúng ta cần viết **Custom Protocol Mapper**. Nó là một bản mở rộng của Keycloak Service Provider Interfaces (SPI).
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
-
-Hành Trình Oanh Cáp Bọc Thép Khống Chế Hàm `transformAccessToken`:
+Quá trình tạo Token diễn ra trong class `TokenManager` của giao thức OIDC. Tại thời điểm Token được sinh ra, Keycloak sẽ chạy qua một chuỗi các Mapper được cấu hình cho Client cụ thể.
 
 ```mermaid
 sequenceDiagram
-    participant User as Khách (Client App Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy)
-    participant Keycloak as Cỗ Máy OIDC Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề
-    participant Mapper as Custom Mapper Java Của Bạn Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-    participant CRM as CRM Node.js Server Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+    participant App as Client Application
+    participant KC as Keycloak (TokenManager)
+    participant Mapper as Custom Protocol Mapper
+    participant External as DB/External API
     
-    User->>Keycloak: POST /token (Mã Authorization Code Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị)
-    Keycloak->>Keycloak: Kiểm Tra Hợp Lệ Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Khởi Tạo AccessToken JSON Object Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    
-    Keycloak->>Mapper: Kêu Gọi Tất Cả Mapper Có Sẵn Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! "Đứa nào cần nhét dữ liệu gì thì nhét nhanh lên!"
-    Mapper->>CRM: Bắn HTTP GET /api/v1/users/{userId}/level Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh
-    CRM->>Mapper: Trả Về JSON { "level": "DIAMOND" } Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-    Mapper->>Keycloak: Ép Ký Tự "DIAMOND" Vào Thuộc Tính JSON Của Token Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh
-    
-    Keycloak->>Keycloak: Lấy Ra Khóa Bí Mật RSA (Key) Ký Digital Signature Lên Thành JWT Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-    Keycloak->>User: Trả Về JWT (Bên trong có chữ "DIAMOND" Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng)
+    App->>KC: Token Request (Authorization Code/Refresh)
+    KC->>KC: Validate Request
+    KC->>KC: Khởi tạo rỗng ID Token / Access Token
+    loop Xử lý từng Protocol Mapper
+        KC->>Mapper: transformAccessToken(token, mappingModel, keycloakSession, userSession, clientSession)
+        Mapper->>External: Fetch custom data (nếu cần)
+        External-->>Mapper: Return data
+        Mapper->>Mapper: Chèn claim vào Token (token.getOtherClaims().put("key", "value"))
+    end
+    KC->>KC: Ký số (Sign) Token (bằng RSA/ES256...)
+    KC->>App: Trả về Token sinh ra
 ```
 
----
+Cơ chế cấp thấp:
+- Lớp custom cần extends `AbstractOIDCProtocolMapper` và implement các interface như `OIDCAccessTokenMapper`, `OIDCIDTokenMapper`, `UserInfoTokenMapper`.
+- ProviderFactory sẽ đăng ký lớp này qua file `META-INF/services/org.keycloak.protocol.ProtocolMapper`.
+- Token chỉ được ký (signed) SAU KHI tất cả các Mapper đã hoàn tất việc sửa đổi cấu trúc dữ liệu của nó.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!WARNING]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Thắt Cổ Chai Hiệu Năng Ở Hàm Biến Đổi Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp)**
-> **Tội Ác Gọi API Trực Tiếp Đồng Bộ Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:** Một lập trình viên viết hàm Gọi CRM API Bằng Lệnh `RestTemplate.get()` Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Trực Tiếp Bên Trong Khối Lệnh `transformAccessToken` Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. 
-> **Hậu Quả Chết Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp:** 
-> Bạn Phải Nhớ Rằng Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Hàm Chuyển Đổi Này Bị Gọi Trong Vòng Đời Rất Nhạy Cảm Sinh JWT Của Hệ Thống Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Bình thường tốc độ sinh JWT là 10 miliseconds Oanh Khung Dịch Lụa Mạch Lệnh. Nay Vì Hệ Thống CRM Quá Tải Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, Phản Hồi Trễ Lên Đến 5 Giây Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Vòng Đời Của Keycloak Bị Khóa Chết Nghẽn Cổ Chai Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chờ Đợi Phản Hồi Từ CRM. Có Tầm 200 Ông Khách Hàng Gọi Login Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Là Ngốn Cạn Sạch 200 Connection Thread Của Tomcat/Quarkus! Toàn Bộ Hệ Thống Đứng Hình Hoàn Toàn Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh (Cascading Failure Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp).
-> **Biện Pháp Sống Còn Lớp Trọng Lực OIDC Đáy Lụa:** Khi Viết Custom Mapper Mà Phải Gọi Ngoại Trú (External Call Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa), BẮT BUỘC Phải Áp Dụng 2 Tầng Phòng Thủ Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:
-> 1. Thiết Lập Timeout Siêu Ngắn (Ví dụ 500ms Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề). Nếu Quá 500ms Mà CRM Chưa Phản Hồi Thì Chấp Nhận Sinh Token Bỏ Trống Thuộc Tính Vip Level Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Tránh Kéo Chết Keycloak! (Fail-fast Design Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề).
-> 2. Đưa Dữ Liệu Vào Bộ Đệm (Cache Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh). Khi Vừa Lấy Được Level Từ CRM Về Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Ghi Nó Vào Cache Infinispan Của Keycloak Với TTL Tầm 10 Phút Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Những Lần Sinh Token Tiếp Theo Của Khách Hàng Này Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa (Ví dụ lấy Refresh Token Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) Cứ Lôi Từ Cache Ra Mà Điền Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Không Được Phép Phá Đáy Sang CRM Lần Nữa!
+> Mọi lệnh gọi API bên ngoài (External API/DB calls) bên trong phương thức của Custom Protocol Mapper cần cực kỳ cẩn trọng về độ trễ (Latency). Token creation là một quá trình đồng bộ (synchronous). Nếu API bên ngoài phản hồi chậm, quá trình đăng nhập của toàn bộ hệ thống sẽ bị chậm theo, gây nghẽn cổ chai (bottleneck).
 
----
+> [!IMPORTANT]
+> Hạn chế nhúng quá nhiều dữ liệu (Heavy payload) vào trong Access Token (hoặc ID Token). Token quá lớn có thể vượt quá giới hạn Header Size của các Reverse Proxy, Web Server (như Nginx mặc định limit 8KB headers). Thay vì thế, hãy lưu chỉ một định danh ID, và ứng dụng lấy thêm thông tin qua UserInfo endpoint.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+- **Caching:** Nếu buộc phải fetch dữ liệu từ bên ngoài, hãy implement cơ chế cache cục bộ (sử dụng Infinispan của Keycloak) để lưu các kết quả đã truy vấn.
 
-**1. Anh Thấy Giao Diện Admin Console Của Keycloak Nó Cho Phép Code Trực Tiếp Cái Logic Mapper Bằng Ngôn Ngữ JavaScript Ngay Trên Trình Duyệt (Script Mapper Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị). Vậy Việc Gì Phải Cực Khổ Mở IntelliJ Lên Viết Custom Java Provider Cho Nó Khổ Dâm Ra Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh? Em So Sánh Lợi Ích Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa / Bất Lợi Của 2 Thằng Đi Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa?**
-- **Junior:** Dạ Em Thích Xài JS Hơn Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Nhanh Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Đỡ Phải Build Docker Rồi Chờ Quét.
-- **Senior:** Dạ Thưa Sếp Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Script Mapper (Nashorn/GraalVM Engine Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) Nó Bị RedHat Bóp Chết Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Và Loại Bỏ Rất Nhiều Tính Năng Rồi Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa (Mặc Định Tính Năng Này Bị Tắt Và Xóa Khỏi Giao Diện Vì Quá Nhiều Rủi Ro Bảo Mật Chèn Mã Độc RCE Oanh Khung Dịch Lụa Mạch Lệnh). Bất Lợi Của JavaScript Thằng Chạy Trong Lõi Java Đó Là:
-  - Hiệu Năng Rác Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh: Chạy Qua Máy Ảo JS Nghẽn Rất Chậm Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-  - Bị Cô Lập Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh: Bạn Hầu Như Rất Khó Viết Code JS Để Gọi HTTP Ra Bên Ngoài Trong Cái Ô Nhập Nhỏ Bé Của Giao Diện Admin Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề.
-  - Cực Khó Bảo Trì Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh: Code Để Lên Giao Diện Admin Thì Dev Khác Của Team Không Thể Quản Lý Được Lịch Sử Code Git Commit Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chỉnh Sửa Sai 1 Nét Chấm Phẩy Là Không Thể Rollback Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
-Ngược Lại Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Viết Java SPI Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Mang Lại Tốc Độ Bàn Thờ Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề, Khả Năng Gọi HTTP/Kết Nối DB Dễ Dàng Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, Và Đặc Biệt Quản Lý CI/CD Build Quét Code Quét Lỗi Bằng Sonarqube Thoải Mái Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Nên Ở Tầm Cỡ Enterprise Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng Bọn Em Buộc Phải Chơi Bằng Mã Nguồn Java Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+Cấu trúc cơ bản của một Custom Protocol Mapper bằng Java:
+```java
+public class MyCustomMapper extends AbstractOIDCProtocolMapper implements OIDCAccessTokenMapper, OIDCIDTokenMapper, UserInfoTokenMapper {
 
----
+    public static final String PROVIDER_ID = "my-custom-mapper";
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Developer Guide - OIDC Protocol Mapper.
+    @Override
+    public String getDisplayCategory() {
+        return TOKEN_MAPPER_CATEGORY;
+    }
+
+    @Override
+    public String getDisplayType() {
+        return "My Custom Claim Mapper";
+    }
+
+    @Override
+    public void transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session, UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
+        // Logic nhúng custom claim
+        token.getOtherClaims().put("custom_tenant_id", generateTenantId(userSession.getUser()));
+        super.transformAccessToken(token, mappingModel, session, userSession, clientSession);
+    }
+}
+```
+Sau khi build ra file JAR và copy vào thư mục `providers/`, mapper này sẽ xuất hiện trong giao diện Admin khi cấu hình Client Scopes.
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Token Format Mismatch:** Khi sử dụng Custom Protocol Mapper, bạn cần lưu ý định dạng JSON của Claim. Nếu Client mong đợi một Mảng (Array) nhưng Mapper của bạn trả về Chuỗi (String), ứng dụng đầu cuối (Client App) sẽ bị Crash khi parse Token.
+- **Memory Leaks:** Nếu class Custom Mapper của bạn khởi tạo các kết nối Database (Connection Pool) ở mỗi lượt request mà không đóng, nó sẽ gây cạn kiệt tài nguyên (OOM - Out of Memory) trên server Keycloak.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+- **Câu hỏi 1 (Junior):** Protocol Mapper trong Keycloak được sử dụng để làm gì?
+  - *Đáp án Junior:* Được dùng để ánh xạ (đưa thêm) thông tin từ Keycloak vào trong JWT (Access Token, ID Token) để ứng dụng đích có thể sử dụng.
+- **Câu hỏi 2 (Junior):** Bạn có thể sử dụng Protocol Mapper để sửa đổi cả ID Token và Access Token không?
+  - *Đáp án Junior:* Có, cấu hình mapper trên giao diện Keycloak có cung cấp các Toggle (công tắc) cho phép bật/tắt việc map vào Access Token, ID Token, hoặc UserInfo.
+- **Câu hỏi 3 (Senior):** Giải thích luồng gọi hàm của một Custom Protocol Mapper và tại sao việc gọi External API ở đây lại rủi ro?
+  - *Đáp án Senior:* Hàm transform token được gọi trong lúc Keycloak đang sinh token một cách đồng bộ. Gọi External API làm tăng latency, nếu API đó chết (timeout), luồng sinh token cũng thất bại và user không thể đăng nhập.
+- **Câu hỏi 4 (Senior):** Làm sao để chia sẻ chung một class kết nối tới API ngoại vi giữa nhiều Protocol Mapper mà không khởi tạo lại liên tục?
+  - *Đáp án Senior:* ProtocolMapper thường có vòng đời ở dạng Singleton (do `ProtocolMapperFactory` tạo ra). Ta có thể chia sẻ state ở cấp Factory, hoặc lưu nó vào `KeycloakSession` attributes, hoặc tốt nhất là đóng gói client bên trong một `Provider` riêng biệt và inject nó thông qua `KeycloakSession.getProvider()`.
+- **Câu hỏi 5 (Senior):** Giải thích quy trình đăng ký một Custom Mapper với kiến trúc Quarkus của Keycloak?
+  - *Đáp án Senior:* Mã Java cần phải compile thành JAR. Phải tạo file `META-INF/services/org.keycloak.protocol.ProtocolMapper` chứa đường dẫn đầy đủ của class. Sau đó bỏ file JAR vào thư mục `/opt/keycloak/providers/` và chạy lệnh `kc.sh build` để Quarkus tối ưu hóa SPI vào core trước khi start server.
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak Server Developer Guide - Protocol Mappers](https://www.keycloak.org/docs/latest/server_development/#_protocol_mappers)
+- [OpenID Connect Core 1.0 - Standard Claims](https://openid.net/specs/openid-connect-core-1_0.html)

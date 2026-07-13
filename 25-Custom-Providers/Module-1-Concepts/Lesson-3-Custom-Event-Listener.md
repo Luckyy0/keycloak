@@ -1,69 +1,94 @@
-# Lesson 3: Đánh Hơi Sự Kiện (Custom Event Listener)
-
 > [!NOTE]
-> **Category:** Theory & Practical (Lý thuyết & Thực hành)
-> **Goal:** Học cách biến Keycloak thành 1 Camera An Ninh Siêu Cấp Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bất cứ người dùng nào Login Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Đổi Pass Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, hay Admin thay đổi Cấu Hình Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, bạn đều có thể Bắt Gọn Khoảnh Khắc Đó Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy và kích hoạt luồng tự động hóa (VD bắn thông điệp sang Kafka, Gửi Slack Cảnh Báo Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa).
+> **Category:** Theory (Lý thuyết)
+> **Goal:** Phân tích cơ chế bắt và xử lý sự kiện (Events) theo thời gian thực trong Keycloak thông qua Event Listener SPI, hỗ trợ việc audit và tích hợp với hệ thống ngoại vi.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Keycloak là một hệ thống IAM hoạt động liên tục với hàng trăm thao tác từ người dùng và hệ thống. Mọi hành động quan trọng (đăng nhập thành công, đăng nhập sai mật khẩu, xóa user, sửa cấu hình client) đều phát ra (emit) một **Event**.
+- **User Event:** Các hành động liên quan đến phiên của người dùng (như `LOGIN`, `LOGOUT`, `REGISTER`, `UPDATE_PASSWORD`).
+- **Admin Event:** Các hành động thay đổi cấu hình hệ thống bởi Administrator (như `CREATE_USER`, `DELETE_CLIENT`).
 
-### 1.1. Luồng Máu Sự Kiện Bất Tận Trong Não Bộ Keycloak Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng
-Keycloak không bao giờ ngủ im Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Mỗi một cú click chuột của khách hàng Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, mỗi một luồng API đi ngang qua Oanh Khung Dịch Lụa Mạch Lệnh, Hệ Thống Đều Bắn Ra Một Pháo Sáng (Event Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh). 
-Các Sự Kiện Này chia thành 2 thế giới tách biệt Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp:
-- **Client Event (Sự Kiện Của Phàm Nhân Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa):** Những thứ Khách Hàng làm bên ngoài Giao Diện Login Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. Ví Dụ: `LOGIN`, `LOGIN_ERROR`, `REGISTER`, `UPDATE_PASSWORD`, `LOGOUT` Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-- **Admin Event (Sự Kiện Của Thần Linh Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh):** Những thứ Quản Trị Viên làm bên trong Giao Diện Admin Console Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Ví Dụ: Tạo Mới Client Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh (`CREATE` Client Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần), Xóa User Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh (`DELETE` User Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa).
-
-Mặc định Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, bộ bắt sự kiện của Keycloak chỉ là `JBoss Logging` (in ra File Log Text Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề). Để hiện thực hóa Giấc Mơ Tự Động Hóa (Automation Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề), Bạn bắt buộc phải Implements Cái Interface Quyền Lực `EventListenerProvider` Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. 
-
-### 1.2. Thượng Phương Bảo Kiếm Của Hệ Thống Cảnh Báo Sớm
-Giả sử có một cuộc tấn công Brute Force Bơm 1000 Password Sai Liên Tục Vào Cổng Login Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. 
-- Nếu không có Custom Listener Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Admin hệ thống chỉ biết chuyện này vào sáng hôm sau khi mở File Log Ra Xem Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng! Muộn Màng!
-- Nếu Bạn Viết Custom Listener Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy: Cứ bắt được Event `LOGIN_ERROR` Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Bạn Ghi Vào Bộ Đếm Redis Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Cứ Cùng 1 IP Mà 1 Phút Lỗi 100 Lần Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa -> Call API Sang Cloudflare Khóa Chết IP Đó Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Ngay Lập Tức!
-
----
+Mặc định, Keycloak có listener `jboss-logging` (in event ra console) và `jpa` (lưu vào database). Tuy nhiên, khi muốn tích hợp hệ thống cảnh báo (Gửi email/SMS khi user đổi mật khẩu, hoặc publish event lên Kafka/RabbitMQ để đồng bộ dữ liệu sang hệ thống khác), chúng ta cần sử dụng **Event Listener SPI**.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
-
-Hành Trình Oanh Cáp Bọc Thép Bắn Tin Nhắn Thời Gian Thực Tới Kafka Cluster Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:
+Quy trình phát (dispatch) Event diễn ra đồng bộ nhưng có thể tách biệt nếu Event Listener đẩy dữ liệu vào queue.
 
 ```mermaid
-graph TD
-    A[Người Dùng Nhấn Nút Đổi Password Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa] -->|Thành Công Oanh Khung Dịch Lụa Mạch Lệnh| B(Lõi Keycloak Cập Nhật DB Sinh Event UPDATE_PASSWORD Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp)
+sequenceDiagram
+    participant User
+    participant KCAuth as Keycloak Authentication Flow
+    participant EventMgr as Event Manager
+    participant JBossLog as jboss-logging (Built-in)
+    participant CustomList as Custom Kafka Listener
+    participant Kafka as Apache Kafka
     
-    B -->|Broadcasting Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề| C{Event Bus Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp}
-    
-    C -->|Gửi Song Song Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh| D[Jboss Logging Provider Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa]
-    D --> E[Ghi File server.log Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh]
-    
-    C -->|Gửi Song Song Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh| F[Custom Kafka Provider Của Bạn Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa]
-    F -->|Đóng Gói Event Thành Chuỗi JSON Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh| G[KafkaProducer Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa]
-    G -->|Gửi Qua TCP Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy| H[(Apache Kafka Cluster Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)]
-    
-    H -->|Consume Message Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị| I[Microservice Xử Lý Gửi Email Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh]
-    I -->|Gửi Mail Chào Mừng Đổi Pass Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng| J(Khách Hàng Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần)
+    User->>KCAuth: Đăng nhập sai mật khẩu
+    KCAuth->>EventMgr: Tạo Event(type=LOGIN_ERROR, reason=invalid_credentials)
+    EventMgr->>JBossLog: onEvent(event)
+    JBossLog->>JBossLog: In log ra stdout
+    EventMgr->>CustomList: onEvent(event)
+    CustomList->>CustomList: Trích xuất User ID & IP Address
+    CustomList->>Kafka: Publish JSON Message tới Topic "kc_events"
+    Kafka-->>CustomList: ACK
+    EventMgr-->>KCAuth: Xử lý tiếp luồng lỗi
+    KCAuth-->>User: Trả về trang lỗi
 ```
 
----
+Cơ chế cấp thấp:
+- Lớp custom cần implement `EventListenerProvider`.
+- Hàm `onEvent(Event event)` xử lý sự kiện của User.
+- Hàm `onEvent(AdminEvent adminEvent, boolean includeRepresentation)` xử lý sự kiện của Admin.
+- Sự kiện được Keycloak ném đi là đồng bộ (Blocking). Nghĩa là Event Listener của bạn được chạy trên cùng thread xử lý HTTP Request hiện hành.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!WARNING]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Chết Tắc Thở Đồng Bộ Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề)**
-> **Tội Ác Gọi Mạng Chặn Luồng (Blocking Network Call Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy):** Trong Phương Thức `onEvent()` Của Bạn Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Bạn Khởi Tạo Lệnh Bắn Dữ Liệu Sang REST API Của Hệ Thống Cảnh Báo Khác. Nhưng Cái API Cảnh Báo Đó Lại Đang Bị Chết Đứng Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Mất 30 Giây Mới Phản Hồi TimeOut. 
-> **Hậu Quả Chết Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp:** 
-> Do Keycloak Bắn Sự Kiện Cho Custom Listener Theo Cơ Chế ĐỒNG BỘ Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa (Nghĩa Là Nó Phải Đợi Bạn Chạy Xong Code Của Bạn Rồi Mới Kết Thúc Request Của Người Dùng Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Nên Toàn Bộ Hàng Triệu Cuộc Đăng Nhập Của Khách Hàng Bị Khóa Đứng Im Suốt 30 Giây Đó! Hệ Thống Lõi Sập Ngay Tắp Lự!
-> **Biện Pháp Sống Còn Lớp Trọng Lực OIDC Đáy Lụa:** Khi Xử Lý Code Bên Trong Hàm `onEvent()` Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, NẾU BẠN GỌI MẠNG (HTTP Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, SMTP Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, KAFKA Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy)... BẠN BẮT BUỘC PHẢI DÙNG KỸ THUẬT FIRE-AND-FORGET Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. (Bắn Thông Tin Bất Đồng Bộ Bằng `CompletableFuture.runAsync()` Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề Hoặc Đẩy Lên Cấu Trúc Hàng Đợi Nội Bộ Để Một Thread Khác Đi Xử Lý Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Hàm `onEvent()` Phải Được Kết Thúc Trong Chớp Mắt (Dưới 1 Milisec Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp) Nhằm Đảm Bảo Mạch Máu Của Hệ Thống Gốc Không Bị Suy Nghẽn!
+> Vì Event Listener hoạt động **Đồng bộ (Synchronous)** với HTTP Request, KHÔNG ĐƯỢC thiết kế các tác vụ I/O nặng (như gọi API http hoặc xử lý tính toán tốn thời gian) trực tiếp trong hàm `onEvent`. Điều này sẽ làm chậm toàn bộ hệ thống đăng nhập. Hãy sử dụng Thread riêng (Async Executor) hoặc nhúng trực tiếp Message Queue client (như Kafka producer ở chế độ async/fire-and-forget).
 
----
+> [!IMPORTANT]
+> Cần cẩn trọng về việc rò rỉ thông tin nhạy cảm. Admin Event đôi khi chứa representation nguyên bản (như cấu hình chứa API Secret). Khi forward các event này ra bên ngoài, phải có bước làm sạch dữ liệu (Sanitize/Masking).
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+Mô phỏng một đoạn code của Custom Event Listener in cảnh báo đăng nhập thất bại:
+```java
+public class MyAuditListener implements EventListenerProvider {
+    @Override
+    public void onEvent(Event event) {
+        if (event.getType() == EventType.LOGIN_ERROR) {
+            String userId = event.getUserId();
+            String ip = event.getIpAddress();
+            String error = event.getError();
+            // Đẩy vào queue hoặc gửi cảnh báo bất đồng bộ
+            System.out.println("ALERT: Lỗi đăng nhập - User: " + userId + ", IP: " + ip + " - Lỗi: " + error);
+        }
+    }
 
-**1. Sếp Dev Yêu Cầu Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: "Tao Thấy Mày Làm Cái Thằng Gửi Sự Kiện Đổi Mật Khẩu Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa (UPDATE_PASSWORD Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh) Chạy Ổn Đấy Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Nhưng Khách Nó Phàn Nàn Rằng Thằng Khách Vừa Bấm Đổi Pass Bị Sai Lỗi (Ví Dụ Pass Mới Giống Y Hệt Pass Cũ Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề, Keycloak Nó Không Chịu Lưu DB Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh). Mà Tại Sao Mã Nguồn Gửi Tin Nhắn Của Mày Vẫn Bắn Email Báo Là 'Bạn Đã Đổi Pass Thành Công' Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy? Lỗi Do Đâu Vậy Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh?"**
-- **Senior:** Dạ Thưa Sếp Oanh Khung Dịch Lụa Mạch Lệnh Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Lỗi Này Là Do Mình Quên Không Lọc Trạng Thái Của Biến `Event` Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-  - Trong Keycloak Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Mọi Hành Động Bắn Vào Kể Cả LỖI Hay THÀNH CÔNG Đều Được Phát Ra Trong Hàm `onEvent(Event event)`. 
-  - Khách Bấm Nút Submit Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Bị Lỗi Sẽ Sinh Ra Một Sự Kiện UPDATE_PASSWORD_ERROR Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần Kèm Theo Một Mã Lỗi Nằm Ở Mục `event.getError()`. Nếu Khách Bấm Thành Công Nó Sẽ Sinh Ra `UPDATE_PASSWORD` Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
-  - Code Em Sẽ Sửa Lại Là Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa: Dùng Câu Lệnh `if (event.getError() == null)` Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề Thì Mới Được Phép Gửi Email. (Tức là chỉ gửi khi không có lỗi sinh ra Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp). Chứ Không Bắn Tù Mù Nữa Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+    @Override
+    public void onEvent(AdminEvent adminEvent, boolean includeRepresentation) {
+        // Xử lý sự kiện admin
+    }
 
----
+    @Override
+    public void close() { }
+}
+```
+Sau khi cài đặt Plugin, phải vào giao diện Admin -> **Realm Settings** -> **Events** -> Bật (Add) Listener `my-audit-listener` trong danh sách các Event Listeners.
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Developer Guide - Event Listener SPI.
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Deadlock hệ thống:** Khi sử dụng Hibernate để can thiệp thêm vào DB ngay trong `onEvent`, bạn có thể gặp tình trạng transaction block lẫn nhau vì Keycloak đang giữ commit lock ở vòng đời trước đó. Chỉ nên thực hiện các hoạt động đọc (Read-only) trong Listener.
+- **Nghẽn Network:** Gửi message Kafka bị chập chờn sẽ khiến thread bị treo, do đó Keycloak server cạn kiệt số lượng thread ở worker pool (XUndertow / Quarkus worker) dẫn đến chết dịch vụ. Bắt buộc phải cài timeout cho mọi TCP connection trong Listener.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+- **Câu hỏi 1 (Junior):** Event Listener trong Keycloak có chức năng gì?
+  - *Đáp án Junior:* Dùng để "lắng nghe" và phản ứng lại các sự kiện diễn ra trong hệ thống, như đăng nhập, đăng xuất, đổi mật khẩu, hoặc quản trị tài khoản.
+- **Câu hỏi 2 (Junior):** Trong Keycloak có mấy loại đối tượng Event được lắng nghe?
+  - *Đáp án Junior:* Có hai loại: User Event (những hành động của người dùng đầu cuối) và Admin Event (các thao tác cấu hình của người quản trị).
+- **Câu hỏi 3 (Senior):** Giải thích tại sao việc gọi một REST API từ xa (bên ngoài hệ thống) trực tiếp bên trong phương thức `onEvent` là một anti-pattern?
+  - *Đáp án Senior:* Do Keycloak gọi Listener theo cơ chế đồng bộ trên luồng chính. Nếu REST API chậm, luồng HTTP của Keycloak cũng sẽ bị treo, làm giảm lượng request xử lý đồng thời, có thể gây sập cả hệ thống. Phải xử lý bằng cách ném event vào một luồng (thread) bất đồng bộ (như ExecutorService) hoặc message broker.
+- **Câu hỏi 4 (Senior):** Cấu trúc nào của Event SPI được dùng để quản lý tài nguyên, tránh rò rỉ kết nối?
+  - *Đáp án Senior:* Hàm `close()` bên trong `EventListenerProvider`. Keycloak session sẽ gọi hàm này sau khi transaction kết thúc để ta dọn dẹp các tài nguyên như đóng file handle hoặc giải phóng connection.
+- **Câu hỏi 5 (Senior):** Có cách nào lấy được Request Header (ví dụ User-Agent) bên trong Event Listener không, khi mà Object Event không chứa field này?
+  - *Đáp án Senior:* Có thể. Vì Provider được khởi tạo thông qua Factory (nhận KeycloakSession), ta có thể lấy Context của session (`session.getContext().getRequestHeaders()`) để bóc tách thông tin HTTP header.
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak SPI - Event Listener](https://www.keycloak.org/docs/latest/server_development/#_events_scripts)
+- [Enterprise Integration Patterns - Publish/Subscribe Channel](https://www.enterpriseintegrationpatterns.com/)

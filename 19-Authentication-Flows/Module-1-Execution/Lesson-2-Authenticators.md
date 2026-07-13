@@ -1,70 +1,91 @@
-# Lesson 2: Kẻ Chấp Pháp (Authenticators / Executions)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Những cái "Lá cây" nhỏ xíu ở đuôi mỗi Nhánh Sub-Flow Cắt Khung Lệnh Rỗng, chính là Bọn Kẻ Chấp Pháp Thực Thi Mệnh Lệnh Thực Tế. Chúng là các đoạn Code Java Giao Dịch Oanh Mạng Bắt Lụa Được Khởi Tạo Dưới Đáy RAM Của Máy Chủ Keycloak Oanh Cáp Trọng Lõi Tự Trị.
+> **Goal:** Hiểu rõ bản chất của Authenticators trong Keycloak, vòng đời thực thi, và cách các Authenticator đóng vai trò là khối xây dựng cơ bản của Authentication Flow.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+**Authenticator** (Bộ xác thực) là các module logic xử lý một phần nhỏ và cụ thể trong toàn bộ quy trình xác thực (Authentication Flow) của Keycloak. Mỗi Authenticator đại diện cho một bước duy nhất – một Execution – để xác minh danh tính, thiết lập context, hoặc thu thập thông tin từ user.
 
-### 1.1. Execution (Lá Cây Thi Hành Oanh Tĩnh Lụa Thép) Là Gì?
-Khi Bạn Kéo Thả Ở Giao Diện Khúc Tới Chặt Oanh Tĩnh, Mỗi Một Dòng (Lá) Trong Cấu Trúc Khung Rỗng Kéo Sóng Ngầm Là Đại Diện Cho 1 Kẻ Chấp Pháp Đáy Lõi DB (Authenticator).
-Một Authenticator Có Thể Có 3 Trạng Thái Quyền Lực Đỉnh Đáy Oanh Mạng:
-1. **Thi Hành Form Ẩn Trượt Mạng (Invisible):** Nó Chạy Dưới Bụng Máy Chủ, Check Cấu Hình Bọt Khung, Check IP Đáy Oanh Mạch Rút Trọng, Và Phán Quyết Cho Lọt Chữ Nghĩa Cũ Mạch Cáp Hay Khóa Cổ Chặn Rút Lụa Bọt Mà Khách Hàng KHÔNG HỀ THẤY Bất Cứ Màn Hình Nào Nhấp Nháy Khúc Tới Ngay Lệnh! (VD: `Cookie Authenticator`).
-2. **Bật Form Hiện Khung Kẽ (Visible):** Nó Tạm Dừng Cỗ Máy Của Lãnh Chúa Đáy Lụa. Trả Về Màn Hình Trình Duyệt Bọc Lệnh Cũ HTML Chứa Form (Gõ OTP, Nhập Tên Đỉnh Chóp Trọng Khóa Tĩnh). Nó Chờ Khách Submit Bọt Mạch Kéo Lõi Rồi Nó Mới Chạy Code Java So Khớp Tiếp Oanh Cáp Giao Diện Lệnh Chặt Mạch Lụa.
-3. **Bắn Redirect Đỉnh Đáy Lỗ Rò (Bouncers):** Cỗ Máy Bắn Thẳng Khách Bay Sang App Khác Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Xong Lại Hứng Trở Về Trút Cáp Mạch Máu Cắt!
+Các loại Authenticator phổ biến có sẵn trong Keycloak:
+- **Username Password Form:** Hiển thị trang đăng nhập cổ điển.
+- **Cookie Authenticator:** Xác thực trong suốt (Single Sign-On) dựa trên cookie `KEYCLOAK_IDENTITY` đã tồn tại từ trước.
+- **OTP Form:** Xác thực mã Time-based One-time Password.
+- **WebAuthn Authenticator:** Xác thực passwordless qua khóa sinh trắc học hoặc phần cứng FIDO2.
+- **Identity Provider Redirector:** Chuyển hướng người dùng sang hệ thống đăng nhập của bên thứ ba (Google, Facebook, SAML IDP).
 
-### 1.2. Danh Sách Vài Kẻ Chấp Pháp Nổi Tiếng Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống
-- **`Cookie`**: Kẻ Kiểm Tra Thẻ Cũ. Soi Trình Duyệt Xem Có Cái Session SSO Khúc Tới Ngay Mạch Cũ Rích Oanh Khung Dịch Lụa Sống Không Trượt Bọt Rỗng Đáy Chóp. Có Thì Cấp Vé Lọt Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Luôn Khớp Lệnh Oanh Rỗng.
-- **`Username Password Form`**: Kẻ Canh Cổng Tàn Bạo Trút Lụa Nhựa Bọc. Ép Bật Màn Hình Xin Tiền Mật Khẩu Oanh Mạng Bắt Giao Dịch Dữ Lụa Cũ Oanh.
-- **`OTP Form`**: Lệnh Bật Màn Gõ Cục Rác OTP Trút Kẽ Mã Bơm.
-- **`WebAuthn Authenticator`**: Cắm Chìa USB Yubikey Đáy DB Lụa Mạng Mạch Vân Tay Chữ Khớp Lệnh Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
-
----
+Bản chất của Authenticator là các lớp Java tuân theo giao diện (interface) `org.keycloak.authentication.Authenticator`. Chức năng của chúng là kiểm tra các thông tin truyền vào qua Context, tương tác với Database hoặc External Systems, hoặc ra lệnh cho trình duyệt hiển thị form (gọi là Challenge).
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
-
-Hành Trình Oanh Cáp Bọc Thép Một Bọt Kẽ Lệnh Chóp Cắt Đứt Nối Dòng Chạy Execution Trong Lõi Java Keycloak:
+Mỗi Authenticator phải trải qua một quy trình (Lifecycle) chuẩn được điều khiển bởi Keycloak engine trong lớp `AuthenticationProcessor`.
 
 ```mermaid
 sequenceDiagram
-    participant Flow as Flow Engine Cổ Thụ
-    participant Auth as Authenticator (Java Code)
-    participant User as Khách Hàng Web
-
-    Flow->>Auth: 1. Đụng Tới Lá UsernamePassword. Gọi Hàm 'authenticate()'
-    Auth-->>User: 2. Máy Dừng Lại! Trả Challenge Form Đáy Bọc Mạch Nhựa (HTML Page)
+    participant Process as AuthenticationProcessor
+    participant Auth as Authenticator (Ví dụ: Password)
+    participant UI as Form/Browser
     
-    User->>Auth: 3. Khách Gõ Pass, POST Lên Form Lệnh Đáy Oanh Lụa.
-    Auth->>Auth: 4. Máy Kích Lại! Gọi Hàm 'action()' Lõi Trọng Điểm Cáp Bọc Thép!
-    
-    Auth-->>Auth: Lục Đáy DB So Mã Băm Pbkdf2 Oanh Tĩnh Lụa Thép. Hợp Lệ!
-    Auth->>Flow: 5. Báo Cáo "SUCCESS_LỆNH_CHÓP". Đi Tới Thằng Lá Tiếp Theo!
+    Process->>Auth: authenticate(AuthenticationFlowContext)
+    alt Đủ dữ liệu xác thực (Non-interactive)
+        Auth->>Process: context.success()
+    else Cần dữ liệu từ User
+        Auth->>UI: context.challenge(Response)
+        UI-->>Process: POST /login-actions/authenticate
+        Process->>Auth: action(AuthenticationFlowContext)
+        Auth->>Auth: Validate Input
+        alt Dữ liệu đúng
+            Auth->>Process: context.success()
+        else Dữ liệu sai
+            Auth->>UI: context.failureChallenge(error)
+        end
+    end
 ```
 
----
+Hai phương thức quan trọng nhất:
+1. `authenticate(AuthenticationFlowContext)`: Được gọi khi execution này được kích hoạt lần đầu. Nếu không cần tương tác người dùng (như đọc Cookie), nó có thể trả về `success()` ngay. Nếu cần form, nó gọi `challenge()`.
+2. `action(AuthenticationFlowContext)`: Nếu `authenticate` đã trả về `challenge()`, sau khi người dùng gửi form (POST request), Keycloak sẽ gọi `action()` để Authenticator thẩm định dữ liệu đầu vào.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
+> [!WARNING]
+> Mặc dù bạn có thể viết Custom Authenticator dễ dàng, hãy cực kỳ cẩn trọng với các vấn đề bảo mật. Luôn thực hiện sanitize đầu vào và tránh việc rò rỉ thông tin người dùng qua các Exception ném ra giao diện.
+
 > [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Đính Code Tự Viết Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Hủy Diệt Máy Chủ Oanh Cáp)**
-> **Tội Ác Thiết Kế API Trọng Lực Bọc Thép OIDC:** Bạn Thấy Keycloak Không Có Cục `Authenticator` Nào Khớp Cái Dã Tâm Của Bạn Lỗ Bọt Cắt Trắng. (Ví Dụ Bạn Muốn Khách Đăng Nhập Là Máy Chủ Tự Call API Sang Facebook Bắn Bắn Tin Nhắn "Bạn Đã Login" Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị).
-> Bạn Viết 1 Cái Java Plugin (SPI) Custom Authenticator Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ. NHƯNG BẠN CODE GỌI API SANG FACEBOOK Ở CHẾ ĐỘ ĐỒNG BỘ CHỜ (BLOCKING THREAD) TRÚT LỤA BỌT MẠCH KÉO RỖNG KẼ ĐÁY OANH!
-> **Hậu Quả:** Một Triệu Khách Hàng Login Cùng Lúc Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ. Máy Chủ Keycloak Treo Đứng 1 Triệu Cái Luồng (Thread RAM) Oanh Lệnh Lụa Khớp Chữ Nhựa Chỉ Để Chờ Mạch Máu Cắt Thằng Facebook Phản Hồi HTTP Lỗ Lủng Bọt Khung Oanh Cáp. Tràn Bộ Nhớ. Nổ Tung Keycloak Server Lệnh Oanh Rút Chữ Tĩnh Mạch Rỗng!
-> **Biện Pháp Sống Còn Lớp Trọng Lực:** Nếu Tự Code SPI Lá Execution Đáy Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch. TỐI KỴ Không Gọi Các Mạng Ngoài Bằng HTTP Sync Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Chống Hacker Hoặc Tự Giết Máy Mạng 100% Cắt Bọt Đứt Băng Bằng Async Oanh Khung Dịch Lụa Mạch Lệnh!
+> Hãy tận dụng tối đa các Authenticators có sẵn trước khi quyết định tự code. Keycloak cung cấp rất nhiều cơ chế mạnh mẽ (như Conditional flows, Script-based authenticators) có thể thay thế phần lớn nhu cầu code custom.
 
----
+- **Thứ tự (Order):** Đảm bảo đặt các Authenticator ít tốn kém hiệu năng nhất lên đầu flow (như kiểm tra Cookie) thay vì gọi tới hệ thống ngoài (như LDAP) trước tiên, nhằm ngăn chặn các cuộc tấn công DDoS vào hệ thống xác thực.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+Ví dụ sử dụng một Authenticator tùy biến qua Javascript (Script-based Authenticator) bằng tính năng (tuy đã bị deprecate ở các bản mới nhưng tốt để hiểu tư duy):
+```javascript
+// Mã Script đơn giản kiểm tra IP
+AuthenticationFlowError = Java.type("org.keycloak.authentication.AuthenticationFlowError");
 
-**1. Trong Các Cục Authenticator (Kẻ Chấp Pháp Cổ Đại Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống). Sếp Thấy Có 1 Cục Tên Rất Khó Hiểu Là 'Condition - User Configured'. Mạch Bọt Kẽ Này Dùng Để Làm Gì Oanh Tĩnh Lụa Thép Lệnh Khớp Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa?**
-- **Senior:** Dạ thưa sếp, Chỗ Này Chạm Thẳng Trút Nhựa Bọc Cắt Lệnh Giao Thức Đỉnh Đáy Oanh Mạng Bắt Lụa Vào Kiến Trúc Điều Kiện Oanh Lệnh Lụa Bọt Cắt Trắng Đứt Rỗng Lệnh:
-  - Cục Này Chính Là Đặc Sản Của Lệnh Lesson 5 Dịch Kẽ Bọt Chúng Ta Sắp Học Lệnh Đáy DB Chữ Khớp Oanh Cáp (Conditional Flows).
-  - Nhiệm Vụ Của Nó LÀ MỘT THẰNG GÁC CỔNG RẼ NHÁNH Vô Hình Lỗ Bọt Cắt Trắng Oanh Tĩnh. Nó Không Bật Form Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt!
-  - Khi Máy Chủ Chạy Tới Nó, Nó Chạy Xuống Đáy DB Soi Cái ID Của Thằng User Đang Cố Gắng Login Oanh Lụa Băng Tần. Nó Check Xem "Cái Thằng Này Trong Cài Đặt Profile Đã Cấu Hình Cục Mã OTP Ở Mobile Chưa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò?". 
-  - Nếu Bật OTP Rồi, Nó Báo Chữ "TRUE Lệnh Chóp Cắt Bọt Khung Oanh". Cỗ Máy Chạy Cành Lụa Bắt Nhập Form OTP. 
-  - Nếu User Lười Chưa Cấu Hình Cáp Mạch, Nó Báo Khóa "FALSE Lỗ Rò Lệnh". Cỗ Máy Lập Tức Nhảy Chéo Vượt Bỏ Qua Toàn Bộ Nhánh Form OTP Đó Mà Cho Login Lọt Khung Tĩnh Oanh Khớp! Đây Là Đỉnh Cao Rẽ Nhánh Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép!
+function authenticate(context) {
+    var req = context.getConnection().getRemoteAddr();
+    if (req === "127.0.0.1") {
+        context.success();
+    } else {
+        context.failure(AuthenticationFlowError.ACCESS_DENIED);
+    }
+}
+```
+*Lưu ý: Thay vì JS Script, hiện tại Keycloak khuyến khích dùng Java SPI cho việc này.*
 
----
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Xử lý Failure:** Khi một Authenticator gọi `context.failure()`, tuỳ theo Requirement (REQUIRED, ALTERNATIVE) mà luồng Flow có thể dừng lại, thông báo lỗi cho người dùng, hoặc bỏ qua thất bại đó để thử một Alternative khác. Lỗi thiết kế thường gặp là việc Authenticator không bắt được ngoại lệ (Exception) nội bộ, gây crash ra lỗi HTTP 500 thay vì xử lý êm đẹp thông qua `context.failureChallenge()`.
+- **Trạng thái lưu đệm:** Nếu hệ thống bị downtime lúc user đang ở bước `action()`, thông tin AuthenticationSession trong Infinispan bị mất, dẫn đến lỗi "Invalid auth state".
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Administration Guide - Custom Authenticators (SPI).
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+- **Câu hỏi 1 (Junior):** Kể tên 3 Authenticators phổ biến có sẵn trong Keycloak.
+  - *Đáp án Junior:* Username Password Form, Cookie, và Identity Provider Redirector.
+- **Câu hỏi 2 (Junior):** Phương thức nào của Authenticator được dùng để hiển thị form cho user nhập liệu?
+  - *Đáp án Junior:* Gọi `context.challenge(Response)` trong phương thức `authenticate()`.
+- **Câu hỏi 3 (Senior):** Giải thích sự khác nhau về thời điểm kích hoạt của hàm `authenticate()` và hàm `action()` trong interface Authenticator?
+  - *Đáp án Senior:* `authenticate()` được gọi lần đầu tiên khi Keycloak engine chạy qua execution đó. Nó quyết định xem có cần tương tác UI không. Nếu nó gọi `challenge()`, luồng tạm dừng. Khi user submit form, luồng tiếp tục bằng việc gọi `action()` của đúng Authenticator đó để validate dữ liệu vừa submit.
+- **Câu hỏi 4 (Senior):** Khi xây dựng Custom Authenticator, làm sao lưu trữ thông tin tạm thời giữa hàm `authenticate` và `action`?
+  - *Đáp án Senior:* Sử dụng `AuthenticationFlowContext.getAuthenticationSession().setAuthNote(key, value)`. Lưu ý dữ liệu này được lưu trong Infinispan memory, không nằm ở client cookie, nên rất an toàn cho các thông tin nhạy cảm.
+- **Câu hỏi 5 (Senior):** Nếu Authenticator phát hiện user bị khóa tài khoản (Brute Force protection), nó xử lý thế nào?
+  - *Đáp án Senior:* Nó nên kiểm tra context thông qua `context.getRealm().isBruteForceProtected()` và các API liên quan. Khi bị khóa, nó gọi `context.failure(AuthenticationFlowError.USER_DISABLED)` hoặc `INVALID_USER`.
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak SPI Documentation: Authentication SPI](https://www.keycloak.org/docs/latest/server_development/#_auth_spi)
+- [Keycloak Server Administration Guide](https://www.keycloak.org/docs/latest/server_admin/)

@@ -1,86 +1,126 @@
-# Lesson 2: Phân Quyền Theo Thuộc Tính (ABAC - Attribute-Based Access Control)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Khi RBAC (Role-Based) bó tay trước những yêu cầu ngữ cảnh như "Chỉ cho phép nhân viên truy cập hệ thống kho trong giờ hành chính từ Thứ 2 đến Thứ 6" hoặc "Chỉ sếp có tuổi > 30 mới được duyệt chi". Lúc này, thế giới bảo mật gọi tên người hùng **ABAC**. Bài học này giúp bạn hiểu cách dùng Thuộc tính (Attribute) để bẻ khóa những logic phân quyền phức tạp nhất.
+> **Goal:** Hiểu sâu về Attribute-Based Access Control (ABAC) trong Keycloak, kiến trúc đánh giá chính sách dựa trên thuộc tính và cách thiết kế các Policy phức tạp áp dụng cho môi trường Enterprise.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. ABAC Bản Chất Là Gì?
-Attribute-Based Access Control (ABAC) là mô hình cấp quyền động dựa trên việc tính toán tổng hợp các **Thuộc tính (Attributes)** tại thời điểm người dùng yêu cầu truy cập.
-ABAC sử dụng các thuật toán If-Else đánh giá 4 nguồn thuộc tính (Attributes) sau:
-1. **Subject Attributes (Của Người Dùng):** Tuổi, Chức danh, Phòng ban, Cấp độ bảo mật (Clearance).
-2. **Resource Attributes (Của Tài Nguyên):** Bài viết này được gán nhãn "Tuyệt Mật", Tác giả của báo cáo này là ai?
-3. **Action Attributes (Của Hành Động):** Hành động đang thực hiện là GET (Đọc), PUT (Sửa) hay DELETE (Xóa)?
-4. **Environment/Context Attributes (Của Môi Trường Ngữ Cảnh):** Mấy giờ rồi? IP của người dùng có nằm ở Mỹ không? Hôm nay có phải là ngày lễ không?
+**Attribute-Based Access Control (ABAC)** là một mô hình kiểm soát truy cập phân quyền dựa trên việc đánh giá các thuộc tính (attributes) thay vì chỉ dựa trên vai trò (roles) như Role-Based Access Control (RBAC). 
 
-- **Ưu điểm:** Cực kỳ linh hoạt, đáp ứng mọi tình huống nghiệp vụ hóc búa nhất (Fine-Grained). Không bị giới hạn bởi các định nghĩa tĩnh như Role.
-- **Nhược điểm:** Khó thiết lập. Thuật toán kiểm tra chạy phức tạp nên có thể làm giảm Performance (độ trễ) của hệ thống so với RBAC truyền thống.
+Mô hình ABAC mang lại độ linh hoạt cực kỳ cao bằng cách cho phép quản trị viên định nghĩa các Access Policy dựa trên sự kết hợp của nhiều loại thuộc tính khác nhau:
+- **Subject Attributes**: Thuộc tính của người dùng hoặc hệ thống yêu cầu quyền truy cập (ví dụ: `department`, `clearance_level`, `age`).
+- **Resource Attributes**: Thuộc tính của tài nguyên đang được truy cập (ví dụ: `classification`, `creation_date`, `owner`).
+- **Action Attributes**: Thuộc tính của hành động được yêu cầu (ví dụ: `read`, `write`, `approve`).
+- **Environment Attributes**: Các thuộc tính ngữ cảnh từ môi trường truy cập tại thời điểm yêu cầu (ví dụ: `IP_address`, `time_of_day`, `location`).
 
-### 1.2. ABAC vs RBAC
-- **RBAC (Role):** Giống như đưa cho bạn cái Bằng Cử Nhân (Role). Chỉ cần giơ cái bằng ra là qua cửa, không ai quan tâm bạn bao nhiêu tuổi hay đang đứng ở đâu. (Cứng nhắc).
-- **ABAC (Attribute):** Giống như gặp cảnh sát giao thông. Cảnh sát kiểm tra (1) Tuổi của bạn (Subject), (2) Dung tích xi-lanh xe bạn đang lái (Resource), (3) Đường này đang cấm giờ cao điểm không (Environment). Tất cả đúng khớp mới được chạy qua. (Mềm dẻo).
+**Tại sao ABAC quan trọng trong Keycloak?**
+RBAC có thể dẫn đến hiện tượng "Role Explosion" (bùng nổ vai trò) khi có quá nhiều biến thể quyền hạn theo từng trường hợp cụ thể. ABAC giải quyết vấn đề này bằng cách giảm thiểu số lượng Role, chuyển các điều kiện truy cập vào Policy đánh giá động tại thời điểm chạy (runtime).
 
----
+Trong Keycloak, ABAC thường được triển khai thông qua **Attribute-based Policies** (các chính sách dựa trên thuộc tính), chẳng hạn như User Policy dựa trên các `User Attributes`, hoặc các JavaScript Policy/Drools Policy mạnh mẽ để đánh giá linh hoạt cả Subject và Environment.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Token Đem Attribute Bơm Vào Động Cơ ABAC Keycloak Quyết Định:
+Quá trình đánh giá ABAC diễn ra bên trong **Authorization Services** của Keycloak. Khi một Client (Resource Server) yêu cầu một RPT (Requesting Party Token) để cấp quyền truy cập, Keycloak Authorization Engine sẽ thực hiện quy trình sau:
 
 ```mermaid
-flowchart TD
-    A[User (Attribute: Department=Sales, IP=Office) Yêu cầu xóa Báo Cáo X (Attribute: Type=Financial)] --> B[Client App Gửi Request Lên Policy Enforcer (PEP)]
+sequenceDiagram
+    participant Client
+    participant Keycloak as Keycloak Authorization Engine
+    participant PolicyEnforcer as Policy Decision Point (PDP)
+    participant DB as User/Resource DB
+
+    Client->>Keycloak: 1. Request RPT (Ticket, Access Token)
+    Keycloak->>DB: 2. Fetch User & Resource Attributes
+    DB-->>Keycloak: 3. Return Attributes
+    Keycloak->>PolicyEnforcer: 4. Evaluate Associated Policies (ABAC Rules)
     
-    B --> C[PEP Chuyển Giao Data Về Keycloak Authorization Server (PDP)]
+    rect rgb(240, 248, 255)
+        note right of PolicyEnforcer: Policy Evaluation Pipeline
+        PolicyEnforcer->>PolicyEnforcer: Match Subject Attributes
+        PolicyEnforcer->>PolicyEnforcer: Match Environment/Context Attributes
+        PolicyEnforcer->>PolicyEnforcer: Resolve Sub-policies (Decision Strategies: Affirmative/Unanimous/Consensus)
+    end
     
-    C --> D{Chạy Bộ Máy Đánh Giá ABAC Policy}
-    D --> E{Rule 1: User Department Có Bằng 'Finance' Không?}
-    
-    E -- Trả Về 'False' Do Là Sales --> F[Máy Chủ Đánh Giá Trượt]
-    E -- (Ví dụ Khác Trả Về True) --> G{Rule 2: Môi Trường (Giờ) Có Phải Giờ Hành Chính 8h-17h?}
-    
-    F --> H[Keycloak Dập Dòng Quyết Định (Decision) Là DENY]
-    H --> I[Backend Trả 403 Forbidden]
+    alt Evaluation = PERMIT
+        PolicyEnforcer-->>Keycloak: 5a. GRANT Access
+        Keycloak-->>Client: 6a. Return RPT (Permissions included)
+    else Evaluation = DENY
+        PolicyEnforcer-->>Keycloak: 5b. DENY Access
+        Keycloak-->>Client: 6b. Return 403 Forbidden / Error Token
+    end
 ```
 
----
+**Cơ chế cấp thấp (Low-level Mechanisms):**
+- Trong quá trình đánh giá (Evaluation), Keycloak tạo ra một `EvaluationContext` chứa tất cả các thông tin định danh `Identity`, quyền `Permissions` được yêu cầu, và tập hợp `Attributes`.
+- `Identity` interface cung cấp phương thức `getAttributes()` để trích xuất thông tin người dùng được ánh xạ từ `Access Token` hoặc database của Keycloak.
+- Các thuộc tính môi trường như IP Address được trích xuất từ HTTP Request Context của Keycloak.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!IMPORTANT]
-> **Tuyệt Đỉnh Tối Ưu Tốc Độ Máy Chủ (Performance) Bằng Phễu Lọc Hỗn Hợp Trọng Lực (RBAC + ABAC)**
-> **Tội Ác Thiết Kế:** Do thấy ABAC hay quá, bạn vứt bỏ hoàn toàn RBAC. Mọi quyền từ lớn đến bé bạn đều viết Policy ABAC kiểm tra hầm bà lằng các kiểu.
-> **Hậu Quả:** ABAC tính toán rất tốn RAM và CPU của máy chủ. Khi bạn có 10.000 User cùng bấm vào nút "Xem bài viết", máy chủ gồng mình tính toán IP, Giờ giấc, Nhãn dữ liệu 10.000 lần. Server Keycloak bị treo cứng "Out of Memory", API Backend Timeout.
-> **Biện Pháp Sống Còn Lớp Bảo Vệ:** Bạn phải thiết kế theo hình Phễu (Trục Đứng Mạch Nhựa):
-> - **Lớp 1 (Vòng gửi xe - Coarse-grained):** Dùng RBAC. Nếu thằng này còn chả có Role "Editor", đuổi cổ nó ngay lập tức bằng lệnh Check String nhanh như chớp. 
-> - **Lớp 2 (Kiểm duyệt vòng trong - Fine-grained):** Những ai đã đi lọt cửa Role "Editor", ta mới bắt đầu lôi động cơ ABAC ra tính toán xem "Mày có được sửa bài báo này trong khung giờ 20h đêm nay không?". Bằng cách này bạn tiết kiệm được 90% hiệu năng thừa mứa cho server!
+> [!WARNING]
+> Việc sử dụng quá nhiều Policy phức tạp (như JavaScript Policies hoặc Regular Expressions) cho hàng ngàn Requests mỗi giây có thể gây ra hiện tượng thắt cổ chai hiệu suất (Performance Bottleneck). Cần thận trọng trong việc đánh giá hiệu suất.
 
----
+> [!IMPORTANT]
+> **Security Standard:** Không bao giờ tin tưởng hoàn toàn vào các Environment Attributes được gửi từ phía Client (ví dụ qua HTTP Headers) vì chúng có thể bị giả mạo (Spoofed). Chỉ lấy các thuộc tính tin cậy như IP từ API Gateway hoặc Reverse Proxy (thông qua `X-Forwarded-For` đã được cấu hình an toàn).
+
+**Thực hành tốt nhất:**
+1. **Kết hợp RBAC và ABAC**: Sử dụng RBAC như lớp kiểm tra thô đầu tiên (Coarse-grained), và sử dụng ABAC như lớp kiểm tra tinh chỉnh chi tiết (Fine-grained).
+2. **Caching**: Sử dụng cơ chế cache thích hợp cho Resource và Policy để tránh việc phải liên tục truy vấn vào database của Keycloak trong các bước Evaluation.
+3. **Tránh logic tính toán nặng**: Trong các JavaScript Policies, không nên thực hiện các vòng lặp phức tạp hoặc gọi tới các API bên ngoài.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Thiết Kế Chiến Lược Thuộc Tính (Attribute) Dưới Database Người Dùng Của Keycloak Để Chạy Được ABAC:
-1. Vào menu **Users**, chọn một người dùng tên Nguyễn Văn A.
-2. Sang tab **Attributes** (Thuộc tính).
-3. Thêm một cặp Key-Value siêu cấp: Key = `clearance_level`, Value = `top_secret`. Lưu lại.
-4. Ở tab Clients của Keycloak, khi bạn kích hoạt Authorization Services, bạn sẽ tạo ra một Policy (Quy tắc) loại hình là "User-Based". 
-5. Thay vì check Role như cũ, bạn code/chọn Logic kiểm tra rằng: "Nếu trường `clearance_level` của thằng User này bằng chữ `top_secret` thì tao mới cho Decision trả về PASS".
-6. Mở rộng thêm sự tàn bạo: Bơm tiếp một thuộc tính Custom vào Token có tên là IP Address. Bạn tạo thêm 1 Policy thứ 2 loại Script (JavaScript) hoặc Rule kiểm tra: Nếu Thời Gian hiện tại (Time) mà > 18:00 (Hết giờ làm), thì lập tức Decision rớt đài về Fail (DENY).
-7. Gắn 2 cái Policy đó chung vào bảo vệ 1 Resource Báo Cáo. Bạn đã có hệ thống ABAC đỉnh cao thế giới.
+Sử dụng JavaScript Policy trong Keycloak để tạo một ABAC Policy kiểm tra xem `department` của User có trùng khớp với `department_owner` của Resource hay không.
 
----
+```javascript
+// ABAC Policy using JavaScript in Keycloak
+var context = $evaluation.getContext();
+var identity = context.getIdentity();
+var permission = $evaluation.getPermission();
+var resource = permission.getResource();
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+// Trích xuất User Attribute
+var userAttributes = identity.getAttributes();
+var userDepartment = userAttributes.getValue("department");
 
-**1. Khách Hàng Yêu Cầu Một Tính Năng: "Một Bác Sĩ Chỉ Được Xem Hồ Sơ Bệnh Án Của Bệnh Nhân NẾU Bệnh Nhân Đó Đang Được Xếp Lịch Khám Trong Ngày Hôm Nay Tại Phòng Khám Của Bác Sĩ Đó. Qua Ngày Hôm Sau Bác Sĩ Không Còn Quyền Truy Cập Nữa". Cậu Chọn Thiết Kế Access Control Theo RBAC Hay ABAC? Tại Sao Và Triển Khai Thế Nào?**
-- **Senior:** Dạ thưa sếp, Yêu cầu này dính tới 2 yếu tố Ngữ cảnh cực kỳ biến động: "Ngày Khám (Thời Gian - Environment)" và "Mối quan hệ động BácSĩ-BệnhNhân (Resource Attribute)". Khẳng định 100% RBAC không thể làm được (Vì chẳng lẽ mỗi ngày lại đi gỡ Role và add Role mới cho Bác Sĩ, làm vậy máy nổ banh xác mất).
-Em bắt buộc chọn **ABAC (Attribute-Based Access Control)** để xử lý. Triển khai em sẽ để RBAC làm lớp vỏ, check Role "Doctor" trước. Sau đó xuống Tầng Backend Resource (Bệnh Án API), em sẽ thiết lập PDP (Policy Decision Point) tính toán ABAC:
-- **Condition 1:** Check Subject ID (Doctor_ID) có khớp với cột `assigned_doctor_id` trong Bảng Cuộc_Hẹn_Hôm_Nay.
-- **Condition 2:** Check Timestamp Environment (Date_Now) có đúng bằng `appointment_date` hay không.
-Nếu 2 Attribute này khớp lệnh True, máy chủ mới nhả Dữ liệu. Xong một tính toán ABAC cực bén không dính rác Role!
+// Trích xuất Resource Attribute
+var resourceAttributes = resource.getAttributes();
+var resourceOwnerDept = resourceAttributes["department_owner"];
 
----
+// Logic Đánh giá
+if (userDepartment !== null && resourceOwnerDept !== null && userDepartment[0] === resourceOwnerDept[0]) {
+    $evaluation.grant();
+} else {
+    $evaluation.deny();
+}
+```
 
-## 6. Tài liệu tham khảo (References)
-- **NIST ABAC Guide:** Guide to Attribute Based Access Control.
-- **Keycloak Documentation:** Authorization Services - Policies.
+*Lưu ý:* Để sử dụng JavaScript Policy trong các bản Keycloak mới nhất (từ v20+), bạn có thể cần phải kích hoạt tính năng `scripts` (`--features=scripts`) và upload script qua file `.jar`.
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+1. **Thiếu Thuộc tính (Missing Attributes)**:
+   - *Nguyên nhân*: User chưa khai báo thuộc tính, hoặc quá trình đồng bộ (Federation) từ LDAP/Active Directory thiếu thuộc tính yêu cầu.
+   - *Khắc phục*: Trong Policy, luôn kiểm tra null (null-check) và dự phòng (fallback value) hoặc mặc định trả về `DENY` để đảm bảo mô hình Fail-Safe.
+
+2. **Dữ liệu thuộc tính nhiều giá trị (Multi-valued Attributes)**:
+   - *Sự cố*: Một thuộc tính có thể là một mảng (ví dụ: User thuộc nhiều `department` khác nhau), nhưng logic xử lý chỉ so sánh với giá trị đơn.
+   - *Khắc phục*: Xử lý thuộc tính dưới dạng mảng (Array/List) và dùng các phép kiểm tra giao (Intersection) hoặc tồn tại (Contains) trong mã Policy.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior:** Sự khác biệt cốt lõi giữa mô hình phân quyền RBAC và ABAC là gì? Tại sao chỉ dùng RBAC đôi khi là không đủ?
+   - *Đáp án:* RBAC dựa vào vai trò, dễ quản lý nhưng cứng nhắc. ABAC dựa vào thuộc tính linh hoạt (user, resource, context). RBAC không đủ khi cần các quy tắc chi tiết như "chỉ cho phép user đọc tài liệu do chính user đó tạo ra vào giờ hành chính".
+2. **Junior:** Hãy liệt kê các loại Attributes chính trong mô hình ABAC.
+   - *Đáp án:* Subject Attributes, Resource Attributes, Action Attributes, Environment Attributes.
+3. **Senior:** Việc triển khai ABAC trong Keycloak bằng JavaScript Policy có những nhược điểm gì liên quan đến thiết kế hệ thống?
+   - *Đáp án:* Khó khăn trong việc testing (unit test) các scripts, khó quản lý version (version control) trực tiếp qua UI, và có thể dẫn đến suy giảm hiệu năng (CPU overhead) nếu script phức tạp hoặc gọi tới external system.
+4. **Senior:** Làm thế nào để giải quyết vấn đề hiệu suất khi Keycloak phải evaluate ABAC rules cho số lượng request RPT rất lớn?
+   - *Đáp án:* (1) Push decision xuống API Gateway sử dụng OPA (Open Policy Agent) thay vì Keycloak cho một số rule. (2) Cấu hình cache `policyCache` trên Keycloak. (3) Dùng Claims/Token-based thay vì luôn gọi tới Token Endpoint để lấy RPT.
+5. **Senior:** Giải thích chiến lược 'Unanimous' so với 'Affirmative' khi gộp (aggregate) nhiều ABAC Policy lại với nhau.
+   - *Đáp án:* 'Affirmative': Chỉ cần ít nhất một Policy trả về GRANT thì kết quả cuối cùng là PERMIT. 'Unanimous': TẤT CẢ các Policy phải trả về GRANT, nếu có 1 Policy trả về DENY thì kết quả cuối cùng là DENY.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak Authorization Services Guide - Policy Types](https://www.keycloak.org/docs/latest/authorization_services/#_policy_types)
+- [NIST SP 800-162: Guide to Attribute Based Access Control (ABAC) Definition and Considerations](https://csrc.nist.gov/publications/detail/sp/800-162/final)
+- [OWASP Access Control Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Access_Control_Cheat_Sheet.html)

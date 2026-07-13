@@ -1,75 +1,142 @@
-# Lesson 1: Tự Nặn Cục Xác Thực Tùy Chỉnh (Custom Login)
-
 > [!NOTE]
-> **Category:** Theory & Practical (Lý thuyết & Thực hành)
-> **Goal:** Hiểu cách hoạt động của Giao diện SPI `Authenticator` và `AuthenticatorFactory` Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Bạn sẽ học cách ngắt ngang luồng đăng nhập Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề, render một màn hình HTML tự thiết kế Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, và hứng dữ liệu từ màn hình đó về để xử lý Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng.
+> **Category:** Theory
+> **Goal:** Cung cấp cái nhìn tổng quan kiến trúc và cơ sở lý thuyết về Authentication SPI trong Keycloak, hiểu rõ tại sao và khi nào cần phải xây dựng một Custom Login Authenticator.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Cỗ Máy Trạng Thái (State Machine) Trong Bụng Luồng Đăng Nhập
-Khi bạn vào màn hình Admin Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần -> Authentication -> Browser Flow. Bạn sẽ thấy luồng đi qua Cookie Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Identity Provider Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Username Password Form Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Đó chính là một dây chuyền sản xuất Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Mỗi công đoạn đó bản chất bên dưới là 1 class implement Interface `Authenticator` Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp.
+Hệ thống Identity and Access Management (IAM) hiện đại không chỉ dừng lại ở việc xác thực bằng "Username và Password". Nhu cầu thực tế yêu cầu đa dạng hóa các phương thức đăng nhập: xác thực bằng sinh trắc học, thẻ từ, mã PIN nội bộ, hay qua một API của bên thứ ba chuyên kiểm tra danh sách đen (Blacklist IP/User).
 
-Một `Authenticator` Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh sẽ có 2 hàm quan trọng nhất quyết định Sinh Tử Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:
-1. `authenticate(AuthenticationFlowContext context)` Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp: Được gọi khi Dây Chuyền chạy đến cục Gạch này Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Tại đây Bạn có quyền ra lệnh: "Quăng cái Màn Hình HTML Nhập Mã Bí Mật ra cho User nhập Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề!". Lúc này luồng đăng nhập TẠM DỪNG (Pause Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) và chờ đợi.
-2. `action(AuthenticationFlowContext context)` Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: Được gọi khi User BẤM NÚT SUBMIT trên cái form HTML hồi nãy Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Dữ liệu Post lên sẽ lọt vào hàm này Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Bạn viết logic Check Code Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. 
-   - Nếu Đúng Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh -> Gọi `context.success()` Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy -> Dây Chuyền đi tiếp sang Cục Gạch Khác Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh.
-   - Nếu Sai Oanh Khung Dịch Lụa Mạch Lệnh -> Gọi `context.failureChallenge()` Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa -> Quăng lại màn hình đỏ lòm báo lỗi bắt nhập lại Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy.
+Để đáp ứng điều này, Keycloak thiết kế **Authentication SPI** (Service Provider Interface). Đây là một API mạnh mẽ và can thiệp sâu nhất vào luồng cốt lõi của Keycloak. Khi viết một Custom Login Authenticator, bạn đang lập trình một "chốt chặn" (checkpoint) trong một Authentication Flow. 
 
-### 1.2. Mối Tình Giữa Authenticator Và Freemarker Theme
-Một Authenticator không thể sống thiếu Theme Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Khi bạn quăng Form trong Java Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, bạn thực chất gọi:
-`context.form().createForm("my-custom-screen.ftl")` Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-Điều này có nghĩa là bạn phải vào thư mục Theme (như đã học ở phần UI Customization Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa), tạo một file `.ftl` Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, vẽ thẻ `<form>` và thẻ `<input>` vào đó. Mọi biến bạn truyền từ Java bằng `setAttribute()` Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa sẽ được chèn vào HTML thông qua mã Freemarker `${myVariable}` Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp.
+Mỗi Authenticator là một nốt (node) trong một luồng (flow) dạng đồ thị có hướng. Kết quả của node này quyết định liệu Keycloak có tiếp tục chuyển sang node tiếp theo, cấp phát Access Token, hay từ chối và chặn người dùng lại.
 
----
+Các thành phần cốt lõi bao gồm:
+- **`Authenticator`**: Interface định nghĩa logic xác thực (ví dụ: hiển thị form, gọi API, kiểm tra cơ sở dữ liệu).
+- **`AuthenticatorFactory`**: Chịu trách nhiệm khởi tạo `Authenticator` và định nghĩa metadata (tên hiển thị, các trường cấu hình trên Admin Console).
+- **`AuthenticationFlowContext`**: Đối tượng chứa toàn bộ Context của phiên đăng nhập (thông tin User hiện tại, HTTP Request, HTTP Response, Session, Event builder).
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Cắt Ngang Luồng Đăng Nhập Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:
+Khi một trình duyệt yêu cầu xác thực, Keycloak sẽ lấy Authentication Flow (Ví dụ: "Browser Flow") và chạy tuần tự qua các Execution đã định cấu hình.
 
 ```mermaid
 sequenceDiagram
-    participant User as Khách (Browser Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa)
-    participant Flow as Cỗ Máy Authentication Flow Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp
-    participant CustomAuth as Custom Java Authenticator Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    participant FTL as Freemarker Engine Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
+    participant User as User / Browser
+    participant Engine as Keycloak Auth Engine
+    participant Auth as Custom Authenticator
+    participant API as External Service (e.g. Fraud Check)
+
+    User->>Engine: GET /auth/.../login
+    Engine->>Auth: authenticate(AuthenticationFlowContext)
     
-    User->>Flow: Nhập Xong User/Pass Mặc Định Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-    Flow->>Flow: Username Password Form Success Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề! Chạy Bước Tiếp Theo Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    Flow->>CustomAuth: Gọi Hàm authenticate() Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-    CustomAuth->>FTL: Gọi createForm("secret-question.ftl") Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần
-    FTL->>User: Trả Về Trình Duyệt Giao Diện Trắng Chứa 1 Ô Nhập Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng: "Con Chó Nhà Bạn Tên Gì?"
+    alt Không cần tương tác UI (Ví dụ: Fraud Check ngầm)
+        Auth->>API: Kiểm tra IP/User
+        API-->>Auth: Safe / Trusted
+        Auth-->>Engine: context.success() (Đi tiếp)
+    else Cần tương tác UI (Ví dụ: Nhập mã PIN đặc biệt)
+        Auth-->>Engine: context.challenge(Response)
+        Engine-->>User: Render HTML Form (FTL)
+        User->>Engine: POST /auth/.../login-actions/authenticate
+        Engine->>Auth: action(AuthenticationFlowContext)
+        Note over Auth: Phân tích form data từ HTTP POST
+        
+        alt Sai PIN
+            Auth-->>Engine: context.failureChallenge()
+            Engine-->>User: Render lại Form kèm báo lỗi
+        else Đúng PIN
+            Auth-->>Engine: context.success()
+        end
+    end
     
-    User->>User: Ngồi Suy Nghĩ Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh (Flow Đang Đóng Băng Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị)
-    
-    User->>Flow: Nhập Chữ "Mực" Và POST HTTP Chứa Ô Form `dog_name` Oanh Khung Dịch Lụa Mạch Lệnh
-    Flow->>CustomAuth: Đánh Thức Dậy Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh! Chuyển Tiếp Sang Hàm action()
-    CustomAuth->>CustomAuth: Lấy POST param `dog_name` == "Mực" Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề. Kiểm Tra Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Đúng Rồi Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
-    CustomAuth->>Flow: Gọi context.success() Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Báo Báo Cáo Xếp Mọi Thứ Ổn Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    Flow->>User: Cấp Phát Access Token Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp, Cho Phép Đăng Nhập Hoàn Tất Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
+    Engine-->>User: Cấp phát Token (Kết thúc Flow)
 ```
 
----
+**Chi tiết Cấp thấp:**
+Trạng thái (State) của quá trình đăng nhập là cực kỳ phức tạp. Keycloak duy trì nó bằng Cookie (với tên là `AUTH_SESSION_ID`). Cookie này trỏ tới một bản ghi phân tán trong Infinispan (vùng nhớ cache của Keycloak). Mỗi khi bạn gọi `context.challenge()`, Keycloak sẽ đóng gói trạng thái hiện tại (execution step ID, client ID, session ID) và sinh ra một `action_url` nhúng vào Form HTML để đảm bảo request POST tiếp theo từ người dùng được định tuyến đúng vào phương thức `action()` của Authenticator tương ứng.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Nứt Luồng Đăng Nhập Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)**
-> **Tội Ác Bỏ Quên Lịch Sử Hành Trình Khi Fail (Context Forgetting Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy):** Khi User gõ sai tên con Chó Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Lập Trình Viên Gọi Hàm `context.failure(AuthenticationFlowError.INVALID_CREDENTIALS)` Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Nhưng Không Thiết Lập Lại Cái Giao Diện Lỗi! 
-> **Hậu Quả Chết Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp:** 
-> Khi Bạn Báo Lỗi Mà Không Kèm Theo Form Hiển Thị Mới Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Keycloak Sẽ Hủy Toàn Bộ Luồng Đăng Nhập Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần Và Hất Văng Khách Hàng Ra Lại Tận Màn Hình Đăng Nhập Username/Password Ban Đầu Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Nghĩa là Khách vừa gõ user/pass Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, bấm Next Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, tới bước Nhập Tên Chó Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Gõ Sai Oanh Khung Dịch Lụa Mạch Lệnh -> Lập tức Bị Xóa Trắng Màn Hình Đẩy Ra Phải Gõ Lại User Pass Từ Đầu! Trải Nghiệm Cực Kỳ Ức Chế Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-> **Biện Pháp Sống Còn Lớp Trọng Lực OIDC Đáy Lụa:** Khi Sai (Trong Hàm action Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh), Phải Dùng Hàm `context.failureChallenge()` Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Kết Hợp Lại Với Việc Render Lại Form Một Lần Nữa Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng Kèm Theo Dòng Chữ Màu Đỏ "Bạn Đã Nhập Sai Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề, Mời Nhập Lại". Đừng Hất Khách Về Điểm Xuất Phát Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trừ Khi Nhập Sai Quá Số Lần Quy Định Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa (Quá 3 Lần Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)!
+> Tuyệt đối không bao giờ trả về các thông tin báo lỗi quá chi tiết (ví dụ: "User không tồn tại" hoặc "Lỗi kết nối cơ sở dữ liệu") ra giao diện người dùng. Điều này có thể dẫn đến lỗ hổng *User Enumeration* (Liệt kê người dùng) hoặc lộ cấu trúc hệ thống. Hãy sử dụng các message chung chung như `Invalid username or password`.
 
----
+> [!TIP]
+> Trong phương thức `authenticate()`, nếu có thể giải quyết được bài toán mà không cần hiển thị màn hình (ví dụ: kiểm tra IP nội bộ), hãy xử lý ngay và gọi `context.success()` hoặc `context.failure()`. Điều này gọi là "Silent Authentication", giúp cải thiện tốc độ đáng kể.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+- **Sử dụng Keycloak Event System**: Luôn luôn ghi nhận các sự kiện bảo mật thông qua `context.getEvent()`. Ví dụ: Ghi log `LOGIN_ERROR` nếu xác thực thất bại để các hệ thống SIEM (Security Information and Event Management) có thể phát hiện kịp thời các cuộc tấn công.
+- **Không Block Thread**: Luồng Authentication Engine của Keycloak chạy trên các worker threads (Undertow/Quarkus). Nếu Authenticator của bạn gọi một dịch vụ bên ngoài bị treo (timeout), thread sẽ bị block. Hãy set timeout rất thấp cho các lời gọi API ngoại vi.
 
-**1. Trong Authenticator Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Em Lưu Trạng Thái Tạm Thời (State) Của Luồng Đăng Nhập Ở Đâu Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh? Ví Dụ Em Muốn Lưu Số Lần Người Dùng Gõ Sai OTP Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Em Khai Báo `private int failCount = 0;` Vào Thẳng Trong Class MyCustomAuthenticator Có Được Không Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa?**
-- **Junior:** Dạ Chắc Được Sếp Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Class Này Là Của Riêng Luồng Authentication Đó Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
-- **Senior:** Dạ Tuyệt Đối CẤM Thưa Sếp Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! 
-  - Khai Báo Biến Instance (Field Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) Trong Authenticator Là Tự Sát Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Vì Theo Cơ Chế SPI Của Keycloak Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Authenticator Factory Thường Được Cấu Hình Là Singletons Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Hoặc Tái Sử Dụng Cho Nhiều Request Cùng Lúc Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Nếu Khai Báo `failCount` Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, Ông Khách A Nhập Sai 1 Lần Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Xong Ông Khách B Nhập Sai 2 Lần Oanh Khung Dịch Lụa Mạch Lệnh -> Biến Cộng Lên 3 Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cả Hai Ông Bị Khóa Acc Cùng Lúc Dù Không Đủ Lỗi Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Bị Tình Trạng Race Condition Thread-Safety Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
-  - Để Lưu Trạng Thái Của RIÊNG TỪNG PHIÊN ĐĂNG NHẬP Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Phải Dùng Bộ Nhớ Authentication Session Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Dùng Câu Lệnh: `context.getAuthenticationSession().setAuthNote("failCount", "1");` Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Dữ Liệu Này Sẽ Bám Theo Cục Cookie Session Riêng Biệt Của Từng Browser Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh An Toàn Tuyệt Đối Trong Môi Trường Đa Luồng Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
----
+Dưới đây là một bộ khung cơ bản (skeleton) cho một Custom Authenticator kiểm tra một Header bí mật:
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Developer Guide - Authentication SPI.
+**Lớp CustomAuthenticator.java:**
+```java
+public class SecretHeaderAuthenticator implements Authenticator {
+
+    @Override
+    public void authenticate(AuthenticationFlowContext context) {
+        // Lấy HTTP Header từ request
+        String secretHeader = context.getHttpRequest().getHttpHeaders().getHeaderString("X-Secret-Auth-Key");
+
+        // Đọc cấu hình từ Admin Console (được cấu hình qua Factory)
+        AuthenticatorConfigModel config = context.getAuthenticatorConfig();
+        String expectedKey = config != null ? config.getConfig().get("expected_key") : "default-key";
+
+        if (secretHeader != null && secretHeader.equals(expectedKey)) {
+            // Xác thực thành công (Bypass password)
+            context.success();
+        } else {
+            // Hiển thị form từ chối (hoặc form yêu cầu nhập thông tin bổ sung)
+            Response challenge = context.form()
+                    .setError("Missing or invalid secret key")
+                    .createForm("error-page.ftl");
+            context.challenge(challenge);
+        }
+    }
+
+    @Override
+    public void action(AuthenticationFlowContext context) {
+        // Chỉ dùng khi có Form trả về (POST). Trong ví dụ này ta không cần action.
+    }
+
+    @Override
+    public boolean requiresUser() {
+        return false; // Trả về true nếu bạn cần User object trước bước này
+    }
+
+    @Override
+    public boolean configuredFor(KeycloakSession session, RealmModel realm, UserModel user) {
+        return true; 
+    }
+
+    @Override
+    public void setRequiredActions(KeycloakSession session, RealmModel realm, UserModel user) {}
+
+    @Override
+    public void close() {}
+}
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Browser tắt Cookies**: Luồng Authentication của Keycloak hoàn toàn dựa vào Cookie (`AUTH_SESSION_ID`) để nối phương thức `authenticate()` với `action()`. Nếu trình duyệt của client block toàn bộ Cookies, khi form được submit lên, Keycloak sẽ văng lỗi `Cookie not found` và luồng bị hủy. Đây là hành vi mặc định và không thể dùng Custom Authenticator để sửa. Bạn phải đảm bảo ứng dụng Frontend/Client hỗ trợ Cookies.
+- **Flow bị gián đoạn (User bỏ dở)**: Nếu user vào trang đăng nhập, `authenticate()` được gọi và state lưu vào Infinispan, nhưng user đóng trình duyệt (không gọi `action()`). Trạng thái này sẽ bị "treo" trên bộ nhớ server. Keycloak có một cơ chế Eviction tự động để dọn dẹp các Authentication Sessions quá hạn (thường là sau 30 phút hoặc 1 giờ, cấu hình tại Login Timeout).
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior**: Interface nào là điểm vào chính để viết một Custom Login Logic trong Keycloak?
+   - *Đáp án*: Implement Interface `Authenticator` (và kèm theo `AuthenticatorFactory`).
+2. **Junior**: Sự khác biệt giữa `context.success()` và `context.challenge(Response)` là gì?
+   - *Đáp án*: `context.success()` báo hiệu bước này đã qua thành công, Keycloak sẽ chuyển sang bước xác thực tiếp theo. `context.challenge(Response)` dùng để trả về một giao diện HTML (form), tạm dừng luồng xác thực và chờ tương tác của người dùng.
+3. **Senior**: Tại sao cấu trúc dữ liệu của AuthenticationFlowContext không phải là Thread-safe và làm sao để xử lý?
+   - *Đáp án*: `AuthenticationFlowContext` được liên kết trực tiếp với Undertow HTTP Request hiện tại (single-thread per request). Nó không thread-safe nếu bạn truyền nó vào các luồng bất đồng bộ (ví dụ: `CompletableFuture`). Bắt buộc mọi thao tác gọi tới context phải nằm trong luồng HTTP gốc.
+4. **Senior**: Nếu Authenticator của bạn cần lấy User ID nhưng tại thời điểm `authenticate()` được gọi, `context.getUser()` trả về `null`. Nguyên nhân là gì?
+   - *Đáp án*: Do vị trí của execution này trong Flow. Nó được đặt TRƯỚC bước `Username Password Form`. Lúc này hệ thống chưa định danh được ai đang đăng nhập nên User là null. Cần điều chỉnh vị trí thứ tự trong Authentication Flow.
+5. **Senior**: Bạn làm thế nào để pass một tham số cấu hình tĩnh (ví dụ URL của SMS Gateway) từ Admin Console xuống Authenticator?
+   - *Đáp án*: Trong class `AuthenticatorFactory`, ghi đè phương thức `getConfigProperties()` để định nghĩa các trường nhập liệu (như Text, Password). Cấu hình này sẽ được lưu ở `AuthenticatorConfigModel` và có thể gọi ra bằng `context.getAuthenticatorConfig()` bên trong `Authenticator`.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak Server Developer Guide - Authentication SPI](https://www.keycloak.org/docs/latest/server_development/#_auth_spi)
+- [Infinispan Caching in Keycloak (For Auth Sessions)](https://www.keycloak.org/server/caching)
+- [RFC 6265 - HTTP State Management Mechanism (Cookies)](https://datatracker.ietf.org/doc/html/rfc6265)

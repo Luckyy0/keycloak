@@ -1,82 +1,119 @@
-# Lesson 12: Kinh Thánh Bảo Mật (Security Best Current Practice)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Thế giới Bảo Mật luôn thay đổi. OAuth2 ra đời từ năm 2012, đến nay nhiều tính năng cổ đại của nó đã bị giới hacker xuyên thủng. Nhóm chuyên gia bảo mật mạng IETF liên tục cập nhật một tài liệu có tên là **OAuth 2.0 Security Best Current Practice (BCP)** để cấm các luồng cũ và áp dụng luật mới. Bài học này tổng hợp những lời khuyên Máu Chó nhất của Kinh Thánh OIDC!
+> **Goal:** Nghiên cứu tài liệu Thực hành Tốt nhất và Bảo mật Hiện tại (Security Best Current Practice - BCP) của IETF dành cho OAuth 2.0. Hiểu tại sao các chuẩn gốc (RFC 6749) bị loại bỏ một phần và cách cấu hình Keycloak để tuân thủ các quy chuẩn khắt khe nhất của thế giới Enterprise.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Chôn Sống Implicit Flow (Luồng Chết Chóc)
-- **Nó là gì:** Hồi năm 2014, các App SPA (React/Angular) chưa có PKCE, họ bắt buộc phải dùng Implicit Flow. Tức là Keycloak đẩy thẳng **Access Token Trực Tiếp Lên URL Trình Duyệt** (`http://myapp.com#access_token=xyz`).
-- **Phán Quyết BCP Mới:** BỊ CẤM HOÀN TOÀN TẬN GỐC TỬ HÌNH KHÔNG BAO GIỜ DÙNG LẠI (DEPRECATED)!
-- **Lý do:** Mã Token nằm hớ hênh trên URL sẽ bị tuồn vào Lịch Sử Duyệt Web (Browser History), Proxy Logs, Bị Leak qua cờ `Referer` Header của HTTP Oanh Khung Dịch Lụa Gây Mất Token Diện Rộng Bọt!
-- **Giải pháp thay thế:** Đã Học Bài 4 - Luồng Auth Code Flow + PKCE Sinh Trắc! Cấm Lộ Token Trực Tiếp, Chỉ Đổi Đáy Back-Channel.
+Giao thức OAuth 2.0 (RFC 6749) được phát hành vào năm 2012. Kể từ đó, vô số các kiểu tấn công mới trên trình duyệt (Browser) và thiết bị di động (Mobile) đã được phát hiện. Những thiết kế từng được coi là an toàn vào năm 2012 nay đã trở thành lỗ hổng chí mạng.
 
-### 1.2. Chôn Sống Resource Owner Password Credentials Grant (Luồng Password Mù Lòa)
-- **Nó là gì:** Đứng ở góc độ App Mobile Cũ, App tự vẽ cái Form Username/Pass, xong đập thẳng cái Payload JSON `{username: "abc", password: "123"}` vào API `/token` Của Keycloak Rút Token Direct Trượt Bọt.
-- **Phán Quyết BCP Mới:** BỊ CẤM HOÀN TOÀN CẮT MẠCH!
-- **Lý do:** Vi phạm Triết lý Sứ Mệnh Số 1 Của OAuth2: BẮT ỨNG DỤNG BÊN THỨ 3 NẮM TRONG TAY MẬT KHẨU GỐC CỦA NGƯỜI DÙNG! Ứng dụng dơ bẩn Mobile Đó Bị Hack Là Khách Bay Mất Mật Khẩu Bank Cấp Tốc Lõi Máy Khung Rỗng.
-- **Giải pháp thay thế:** Mọi Mobile App Đều Phải Bật Trình Duyệt Webview Nội Bộ Hệ Điều Hành Gọi Safari Hoặc Crome Nhập Pass Lệnh Rút (Bypass) Đá Auth Code Redirect Rút Chữ.
+Để vá các lỗ hổng này, IETF đã phát hành tài liệu **OAuth 2.0 Security Best Current Practice (BCP)** (Bản nháp liên tục được cập nhật thành chuẩn mới). BCP không tạo ra giao thức mới mà **loại bỏ** các tính năng kém an toàn của bản gốc và **bắt buộc** áp dụng các biện pháp bổ sung.
+
+### Những thay đổi cốt lõi của BCP so với RFC 6749 gốc:
+1. **Khai tử Implicit Grant:** Luồng ngầm định trả Access Token trực tiếp trên URL từng dùng cho các ứng dụng Single Page Application (SPA). Nay bị cấm hoàn toàn vì rủi ro lộ lọt token qua lịch sử trình duyệt và XSS.
+2. **Khai tử Resource Owner Password Credentials Grant (ROPGC):** Tuyệt đối cấm Client xin trực tiếp Username/Password của người dùng. Mọi giao dịch phải qua trình duyệt (Browser redirect) của Authorization Server.
+3. **PKCE là Bắt buộc (Mandatory PKCE):** Trước đây PKCE (Proof Key for Code Exchange) chỉ dành cho Mobile App (Public Client). BCP hiện tại yêu cầu **MỌI** Client (kể cả Web App có Backend/Confidential Client) đều phải sử dụng PKCE để chống tấn công Authorization Code Injection.
+4. **Exact Redirect URI Matching:** Khớp chính xác hoàn toàn đường dẫn trả về. Không cho phép sử dụng Wildcard (`*`) ở thư mục con hay query parameters trong cấu hình Redirect URI.
 
 ---
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Đánh Gục Kẻ Cướp Session (Replay Attack Chống Bọt Trượt Phiên):
+Sơ đồ dưới đây minh họa luồng **Authorization Code + PKCE**, tiêu chuẩn Bắt buộc duy nhất hiện tại cho các ứng dụng tương tác với người dùng.
 
 ```mermaid
-flowchart TD
-    A[Hacker Trộm Cái Access Token Cũ Đã Lộ Dưới 5 Phút] --> B[Gõ Cửa API Đập Lệnh Mạch Lõi]
+sequenceDiagram
+    participant User as Người dùng (Browser)
+    participant Client as Ứng dụng (Client/SPA/Backend)
+    participant KC as Keycloak (Auth Server)
+
+    Note over Client: Sinh mã bí mật ngẫu nhiên (code_verifier)<br>Băm bằng SHA-256 (code_challenge)
     
-    B --> C{BCP Check 1: Token Mang Thời Hạn Dài (1 Tiếng)?}
-    C -- Đã Tuân Thủ BCP Ép Tuổi Thọ 5 Phút --> D[Máy Kiểm Lệnh Token Hết Hạn Gãy Oanh Báo Lỗi Chặt 401]
+    Client->>User: HTTP 302 Redirect tới Keycloak
+    User->>KC: GET /auth?response_type=code&code_challenge=xyz&code_challenge_method=S256
     
-    A --> E[Hacker Lại Cướp Cái Refresh Token Quý Giá Mang Lên Cổng]
-    E --> F{BCP Check 2: Quay Vòng Đổi Mới Hủy Cũ Refresh Token (Rotation)?}
-    F -- Đã Bật Công Tắc Rotation --> G[Hacker Đem Đổi Dội Trúng Phiên Trùng Replay Nhựa Lệnh Cũ Rút Lụa Bọt]
+    Note over KC: Lưu trữ code_challenge gắn với Session
+    KC-->>User: Hiển thị trang Login
+    User->>KC: Điền thông tin (hoặc dùng WebAuthn/MFA)
+    KC-->>User: HTTP 302 Redirect về Client kèm `?code=ABC`
+    User->>Client: Trình duyệt gọi URL trả Code cho Client
     
-    G --> H[Máy Bắn Phanh Chết Cứng Oanh Giao Tĩnh Khống API: Mày Lấy Token Xài Lại 2 Lần Rút Rác Hủy Diệt Cục Bộ Cây Cáp Giao Thức]
+    Note over Client: (Back-channel Request)
+    Client->>KC: POST /token<br>Body: grant_type=authorization_code&code=ABC&code_verifier=bí_mật_gốc
+    
+    KC->>KC: Tính toán lại Hash(code_verifier)
+    KC->>KC: So sánh với code_challenge đã lưu ở bước 1. Phải Khớp!
+    KC-->>Client: HTTP 200 OK (Trả về Access Token & Refresh Token)
 ```
+
+**Mục tiêu của luồng:** Ngay cả khi Hacker chặn bắt (Intercept) được `code=ABC` và bí mật của hệ thống `Client Secret` bị lộ, Hacker vẫn không thể lấy được Token vì Hacker không sở hữu `code_verifier` (nó được lưu động trong bộ nhớ đệm của App tại thời điểm đó).
 
 ---
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (3 Nguyên Tắc Kim Cương Phải Setup Trên Keycloak Của BCP)**
-> **Rule 1: Redirect URIs Phải Chặt Kín Đáy Tĩnh.** 
-> Tuyệt đối Không bao giờ được điền vào ô Redirect URIs ký tự dấu Sao Rộng (Ví Dụ: `https://myapp.com/*`). Vì Hacker sẽ nhúng lệnh Cướp Redirect Trượt Lụa Sang Mã Lỗi Script DOM Chặt Giao Gọn 403 XSS Đáy Web Oanh `https://myapp.com/upload-script-hack`. Phải Điền Đường Dẫn Khớp Tuyệt Đối Xác Mạch Lụa Trọn Từng Dòng Cấp Chóp!
-> 
-> **Rule 2: Khóa Rương Chặt Kẽ Client Secret (Bảo Vệ Hạ Tầng Backend)**
-> Đừng Nghĩ Client_Secret Trong Code Backend (Spring Boot/Node) Là Đã An Toàn Khung Oanh. Nếu Hacker Hack Bắn Lệnh Dump RAM Mã Nguồn, Lấy Secret. BCP Yêu Cầu Cấu Hình Luân Chuyển Khóa (Secret Rotation) Đều Đặn Theo Tháng Giao Thức Lõi DB Chặt Tương Thích Rỗng Cáp Mã Token JWT Tĩnh Cắt Cáp Kẽ!
-> 
-> **Rule 3: Tắt Hết Direct Access Grants Và Implicit.**
-> Lập Tức Đi Vào Khung Clients Keycloak. Cấu Hình Tắt Xám OFF Các Công Tắc Mở Bọt Rỗng Này Đi Cấp Tốc Bịt Nguy Cơ Dịch Tễ Lạ Trượt Khung Hacker Cũ Gọi Mạch API Oanh Thép Giữ Database Mở Kẽ.
+> [!CAUTION]
+> **Hủy bỏ hoàn toàn Mật khẩu qua API**
+> Tuyệt đối không dùng API `grant_type=password` trong Keycloak. Dù bạn là ứng dụng nội bộ (First-party application), việc ứng dụng chạm vào mật khẩu của người dùng phá vỡ hoàn toàn kiến trúc Single Sign-On (SSO) và ngăn cản việc triển khai Xác thực đa yếu tố (MFA - OTP, FIDO2).
+
+> [!TIP]
+> **Bảo mật kênh truyền mạnh mẽ với mTLS (Mutual TLS)**
+> BCP khuyến nghị ở cấp độ Enterprise (như Ngân hàng/Tài chính), Client gửi request lấy Token không nên dùng chuỗi `client_secret` (vì nó tĩnh và dễ lộ). Thay vào đó, sử dụng **mTLS (Chứng chỉ số 2 chiều)** hoặc **Private Key JWT (Client Assertion)** để xác thực Client với Keycloak.
+
+> [!WARNING]
+> **Giới hạn phạm vi (Scope) và Thời gian sống (TTL)**
+> Access Token phải có thời gian sống càng ngắn càng tốt (ví dụ: 5 phút). Quyền hạn trong Token (Scopes) phải được cấp tối thiểu (Principle of Least Privilege). Đừng cấp một Token với quyền Admin cho một ứng dụng chỉ cần quyền đọc Profile.
 
 ---
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cấu Hình Keycloak Theo Sách Trắng BCP OIDC 2.1 Mạch Lõi:
-1. Bạn truy cập Tab **Clients**, Mở Giao diện của Client Đang Chạy Code App Chính `react-spa` Vạch Trút.
-2. Tại Mục Khung Flow Settings, Dập Lệnh Cút Nhấn **`Implicit flow` -> OFF**.
-3. Tại Mục Khung Lệnh Cũ Đáy Đổ, Dập Tắt Lệnh Nhấn **`Direct access grants` -> OFF**.
-4. Cột Khung URL Mạch Trọng Lực Redirections Oanh Cáp Giao Diện Lệnh, Thay Vì Để Lệnh Rút `*`, Bạn Thay Thế Chặt Gọn Bằng Giao Điểm Đỉnh Cuối `https://react-spa.congty.com/oauth2/callback`.
-5. Tab **Advanced**, Kéo Bật Tính Năng **`Proof Key for Code Exchange` -> S256** Chống CSRF Thép Tĩnh Khống Khung Cắt Mạch Đứt Kẽ Mã Bơm.
-6. Kéo Xuống Giao Diện Cấu Hình Trượt Bọt Refresh Đáy DB, Chặt Cắt Cứu Bồ Chữ Lệnh Cài Đặt Khung Mã Khởi Khớp: Bật Cờ **`Revoke Refresh Token` -> ON**. Mọi Sự An Toàn Chóp Vô Địch Thiết Lập!
+Để áp dụng BCP vào một ứng dụng Frontend/Backend trong Keycloak:
+
+1. **Realm Settings -> Security Defenses:** 
+   - Đảm bảo `Content-Security-Policy (CSP)` và `Strict-Transport-Security (HSTS)` được cấu hình đầy đủ.
+2. **Cấu hình Client (Clients -> your-client -> Settings):**
+   - **Valid Redirect URIs:** Cấu hình **chính xác tuyệt đối**. Ví dụ: `https://app.example.com/callback` (Không dùng `https://app.example.com/*`).
+   - **Capability config:** 
+     - `Client authentication`: **ON** (Nếu có backend bảo mật), **OFF** (Nếu là SPA/Mobile).
+     - `Standard flow`: **ON** (Authorization code).
+     - `Implicit flow`: **OFF** (Tuyệt đối không bật).
+     - `Direct access grants`: **OFF** (Tắt Password Grant).
+   - **Advanced Settings:**
+     - `Proof Key for Code Exchange Code Challenge Method`: Chọn **S256** (Tuyệt đối không dùng `plain` hoặc để trống). Điều này bắt buộc ứng dụng phải gửi `code_challenge`.
 
 ---
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
-**1. Sếp Yêu Cầu Code App Cho Công Ty Tài Chính Ngân Hàng Oanh Lõi Trọng Điểm. Mặc Dù Chuẩn BCP 2.0 (Hiện Tại 2.1) Đã Rất Kín Kẽ Nhưng Có Một Lỗ Hổng Nằm Ở Front-Channel Khi Dội Authorization Request Mồi Gửi Lên Máy Chủ, Cái State Của JWT Token Nó Trôi Phẳng Ở URL Chữ Nghĩa Cũ Của Get. Làm Sao Bịt Chặn Điểm Này Oanh Khung Dịch Tĩnh FAPI Giao Thức Rỗng?**
-- **Senior:** Để đạt Bảo Mật Tài Chính Cấp FAPI (Financial-grade API), Việc Gửi Parameters qua Thanh URL bằng Dòng Lệnh GET Của Front-Channel Dù Có PKCE Đi Nữa Cũng Bị Coi Là Yếu Oanh Khung Dịch Lụa Lộ Giao Dịch Bí Mật Mạch Rỗng Báo CSRF Rác.
-  - Phải Triển Khai Chóp Kỹ Thuật Có Tên Lệnh Thép Là: **`PAR (Pushed Authorization Requests - RFC 9126)`**.
-  - Lúc Này Cấu Hình Keycloak Bật Lệnh Rút Lụa PAR: Client Sẽ Không Đập Lệnh Mồi Redirect URL Chữ Nghĩa Gửi `Client_ID` Và `Scope` Lên Trình Duyệt Bọt Nữa. Nó Đẩy Trực Tiếp Payload Authorization Lệnh Rút Qua Giao Thức Cửa API Back-channel `/par` Rất Sạch Tương Lai Của Oanh Mạng Bọc.
-  - Sau Đó Nhận Về Cái ID Request Lệnh Oanh Rỗng. Trình Duyệt Mới Redirect Chữ Tĩnh Trút HTTP Lõi ID Giao Thức Mạch Nối Gọi OIDC Không Chứa Payload Bí Mật Nào Cả. Kẻ Trộm Soi Lịch Sử Web Cũng Khóc Thét Bất Lực Đứng Im Lỗ Mù Lòa Khóa Token Mạch API Báo Dữ Lụa An Toàn Chóp Cắt Đứt Nối Dòng Json Oanh Thép Nhựa Cắt Gọn Cáp Bí Thuật Vingroup OIDC!
+### Hệ thống SPA cũ không thể bảo mật Token (Lỗ hổng Local Storage)
+- **Sự cố:** Các ứng dụng React/Angular cũ thường nhận Token và lưu vào `localStorage` của trình duyệt. Theo BCP hiện đại, mọi dữ liệu ở `localStorage` đều có thể bị đánh cắp bởi mã độc XSS (Cross-Site Scripting).
+- **Cách khắc phục:** Áp dụng kiến trúc **BFF (Backend for Frontend)**. SPA chỉ giao tiếp với Backend qua Cookie được đánh dấu `HttpOnly, Secure, SameSite=Strict`. Backend (chạy NodeJS, Spring Boot) sẽ đóng vai trò là OAuth2 Client (giữ Token trong RAM hoặc Redis) và proxy request lên Resource Server (gắn Token vào Header). SPA không bao giờ nhìn thấy Access Token.
 
 ---
 
-## 6. Tài liệu tham khảo (References)
-- **IETF BCP:** OAuth 2.0 Security Best Current Practice.
-- **FAPI:** Financial-grade API Security Profile.
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Tại sao OAuth 2.0 BCP lại "khai tử" Implicit Grant? Nó từng là tiêu chuẩn cho SPA cơ mà?**
+   - *Junior:* Vì nó trả token thẳng trên thanh URL, ai nhìn vào lịch sử duyệt web cũng thấy, rất dễ bị lộ.
+   - *Senior:* Luồng ngầm định dựa trên URI Fragment (`#token=...`), khiến trình duyệt vô tình lưu vết trên nhiều lớp (History, Referrer header) và rất nhạy cảm với tấn công XSS. Hơn nữa, nó không có cơ chế xác thực server (Server Authentication), làm tăng nguy cơ Token Injection. BCP thay thế nó bằng Authorization Code + PKCE.
+
+2. **PKCE ban đầu được thiết kế cho Mobile App, tại sao BCP yêu cầu Backend Server (Confidential Client) cũng phải dùng?**
+   - *Senior:* Dù Backend có giữ được `client_secret` bí mật, hacker vẫn có thể thực hiện **Authorization Code Injection Attack**. Hacker tự login vào tài khoản của hacker trên máy của hắn, lấy `code` hợp lệ, chặn đường truyền và tiêm `code` đó vào request của nạn nhân. PKCE khóa chặt `code` với phiên giao dịch trên trình duyệt của nạn nhân thông qua `verifier`. Do Hacker sinh `code` ở máy hắn (verifier của hacker) nhưng tiêm vào máy nạn nhân (verifier của nạn nhân), Keycloak sẽ phát hiện lỗi băm (hash mismatch) và từ chối.
+
+3. **Client Assertion (Private Key JWT) bảo mật hơn Client Secret ở điểm nào?**
+   - *Senior:* `client_secret` là một chuỗi văn bản tĩnh gửi qua mạng, dễ bị lộ trên Log, hoặc nhân viên cũ mang đi. Private Key JWT sử dụng kỹ thuật mã hóa phi đối xứng. Client giữ Private Key an toàn trong Hardware Security Module (HSM) hoặc Vault, dùng nó để Ký (Sign) một JWT ngắn hạn (ví dụ 60s) và gửi lên Keycloak. Keycloak xác thực bằng Public Key. Không có bí mật tĩnh nào được truyền qua mạng.
+
+4. **Wildcard trong Redirect URI gây ra hậu quả gì?**
+   - *Junior:* Hacker có thể chuyển hướng token về trang web của họ.
+   - *Senior:* Open Redirect Attack. Nếu Keycloak cho phép `https://example.com/*`, hacker có thể lừa Keycloak chuyển hướng về `https://example.com/forum/post/123` (nơi hacker kiểm soát nội dung). Hơn nữa, hacker có thể nối thêm query parameter hoặc dùng đường dẫn Path Traversal để đánh cắp Token/Code ngay trên miền của ứng dụng hợp lệ.
+
+5. **Giải pháp nào tối ưu nhất theo BCP để lưu trữ Token trong trình duyệt?**
+   - *Senior:* Câu trả lời của BCP là: **Không lưu Token trong trình duyệt**. Token không nên tồn tại ở môi trường Front-end (React/Vue). Sử dụng mô hình BFF (Backend-for-Frontend) làm trung gian (Token Handler) và chỉ phát hành `HttpOnly, Secure Cookie` cho trình duyệt để quản lý phiên bản (Session).
+
+---
+
+## 7. Tài liệu tham khảo (References)
+
+- [OAuth 2.0 Security Best Current Practice (BCP) - IETF Draft/Standard](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics)
+- [RFC 7636 - Proof Key for Code Exchange by OAuth Public Clients](https://datatracker.ietf.org/doc/html/rfc7636)
+- [OWASP OAuth 2.0 Threat Model](https://cheatsheetseries.owasp.org/cheatsheets/OAuth2_Threat_Model_and_Security_Considerations.html)

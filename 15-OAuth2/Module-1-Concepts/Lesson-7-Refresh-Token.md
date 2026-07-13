@@ -1,90 +1,122 @@
-# Lesson 7: Giữ Chặt Đứt Phiên (Refresh Token)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Access Token là Chìa Khóa mở API. Nhưng vì lý do an toàn, Chìa Khóa này bắt buộc phải hết hạn rất nhanh (thường là 5 phút). Nếu mỗi 5 phút bạn lại bắt Khách Hàng đăng nhập lại thì hệ thống của bạn sẽ bị gỡ cài đặt ngay lập tức. Để giải quyết, **Refresh Token (Thẻ Gia Hạn)** ra đời!
+> **Goal:** Nghiên cứu bản chất, công dụng, và vòng đời của Refresh Token trong hệ sinh thái OAuth 2.0/OpenID Connect. Tìm hiểu cơ chế Refresh Token Rotation (Xoay vòng Token) nhằm nâng cao bảo mật hệ thống.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Refresh Token Là Gì? Tại Sao Cần Hai Loại Token Chống Nhau?
-Trong bộ trả về tiêu chuẩn OIDC, Keycloak thường ném cho bạn 2 cục Token: `access_token` và `refresh_token`.
-- **Access Token:** Mang tính chất "Xài liên tục". Nó được đẩy lên API ở mọi cú Click chuột của người dùng. Mức độ bay lượn ở bề mặt mạng Rất Cao -> Tỷ lệ bị lộ/ăn cắp cực cao.
-  - **Cách đối phó:** Giới hạn tuổi thọ của nó cực ngắn (VD: 5-15 phút). Hacker có ăn cắp được thì xíu cũng hết xài.
-- **Refresh Token:** Mang tính chất "Chôn dưới đáy rương". Nó tuyệt đối KHÔNG bao giờ được mang ra gọi đập vào các API lấy Data thông thường.
-  - **Nhiệm vụ duy nhất:** Khi Access Token (thẻ đỏ) hết hạn gãy 401, Client mới lôi Refresh Token (thẻ vàng) dưới rương ra, phi thẳng về cổng ngã 3 của **Keycloak (Auth Server)** để xin Đổi Lấy Một Cái Access Token Mới Cứng!
-  - Tuổi thọ của Refresh Token thường rất dài (VD: 30 ngày, hoặc 6 tháng). Nhờ nó mà 1 App Mobile có thể giữ login của khách 1 năm trời không bắt gõ Pass!
+Trong kiến trúc ủy quyền bằng Token, **Access Token** là chìa khóa để vào nhà, mang quyền lực tối cao để đọc/ghi dữ liệu. Nếu Access Token bị lộ, kẻ gian có thể đánh cắp toàn bộ thông tin. Để giảm thiểu rủi ro, thời gian sống (TTL - Time to Live) của Access Token thường được đặt rất ngắn (từ 1 đến 5 phút). 
 
-### 1.2. Tuổi Thọ Bức Cắt Phiên (Idle Timeout vs Max Lifespan)
-Trên Keycloak, Refresh Token bị kiểm soát bởi 2 cây đồng hồ đếm ngược cực kỳ hiểm ác:
-1. **SSO Session Idle:** Khoảng thời gian khách không thao tác (Lười biếng). Ví dụ 30 phút. Nếu trong 30 phút bạn không dùng Refresh Token để đổi Token mới, nó sẽ Chết Vĩnh Viễn do bị Timeout.
-2. **SSO Session Max:** Tuổi thọ tối đa cứng nhắc. Ví dụ 10 tiếng. Cho dù bạn thao tác liên tục bấm đổi Token mỗi phút không lười biếng, thì tới mốc 10 tiếng (Hết phiên làm việc trong ngày), Keycloak vẫn Bóp Cổ Refresh Token và ép chết toàn bộ chuỗi phiên, bắt User đăng nhập Password lại vào ngày hôm sau!
+**Vấn đề:** Nếu Access Token hết hạn sau 5 phút, ứng dụng (Client) sẽ bị lỗi `401 Unauthorized`. Không thể bắt người dùng cứ 5 phút lại gõ Username/Password một lần để lấy Token mới, như vậy trải nghiệm người dùng (UX) sẽ vô cùng tồi tệ.
+
+**Giải pháp - Refresh Token:**
+Refresh Token là một chứng chỉ bảo mật tĩnh, có tuổi thọ dài hơn nhiều (có thể là vài giờ, vài ngày, hoặc vĩnh viễn đối với Offline Token). Nó được cấp kèm theo cùng lúc với Access Token. Khi Access Token hết hạn, ứng dụng Client sẽ âm thầm sử dụng Refresh Token để yêu cầu Authorization Server (Keycloak) cấp lại một bộ Token mới mà không cần sự can thiệp của người dùng (Silent renew).
+- Refresh Token **không bao giờ** được gửi cho Resource Server (API backend). Nó chỉ được dùng để liên lạc tĩnh với Keycloak.
+- Keycloak lưu trạng thái của Refresh Token vào cơ sở dữ liệu (In-memory Cache hoặc Database) thông qua khái niệm `User Session`.
 
 ---
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Hô Hấp Nhân Tạo (Gia Hạn Token Ngầm Backend):
+Khi Access Token của ứng dụng bị từ chối, ứng dụng sẽ khởi chạy luồng **Refresh Token Grant** tại endpoint `/token`.
 
 ```mermaid
 sequenceDiagram
-    participant App as Web/Mobile App (Client)
-    participant API as Resource Server
+    participant App as Client (Mobile/Web App)
+    participant API as Resource Server (API)
     participant KC as Keycloak (Auth Server)
+    participant DB as User Session Cache
 
-    Note over App, KC: --- GIAI ĐOẠN 1: MÁY ĐANG CHẠY BÌNH THƯỜNG ---
-    App->>API: 1. Gửi Access_Token (AT) để xem Profile (T=4 phút)
-    API-->>App: 2. Nhả Data 200 OK.
+    App->>API: 1. Request Data với Access Token (hết hạn)
+    API-->>App: 2. Trả về HTTP 401 Unauthorized
     
-    App->>API: 3. Gửi Access_Token (AT) để xem Profile (T=6 phút)
-    API-->>API: Check chữ ký JWT: "Token Expired. Đã Hết Hạn!"
-    API-->>App: 4. Chặt Mạch! Quăng lỗi HTTP 401 Unauthorized.
+    Note over App: App kích hoạt luồng làm mới (Refresh flow)
+    App->>KC: 3. POST /protocol/openid-connect/token<br>grant_type=refresh_token&refresh_token=123ABCxyz...
     
-    Note over App, KC: --- GIAI ĐOẠN 2: THỨC TỈNH REFRESH TOKEN ĐÁY RƯƠNG ---
-    App->>KC: 5. Nhận 401. Đừng báo lỗi ra cho Khách! Bật kênh ngầm đập API /token
-    Note right of App: Gửi Kèm Refresh_Token (RT) + Cờ grant_type=refresh_token
+    KC->>KC: 4. Xác thực Client (Client Secret / JWT)
+    KC->>DB: 5. Kiểm tra Session ID trong Token có còn hoạt động không?
     
-    KC-->>KC: 6. Quét RT trong DB. RT còn Hạn! Session User còn Sống!
-    KC-->>App: 7. Bơm Mạch Sống! Nhả (Access_Token MỚI CỨNG + Refresh_Token MỚI)
-    
-    Note over App, API: --- GIAI ĐOẠN 3: LẶP LẠI VÒNG ĐỜI ---
-    App->>API: 8. Cầm Access_Token MỚI thử gọi lệnh xem Profile ban nãy tiếp.
-    API-->>App: 9. Data 200 OK! Người dùng không hề biết chuyện gì đã xảy ra ngầm dưới đáy.
+    alt Session hợp lệ và Token chưa hết hạn
+        KC->>KC: 6. Tính toán Scopes & Claims mới
+        KC->>DB: 7. Cập nhật thời gian Last Access của Session
+        KC-->>App: 8. HTTP 200 OK<br>Trả về Access Token mới & Refresh Token mới
+        Note over App: App gọi lại API với Access Token mới
+        App->>API: 9. Request Data với Access Token MỚI
+        API-->>App: 10. Trả về HTTP 200 OK (Dữ liệu)
+    else Session bị đóng (User đã Logout)
+        KC-->>App: HTTP 400 Bad Request (Invalid Token)
+        Note over App: App bắt buộc đẩy người dùng ra màn hình Login
+    end
 ```
+
+**Lưu ý:** Quá trình cấp mới này hoàn toàn diễn ra ẩn (background, server-to-server) mà người dùng không hề hay biết.
 
 ---
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc (Nguy Cơ Bị Trộm Refresh Token Vĩnh Cửu - Refresh Token Rotation)**
-> **Mối Nguy Hiểm Lõi:** Nhỡ thằng Hacker lặn sâu vào kho LocalStorage của Trình Duyệt và cướp được cái Refresh Token (Thẻ Vàng)? Cái Token này sống tới 30 ngày! Thế là hacker cứ dùng Thẻ Vàng đổi ra Thẻ Đỏ (Access) và chơi bời phá hoại 1 tháng trời?
-> **Biện Pháp Sống Còn Lớp Trọng Lực (Rotation):** Phải bật công tắc **`Revoke Refresh Token`** trên Client Keycloak. 
-> - Cơ chế xoay vòng (Rotation) hoạt động như sau: Khi App của bạn dùng Thẻ Vàng (RT-số-1) để đổi thẻ mới. Keycloak nhả cho bạn bộ Token mới kèm 1 Thẻ Vàng mới (RT-số-2), ĐỒNG THỜI TIÊU HỦY LUÔN THẺ (RT-SỐ-1). Thẻ Vàng chỉ được XÀI 1 LẦN DUY NHẤT. 
-> - **Cắt Cổ Hacker:** Nếu thằng Hacker ăn cắp cái RT-số-1, lúc nó đem đi đổi, Keycloak chửi: "Thẻ này đã xài rồi, mày là thằng ăn cắp bị lặp (Replay Attack)". Keycloak sẽ dùng Mạch Bức Cắt Khung **HỦY DIỆT TOÀN BỘ CÂY GIA PHẢ SESSION ĐÓ (Xóa cả Thẻ Vàng số 2 của App Xịn Đang Cầm Trọng Tay)**. Bắt cả Hacker và Nạn Nhân đăng nhập lại! Trải Lụa Tuyệt Đỉnh Zero-Trust!
+> **Refresh Token Rotation (Xoay vòng Refresh Token)**
+> Đây là cơ chế bảo mật tối quan trọng. Mỗi khi Client dùng Refresh Token (RT1) để đổi lấy Token mới, Keycloak sẽ hủy RT1 và cấp ra một Refresh Token hoàn toàn mới (RT2). Nếu hacker đánh cắp được RT1 và cố gắng sử dụng nó sau đó (Replay attack), Keycloak sẽ nhận ra rằng RT1 đã được sử dụng trước đó (Reuse detected). Keycloak sẽ ngay lập tức **hủy toàn bộ phiên đăng nhập (Session)**, làm vô hiệu hóa luôn cả RT2 mà ứng dụng hợp pháp đang cầm. Đây là cách chống lại rò rỉ Token (Token Leak) vô cùng hiệu quả.
+
+> [!WARNING]
+> **Không lưu trữ Refresh Token không an toàn**
+> Refresh Token giữ chìa khóa sinh mạng của phiên đăng nhập lâu dài. Trên Web App (SPA), tuyệt đối không lưu Refresh Token ở `localStorage`. Hãy lưu nó ở máy chủ Backend, hoặc gửi xuống trình duyệt dưới dạng `HttpOnly, Secure, SameSite=Strict Cookie` (Cơ chế BFF - Backend for Frontend).
+
+> [!TIP]
+> **Sử dụng Offline Access cho các Background Tasks**
+> Nếu hệ thống của bạn cần đọc dữ liệu người dùng hàng đêm lúc 2 giờ sáng (khi người dùng không mở App), hãy xin quyền scope là `offline_access`. Keycloak sẽ cấp Offline Refresh Token. Khác với token thông thường, Offline Session được lưu xuống Database cứng (Persisted), nó sẽ sống ngay cả khi Keycloak Server bị restart và sống theo hàng tháng/năm cho đến khi bị thu hồi (Revoke).
 
 ---
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cấu Hình Refresh Token Quay Vòng Chống Trộm Trực Tiếp (Rotation) Trên Client Bọc Lụa:
-1. Bạn chọn Client `react-frontend` trên Menu Keycloak.
-2. Di chuyển sang Tab **Advanced** (Nâng Cao).
-3. Cuộn tìm tới cụm **Advanced settings**. Bạn sẽ thấy các cờ OIDC bảo vệ.
-4. Bật công tắc **`Revoke Refresh Token`** sang **ON**. 
-   *(Sau mỗi lần đổi Refresh Token, cái cũ lập tức bốc hơi khỏi DB Cắt Khung).*
-5. Có một ô đi kèm tên là **`Refresh Token Max Reuse`**: Đây là độ trễ ân hạn (Thường set là 0). Nếu Mạng Lag (App gửi lệnh đổi RT, Keycloak đổi xong trả RT mới về nhưng Đứt cáp, App ko nhận được). App sẽ kẹt với cái RT cũ. Nếu Set Reuse = 1, Keycloak sẽ du di cho App dùng lại RT cũ 1 lần nữa để vượt qua sự cố lag.
+### Kích hoạt Refresh Token Rotation trên Keycloak
+1. Mở Admin Console -> Truy cập phần cấu hình `Clients` -> Chọn client của ứng dụng.
+2. Tại tab `Advanced` -> Mục `Advanced Settings`.
+3. Tìm tùy chọn **Revoke Refresh Token** và bật nó lên (**ON**).
+4. Thiết lập **Refresh Token Max Reuse**: Khuyến nghị đặt là `0` (Mỗi token chỉ được dùng 1 lần duy nhất). Nếu mạng của bạn thường xuyên bị rớt gói tin gây mất phản hồi đồng bộ, bạn có thể cân nhắc đặt `1` để du di.
+
+### Cấu hình thời gian sống (Lifespan)
+1. Truy cập `Realm Settings` -> tab `Sessions`.
+2. **SSO Session Idle:** Khoảng thời gian nếu người dùng không dùng App (không có lệnh refresh nào gọi lên Keycloak), session sẽ chết. Mặc định là 30 phút.
+3. **SSO Session Max:** Thời hạn sống tối đa của một phiên dù người dùng có hoạt động năng nổ đến đâu. Mặc định là 10 giờ. Hết 10 giờ, Refresh Token hết hạn, phải login lại.
 
 ---
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
-**1. Sếp Yêu Cầu Code Tính Năng SPA (Single Page App) Login. Cậu Đang Phân Vân Giữa Việc Lưu Refresh Token Dưới Cửa Sổ `LocalStorage` Của Browser Hay Dưới Dạng `HttpOnly Cookie`. Cậu Lựa Chọn Cái Nào Để Đạt Mức Bảo Mật Chóp Chuẩn OAuth 2.1 Hiện Đại?**
-- **Senior:** Chắc Chắn 100% Là Phải Chôn Dưới Đáy Mạch **`HttpOnly Cookie`** Chống Trượt Bọt Rỗng!
-  - **Nếu chôn ở LocalStorage:** Mọi mã Script JS chạy trên giao diện web (Kể cả mã rác của một tiện ích thứ 3 cài vào web) đều có lệnh đọc được RAM Trình duyệt và lôi tuột cục Refresh Token này lên dâng cho Hacker (Tấn công XSS - Cross-Site Scripting). Cực kỳ mong manh!
-  - **Nếu dùng HttpOnly Cookie + Cờ Secure:** Cái bánh Quy (Cookie) chứa Refresh Token này bị Hệ Điều Hành Trình Duyệt BỌC THÉP TRẮNG TINH. Mọi lệnh JavaScript (Kể cả của chính Dev Code React xịn) đều **Mù Lòa Không Thể Đọc Hoặc Chạm Vào Nó Bằng Lệnh `document.cookie`**. Token chỉ được trình duyệt tự động đính ngầm dưới gầm xe Request khi bắn luồng Fetch/Axios đúng domain Keycloak. Trừ khi Hacker ăn trộm cả máy tính sếp, còn XSS khóc thét bỏ chạy Cắt Mạch Đứt Trải Lụa API Tuyệt Mật!
+### Lỗi Race Condition với Refresh Token Rotation
+- **Sự cố:** Ứng dụng SPA mở trên 3 tab trình duyệt khác nhau. Access Token hết hạn. Cả 3 tab đồng loạt gửi request tới API và đều nhận `401 Unauthorized`. Cả 3 tab đồng loạt gửi lệnh gọi cấp mới Token lên Keycloak với **CÙNG MỘT** Refresh Token gốc.
+- **Hệ quả:** Request đầu tiên thành công, trả về RT mới. Hai request sau đến trễ, Keycloak coi đây là hành vi "Reuse detected" (Tái sử dụng) như hacker. Keycloak tự động hủy toàn bộ Session. Người dùng bị văng ra khỏi hệ thống đăng nhập.
+- **Cách khắc phục:** 
+  1. Frontend phải dùng thư viện có cơ chế "Lock" hoặc "Queue" (Ví dụ: `axios` interceptor chỉ cho phép 1 request đi làm mới token, các request khác tạm dừng và chờ token mới).
+  2. Hoặc cấu hình Keycloak du di thời gian tái sử dụng một chút (không khuyến nghị vì làm giảm bảo mật).
 
 ---
 
-## 6. Tài liệu tham khảo (References)
-- **RFC 6749:** Section 1.5 Refresh Token.
-- **IETF OAuth 2.1 Draft:** Refresh Token Rotation.
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Tại sao không thiết lập Access Token sống được 10 giờ mà phải cần đến Refresh Token?**
+   - *Junior:* Để an toàn hơn, lỡ mất Access Token thì người khác chỉ xài được 5 phút.
+   - *Senior:* Access Token phi trạng thái (Stateless JWT) không cần tra cứu database nên rất nhanh, nhưng nhược điểm là không thể chủ động thu hồi (Revoke). Nếu kéo dài TTL của nó, khi có rủi ro, hệ thống bất lực không thể khóa người dùng. Giải pháp là rút ngắn TTL JWT, đẩy trách nhiệm kiểm tra trạng thái Session (Stateful) cho quá trình làm mới Refresh Token, giúp hệ thống có cơ hội (điểm dừng) để từ chối dịch vụ trước khi cấp token chu kỳ tiếp theo.
+
+2. **Khi một người dùng đổi mật khẩu trên Keycloak, làm sao để vô hiệu hóa các ứng dụng họ đang dùng trên điện thoại cũ?**
+   - *Senior:* Khi đổi mật khẩu, Keycloak tự động kích hoạt tính năng Xóa mọi User Sessions đang tồn tại liên quan đến User đó. Phiên đăng nhập trên điện thoại cũ bị xóa trên Keycloak. Khi ứng dụng trên điện thoại cũ gọi Refresh Token, nó sẽ bị báo lỗi (Session Not Found), ép điện thoại cũ phải quay về trang đăng nhập và nhập mật khẩu mới.
+
+3. **Cơ chế Refresh Token Rotation (Xoay vòng) chống lại cuộc tấn công nào? Giải thích cách hoạt động.**
+   - *Senior:* Chống Token Hijacking (Replay Attack). Khi Rotation kích hoạt, Refresh Token chỉ có giá trị sử dụng 1 lần (One-Time-Use). Nếu hacker trộm được RT gốc, và sau đó nạn nhân hợp pháp vào app khiến RT tự xoay sang cái mới (hủy RT gốc), khi Hacker cố dùng RT gốc, Keycloak sẽ phát hiện có người đang cố dùng lại token cũ. Keycloak không chỉ từ chối Hacker mà còn hủy luôn RT mới của nạn nhân (để an toàn tuyệt đối). Nạn nhân sẽ bị bắt login lại.
+
+4. **Khác biệt giữa Session Idle Timeout và Session Max Timeout?**
+   - *Junior:* Idle là thời gian không dùng máy, Max là thời gian tối đa được dùng.
+   - *Senior:* `Idle` là khoảng thời gian tịnh tiến (Sliding window) được reset lại mỗi khi có request làm mới token. Nếu Idle = 30p, chỉ cần người dùng bấm app sau phút 29, phiên sẽ sống thêm 30p nữa. `Max` là thời gian tuyệt đối (Absolute timeout). Nếu Max = 10 giờ, thì dù bạn có bấm app liên tục mỗi phút, sau đúng 10 giờ (kể từ lúc login), bạn vẫn bị đăng xuất.
+
+5. **`offline_access` token là gì và dùng khi nào?**
+   - *Senior:* Nó là một Refresh Token đặc biệt sinh ra khi gọi cùng scope `offline_access`. Nó không tuân theo giới hạn SSO Session Max mà có bộ cấu hình Offline Session riêng (thường là sống nhiều ngày, nhiều tháng, và không biến mất khi Keycloak restart server do được ghi vào Database Disk). Dùng cho các tác vụ Cronjob, Batch processing, CI/CD pipelines chạy độc lập không có người dùng bấm màn hình.
+
+---
+
+## 7. Tài liệu tham khảo (References)
+
+- [RFC 6749 - The OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/doc/html/rfc6749)
+- [OAuth 2.0 Security Best Current Practice - Token Replay](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics)
+- [Keycloak Server Administration Guide - SSO Sessions](https://www.keycloak.org/docs/latest/server_admin/)

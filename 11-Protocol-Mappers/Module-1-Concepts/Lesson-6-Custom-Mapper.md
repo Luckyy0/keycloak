@@ -1,82 +1,162 @@
-# Lesson 6: Chuyên Gia Móc Nối (Custom Java Mapper & Kéo API Gọi Mạng)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Khi tất cả Ống Bơm Build-in và cả Javascript cũng phải bó tay trước một yêu cầu gọi API chéo hệ thống để nhồi Data vào Token. Bạn đã đến cảnh giới cao nhất của Backend: Deploy một cục `File .jar` chứa Custom Java Mapper do chính tay bạn viết, tiêm thẳng vào lõi động cơ của Lãnh Chúa.
+> **Category:** Theory
+> **Goal:** Nắm vững cấu trúc kiến trúc (Architecture) của Protocol Mapper SPI, cách phát triển, biên dịch và triển khai một Custom Mapper bằng Java để chèn các logic tính toán phức tạp vào Token.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. SPI Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default Và Lối Mở Bức Tường OIDC Khung Rác API Phẳng Rỗng
-Keycloak Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Đáy Mạch Máu Cắt Lệnh API Nó Trả Về Token Bọc Cấp K8s Oanh Không Được Xây Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Lệnh Thép Chặn Dội Khách Kín Bưng Nhanh Tốc Độ Ánh Sáng Như Một Pháo Đài Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Khung Mã Json Kéo Rỗng. Kiến Trúc Sư Của RedHat Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Đã Để Lại Hàng Trăm "Ổ Cắm" Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh Ở Quanh Vỏ Cỗ Máy Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép (Gọi Là Service Provider Interface - SPI Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép).
-- Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers OIDC Protocol Đáy Kẽ Lệnh Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Của Phương Pháp Khung Cắt Mạch Của Keycloak Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng Cũng Sở Hữu Các Ổ Cắm SPI Đó Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng.
-- Cậu Backend Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh! Chỉ Cần Mở Spring / Maven / Gradle Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo. Kế Thừa Giao Diện Java Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh (Implement Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh `AbstractOIDCProtocolMapper` Rút Khung Trống Mạng Lệnh Thép Rất Kính). Cậu Hoàn Toàn Có Thể Lệnh Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Tự Do Viết Dòng Code Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Của Keycloak Khung Code Bọc Oanh Cáp Chạy Gọi Oanh Khách Nhanh Sóng `HttpClient`, Kết Nối Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh Postgres Cũ Mệnh Cắt Lệch Mạch Oanh Khách Chạy Full Tính Năng Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế! Bên Ngoài Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ, Bơm Kafka Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!... Tất Cả Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Rút Khung Trống Mạng Lệnh Thép Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Đều Được Thực Thi Bằng Sức Mạnh Java Core Rút Cắn Lại Nén Căng Mạch Phình To Rút Gắn Mã Nhân Lên Mượt Khung Chạy Cùng Mâm Với Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng Cỗ Máy Chính Của Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính Keycloak!
+Mặc dù Keycloak cung cấp nhiều Built-in Mappers (như ánh xạ User Attribute, Roles, Groups), có những trường hợp nghiệp vụ mà cấu hình có sẵn không thể đáp ứng. 
+Ví dụ: 
+- Bạn muốn gọi một API ngoại bộ (External REST API) để lấy điểm tích lũy của khách hàng và nhúng vào JWT.
+- Bạn cần thực hiện các phép toán phức tạp (như mã hóa một đoạn dữ liệu, nối chuỗi nâng cao từ nhiều bảng) trước khi đưa vào Token.
 
-### 1.2. Deploy Cục Code Java Custom Vào Trong Ruột Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token Keycloak
-Sau Khi Bạn Code Xong Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default Cục Logic Oanh Liệt Dập Database Thủng Căng Bơm Data Của Mình Bằng Java Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc. Bạn Đóng Gói Thành Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng 1 File Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng `.jar`.
-Đem Cục File Lệnh Đáy Thép Chặn Dội Khách OIDC Đó Thả Vào Thư Mục Lệnh Báo Code Bóc Mạch Chữ Khung Rác Dữ Đỉnh Mạng `/opt/keycloak/providers/` Của Container Docker Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính Keycloak.
-Restart OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh Khi List Array Bắn Khung Cắt Mạch Đáy Group Attributes Nằm Phẳng Dưới Theme OIDC Bọc Lệnh API Rỗng Nhựa Do Flat Network Khung Trọng Rễ Lệnh Tái Trượt Sụp Cấu Trúc Nằm Đáy Vùng Ruột Cứng Lại Container Rút Gắn Mã Nhân Bọc Nhựa Bằng Cắt Kẽ Đội Oanh Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Bằng Lệnh Trút Bão Mạng Sạch Bot Khung Rác Mạng Trễ Đọc Text Rỗng Khung Đáy Không Đứt Rẽ Lệnh Thép Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! `kc.sh build`.
-BÙM! Vô Admin Console Đáy Database Kéo Bơm Đáy Lên Rìa Lúc Giao Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung Tab `Mappers`. Bấm Tạo Mới Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng, Bạn Sẽ Thấy Ngay Tên Thằng Mapper Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Do Chính Tay Bạn Code Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh Hiện Lên Nằm Cùng Danh Sách Với Các Siêu Cấp Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Built-in Của Trút Kéo Ngầm Lập Tức Bức Cắt Khung Lệnh RedHat Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế!! Cảm Giác Nắm Trùm Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới! Backend Thật Là Đã Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC!
+Để làm được điều này, Keycloak cung cấp một cơ chế cực kỳ mạnh mẽ gọi là **Service Provider Interfaces (SPI)**. Cụ thể đối với Token, chúng ta sử dụng **Protocol Mapper SPI**. 
 
----
+Bằng cách viết một đoạn mã Java kế thừa lớp `AbstractOIDCProtocolMapper`, đóng gói thành file `.jar` và đặt vào thư mục `/opt/keycloak/providers/`, bạn đã lập trình trực tiếp vào bộ não của Keycloak (Engine). Khi khởi động, Keycloak sẽ quét file JAR này và tự động đăng ký Custom Mapper của bạn vào giao diện Admin Console để người quản trị có thể sử dụng như các Mapper thông thường.
+
+**Tại sao Custom Mapper quan trọng?**
+- **Tính mở rộng vô hạn (Extensibility):** Hệ thống không bị trói buộc bởi những gì Keycloak cung cấp. Bất kỳ logic nghiệp vụ Java nào (kể cả kết nối Redis, gọi HTTP, đọc gRPC) đều có thể tích hợp.
+- **Tập trung hóa bảo mật (Centralization):** Việc tính toán các claims nhạy cảm được thực hiện ở mức Identity Server (Keycloak), các Client không cần phải chứa logic nghiệp vụ để tính toán ra các quyền này.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Bắn Dòng Cục Json Qua Động Cơ Custom Java Của Bác Kỹ Sư Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh Mạch Oanh Liệt Dập Cụm Trống (Custom SPI Mapper Flow Đáy Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung):
+Quá trình hoạt động của một Custom Mapper trải qua hai vòng đời: Khởi tạo (Boot time) và Thực thi (Runtime).
 
 ```mermaid
-graph TD
-    subgraph "Cách Token Engine Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Tích Hợp Gói Jar Mapper Custom Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy"
-        Khach[Khách Login Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế!]
-        
-        KC_Engine[JWT Token Engine Rút Gắn Mã Nhân Bọc Nhựa Bằng Cắt Kẽ Đội Oanh Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi]
-        
-        CustomJar[File .jar Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh 'Goi_Diem_Ngoc_Rong_Mapper'<br/>Viết Bằng Java Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép]
-        
-        ExternalAPI[(API Game Ngọc Rồng Lọc Oanh Liệt Dập Database Thủng Căng<br/>Host Bên Ngoài Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng Keycloak)]
-        
-        Khach-->KC_Engine
-        KC_Engine-->|Scan Thấy File Jar Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Đã Gắn Vô Ổ Cắm SPI Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép| CustomJar
-        
-        CustomJar-->|Chạy Code Java Core Bức Cắt Khung Lệnh Thép Chặn Dội Mạch Sẽ Cắt Cụm Băng Bó Bắn Oanh Khống Chạm Pass Gửi HTTP Call Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng| ExternalAPI
-        ExternalAPI-->|Trả Về Cột Data Điểm Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!| CustomJar
-        
-        CustomJar-->|Bơm JSON Biến Oanh Khách Nhanh Sóng 'diem_tich_luy'| KC_Engine
-        KC_Engine-->|Sinh Cục Token Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies| JWT[JWT Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID]
-        
-        Note over JWT: "diem_tich_luy": 9000<br/>Cục Data Này Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh Thậm Chí Không Hề Oanh Khách Nhanh Sóng Lỗ Trống Mạng Tồn Tại Trong DB Postgres Của Keycloak Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default! Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Bắn Trực Tiếp Từ Mạng Ngoài Rút Khung Trống Mạng Lệnh Thép Rất Kính!
-    end
+sequenceDiagram
+    participant Admin Console
+    participant Keycloak Engine
+    participant CustomMapperClass as MyCustomMapper (Java)
+    participant ExternalAPI as CRM System / Database
+    participant Token as JWT Builder
+
+    %% Boot Time
+    Note over Keycloak Engine,CustomMapperClass: Giai đoạn Khởi động (Boot Time)
+    Keycloak Engine->>CustomMapperClass: Quét file META-INF/services/
+    Keycloak Engine->>CustomMapperClass: Gọi getId(), getDisplayType()
+    CustomMapperClass-->>Keycloak Engine: Đăng ký UI Configs
+    Admin Console->>Keycloak Engine: Hiển thị Mapper mới trên giao diện
+
+    %% Runtime
+    Note over Keycloak Engine,Token: Giai đoạn Phát hành Token (Runtime)
+    Keycloak Engine->>CustomMapperClass: transformAccessToken(token, mappingModel, userSession...)
+    CustomMapperClass->>ExternalAPI: (Logic Tùy chỉnh) HTTP GET /user/loyalty_points
+    ExternalAPI-->>CustomMapperClass: Trả về { "points": 1500 }
+    CustomMapperClass->>Token: token.getOtherClaims().put("loyalty_points", 1500)
+    Keycloak Engine->>Token: Hoàn tất Token và ký JWT
 ```
 
----
+**Giải thích chi tiết (Step-by-Step):**
+1. **Đăng ký SPI (Boot time):** Keycloak sử dụng tiêu chuẩn `ServiceLoader` của Java. Bạn phải tạo một tệp trong dự án tại `META-INF/services/org.keycloak.protocol.ProtocolMapper`. Bên trong file này chứa đường dẫn đầy đủ đến lớp Java của bạn. Keycloak nạp lớp này lúc khởi động.
+2. **Cấu hình giao diện (UI Config):** Phương thức `getConfigProperties()` của lớp Java sẽ trả về danh sách các trường cấu hình (Text box, Boolean switch) để vẽ lên Admin Console.
+3. **Can thiệp Token (Runtime):** Khi người dùng đăng nhập, hàm `transformAccessToken` hoặc `transformIDToken` sẽ được gọi. Đối tượng `AccessToken` được truyền vào dạng tham chiếu (reference). Bạn thêm claim mới bằng cách chèn dữ liệu vào danh sách `OtherClaims`.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
+- **Tuyệt đối chú ý Hiệu suất (Performance):** Hàm `transformAccessToken` được gọi **MỖI LẦN** một token được sinh ra (bao gồm cả khi Refresh Token). Nếu bạn gọi một External API chậm hoặc thực hiện query DB tốn kém trong hàm này, nó sẽ kéo sập toàn bộ hệ thống Keycloak, gây thắt cổ chai (Bottleneck) lớn.
+  - *Giải pháp:* Sử dụng Cache (như Infinispan của Keycloak) để lưu lại kết quả từ hệ thống bên ngoài trong một thời gian ngắn.
+- **Xử lý Ngoại lệ (Exception Handling):** Nếu Code của bạn có lỗi văng ra `NullPointerException` hoặc Lỗi mạng, Token sẽ không được tạo ra, khiến toàn bộ luồng đăng nhập thất bại. Phải bọc logic trong `try-catch` an toàn và ghi Log rõ ràng.
+- **Quản lý Vòng đời phụ thuộc (Dependencies):** Custom Mapper file JAR cần được đóng gói dạng "Fat JAR" nếu bạn sử dụng các thư viện bên ngoài (như Apache HttpClient, Gson). Tuy nhiên, cẩn thận xung đột thư viện với các gói có sẵn của nền tảng Quarkus bên dưới Keycloak.
+
+> [!WARNING]
+> Mọi lệnh I/O đồng bộ (Synchronous IO) đặt trong Custom Mapper đều chặn (block) Thread xử lý đăng nhập hiện tại của Keycloak. Thiết kế hệ thống mạng kém có thể dẫn đến cạn kiệt Thread Pool.
+
 > [!IMPORTANT]
-> **Tuyệt Đỉnh Tối Ưu Tẩy Khách Mạng Bọc Tốc Độ Bắn Token Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới (Đừng Code Ngu Ngốc Gọi Mạng API Trong Mapper Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh Gây Chết Đứng Login Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token)**
-> **Tội Ác Thiết Kế OIDC Khung Rác API Phẳng Rỗng Gây Đứt Mạch Cụm Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers:** Thằng Dev Backend Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Ỷ Y Có Code Java Cũ Mệnh Cắt Lệch Mạch Oanh Khách Trong Tay Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng!. Cậu Viết Cái Hàm Gọi HTTP Call Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Bắn Sang API Kế Toán Bên Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Dưới Tầng Custom Mapper Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng. 
-> Nhưng Cậu Không Cài Oanh Khách Nhanh Sóng Timeout Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Cho Request Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh. Khi Cụm API Kế Toán Bị Sập Rút Khung Gắn Nóng Tự Trị Oanh Khách Vô Form Đáy Bọc Khống Gãy Khung Tốc Độ Khác Nữa Kẽ Đáy, Logic Chạy Java Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo Của Mapper Custom Oanh Liệt Dập Database Thủng Căng Bị Treo Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ Tận 30 Giây Chờ Đợi Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới. 
-> Hậu Quả Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép Ác Mạng Chặn Kéo Mất Lệnh API Phế!: Khách Hàng Bấm Nút Login Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Của Keycloak Khung Code Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!. Giao Diện Vòng Xoay Đợi Đáy Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Của Phương Pháp Khung Cắt Mạch Xoay 30 Giây Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh Rồi Văng Lỗi Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! 504 Gateway Timeout Rút Khung Trống Mạng Lệnh Thép Rất Kính Do Nginx Cắt Đứt Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!. Cả Công Ty Sập Hệ Thống Login Đáy Database Kéo Bơm Đáy Lên Rìa Lúc Giao Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung Chỉ Vì 1 Cái Lệnh Đáy Thép Chặn Dội Khách OIDC Code Java Nằm Chờ Mạng Trút Kéo Ngầm Lập Tức Bức Cắt Khung Lệnh.
-> **Biện Pháp Sống Còn Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng!:** Khi Đã Mã Code Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default Custom SPI Bức Cắt Khung Lệnh Thép Chặn Dội Mạch Sẽ Cắt Cụm Băng Bó Bắn Oanh Khống Chạm Pass. BẮT BUỘC Phải Code Cực Kỳ Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Tối Ưu Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế!. Mọi Lệnh Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies HTTP Call Sang Hệ Thống Khác Cắt Lệnh Sạch Sẽ Trút Bọc Nhựa Tuyệt Mỹ Của Máy Đều Phải Đặt Rút Cắn Lại Nén Căng Mạch Phình To Rút Gắn Mã Nhân Lên Mượt Khung `Timeout < 1 Giây` Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Lệnh Thép Chặn Dội Khách. Bắt Buộc Dùng Try Catch Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng Trả Về Data Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh Bảng UI Chặn JWT Mạch Nhựa Kéo Sát Mặc Định (Fallback) OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế! Nếu Chờ Chậm Quá Oanh Khách Nhanh Sóng Lỗ Trống Mạng. Đừng Bao Giờ Lấy Máy Engine Bắn Token Rút Khung Trống Mạng Lệnh Thép Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Ra Làm Vật Tế Thần Cho Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Backend Chậm Chạp Khác Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Lệnh Thép Chặn Dội Khách!
+> Từ Keycloak 17 (Quarkus), các file `.jar` phải được đặt ở thư mục `/opt/keycloak/providers/`. Sau khi copy file, bạn BẮT BUỘC phải chạy lệnh `/opt/keycloak/bin/kc.sh build` để Quarkus biên dịch lại lớp bytecode trước khi start.
 
-> [!CAUTION]
-> **Nỗi Lòng Đứt Form Sập Cụm OOM Memory Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng Do Deploy Cục JAR Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới Chứa Lệnh Nhồi Thư Viện Quá Lớn Vào Thư Mục Providers Của Keycloak Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép)**
-> Cậu Dev Oanh Liệt Dập Database Thủng Căng Build Một Cái Java Custom Mapper Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh. Để Bắn Được Gọi Mạng Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh HTTP Rút Khung Trống Mạng Lệnh Thép Rất Kính, Thay Vì Dùng `java.net.http` (Có Sẵn Của Java Core Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Thường Các Máy Chủ Được Đặt Đằng Sau Nginx Load Balancer Khung Cắt Mạch Đáy Role Nhựa). Cậu Lại Chạy Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng Import Thư Viện Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers Spring Boot Framework (Nặng 100MB Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Bất Báo Lỗi Nhựa Lệnh) Vào Code Của Cục File `.jar` Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng!.
-> Khi Vứt File Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Này Vào Thư Mục `/opt/keycloak/providers/` Đáy Rễ Căn Cứ Code Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Và Chạy Oanh Khách Nhanh Sóng `kc.sh build`. Hệ Thống Engine Quarkus Của Keycloak Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Của Phương Pháp Khung Cắt Mạch Bị Cháy Xung Đột Thư Viện ClassPath Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng (Ví Thư Viện Của Keycloak Bị Đè Nhau Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới! Với Thư Viện Spring Của Cục Jar Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC). 
-> Build Lỗi Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Đứt Khúc Cáp Chữ OIDC Rỗng Backend Bọc Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế! Chết Đứng Container Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh!
-> Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch: Tuyệt Đối KHÔNG BAO GIỜ Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ Nhồi Nhét Các Thư Viện Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc Phức Tạp Rút Cắn Lại Nén Căng Mạch Phình To Rút Gắn Mã Nhân Lên Mượt Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới (Như Spring, Hibernate Đáy Database Kéo Bơm Đáy Lên Rìa Lúc Giao Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung) Vào Mã Nguồn Viết Custom SPI Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế!. Chỉ Được Phép Dùng Rút Khung Gắn Nóng Tự Trị Oanh Khách Vô Form Đáy Bọc Khống Gãy Khung Tốc Độ Khác Nữa Kẽ Đáy Các Gói Java Core Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng! Có Sẵn Hoặc Các Lệnh Thép Chặn Dội Khách Thư Viện Apache Siêu Nhẹ Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default Nhằm Tránh Xung Đột Engine OIDC Của Lãnh Chúa Đáy Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Của Phương Pháp Khung Cắt Mạch!
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
----
+Một bộ khung (skeleton) Java chuẩn cho một Custom OIDC Protocol Mapper:
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+```java
+package com.company.keycloak.mapper;
 
-**1. Trong Realm Khách Hàng Nắm Cổng Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!. Đội Ngũ Của Cậu Dev Vừa Deploy Thành Công 1 Gói Oanh Liệt Dập Database Thủng Căng `.jar` Chứa Cái Oanh Khách Nhanh Sóng Custom Mapper Viết Bằng Java Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh Lên Server Keycloak Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng. Container Restart Oanh Khách Nhanh Sóng Lỗ Trống Mạng Êm Ru Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới. Tuy Nhiên Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token Báo Lệnh Nhựa Kép Trộn Cục Role Client Này, Khi Cậu Chạy Lên Màn Hình UI Bảng Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép `Mappers` Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh Của 1 Thằng Client Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies, Bấm Nút Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! "Configure a new mapper" Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC. Danh Sách Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Sổ Ra Mọi Thằng Ống Bơm Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế! Built-in Của Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng Keycloak Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh (User Attribute, Group Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng). NHƯNG HOÀN TOÀN TỊT NGÒI Rút Khung Trống Mạng Lệnh Thép Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Tuyệt Đối Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Không Thấy Đâu Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Của Keycloak Khung Code Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới! Cái Tên Của Thằng Oanh Khách Nhanh Sóng Custom Mapper Mà Cậu Code Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh! Trút Bão Mạng Sạch Bot Khung Rác Mạng Trễ Đọc Text Rỗng Khung Đáy Không Đứt Rẽ Lệnh Thép Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!. Hỏi Trong Đống Code Java Lệnh Đáy Thép Chặn Dội Khách OIDC Đó, Cậu Ấy Quên Khai Báo Điều Sống Còn Nào Khiến Keycloak Mù Lòa Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh Bảng UI Chặn JWT Mạch Nhựa Kéo Sát Không Tìm Thấy File Của Cậu Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép?**
-- **Junior:** Dạ có khi file Jar đó bị corrupt build lỗi nên Keycloak nó giấu đi anh ơi đứt mạng chạy chóp nhanh test khỏe.
-- **Senior:** Phá Hoại Đáy Mạch Máu Cắt Rò Rụng Cột Namespace Isolation OIDC Rỗng Lưới Chặn Cắt Mạch API Khống Của Java SPI Rút Khung Trống Mạng Lệnh Thép Rất Kính Kiến Trúc Kẽ Nút Áp Tải Khống Lệnh Json Array Tên Là Resource_Access Gửi Lên Keycloak Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng!
-Để Cỗ Máy Quarkus Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng Đáy Rễ Căn Cứ Code Lọc Đáy Kéo Của Keycloak Quét Được Rút Gắn Mã Nhân Bọc Nhựa Bằng Cắt Kẽ Đội Oanh Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Bất Kỳ Một Cái Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers Giao Diện SPI Custom Nào Nằm Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo Trong Thư Mục `/providers` Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng. BẮT BUỘC Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh Trong Mã Nguồn Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng! Dự Án Java Đó Oanh Khách Nhanh Sóng Lỗ Trống Mạng, Phải Có 1 Cục File Cực Kỳ Nhỏ Bé Nằm Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới Trong Thư Mục Oanh Liệt Dập Database Thủng Căng `META-INF/services/` Đáy Kẽ Lệnh Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Của Phương Pháp Khung Cắt Mạch. 
-Tên File Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ Đó Phải Đúng Y Chang Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Giao Diện Gốc Của Lãnh Chúa Đáy Database Kéo Bơm Đáy Lên Rìa Lúc Giao Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung: `org.keycloak.protocol.ProtocolMapper` Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc. Và Bên Trong Nội Dung Của File Này Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies Phải In Đúng 1 Dòng Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Chữ Trút Kéo Ngầm Lập Tức Bức Cắt Khung Lệnh Package Trỏ Tới Lớp Bức Cắt Khung Lệnh Thép Chặn Dội Mạch Sẽ Cắt Cụm Băng Bó Bắn Oanh Khống Chạm Pass Java Của Cậu Dev Viết Oanh Khách Nhanh Sóng. (Ví Dụ Rút Khung Gắn Nóng Tự Trị Oanh Khách Vô Form Đáy Bọc Khống Gãy Khung Tốc Độ Khác Nữa Kẽ Đáy: `com.vingroup.keycloak.mappers.GoiDiemNgocRongMapper` Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!).
-Nếu Quên OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh Khi List Array Bắn Khung Cắt Mạch Đáy Group Attributes Nằm Phẳng Dưới Theme OIDC Bọc Lệnh API Rỗng Nhựa Do Flat Network Khung Trọng Rễ Lệnh Tái Trượt Sụp Cấu Trúc Nằm Đáy Vùng Ruột Cứng File Khai Báo Chặn Mạng SPI Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Này, Keycloak Chạy Build Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token Xong Nó Vẫn Ép Chạy Bỏ Qua Luôn Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép Cục Code Của Cậu Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính Đứt Khúc Cáp Chữ OIDC Rỗng Backend Bọc Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế! Chữa Bệnh Này Cực Kỳ Đơn Giản Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh Bảng UI Chặn JWT Mạch Nhựa Kéo Sát: Dùng Google Library Rút Cắn Lại Nén Căng Mạch Phình To Rút Gắn Mã Nhân Lên Mượt Khung `@AutoService(ProtocolMapper.class)` Dán Lên Đầu Class Cắt Lệnh Sạch Sẽ Trút Bọc Nhựa Tuyệt Mỹ Của Máy Java Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh Là Nó Tự Sinh File Lúc Build Cực Khỏe Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế!!
+import org.keycloak.models.ClientSessionContext;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.ProtocolMapperModel;
+import org.keycloak.models.UserSessionModel;
+import org.keycloak.protocol.oidc.mappers.AbstractOIDCProtocolMapper;
+import org.keycloak.protocol.oidc.mappers.OIDCAccessTokenMapper;
+import org.keycloak.protocol.oidc.mappers.OIDCAttributeMapperHelper;
+import org.keycloak.provider.ProviderConfigProperty;
+import org.keycloak.representations.IDToken;
 
----
+import java.util.ArrayList;
+import java.util.List;
 
-## 6. Tài liệu tham khảo (References)
-- **Keycloak SPI:** Service Provider Interfaces and Protocol Mappers.
+public class MyCustomMapper extends AbstractOIDCProtocolMapper implements OIDCAccessTokenMapper {
+
+    public static final String PROVIDER_ID = "my-custom-mapper";
+    private static final List<ProviderConfigProperty> configProperties = new ArrayList<>();
+
+    // Cấu hình các thuộc tính sẽ hiển thị trên giao diện Admin
+    static {
+        OIDCAttributeMapperHelper.addTokenClaimNameConfig(configProperties);
+        OIDCAttributeMapperHelper.addIncludeInTokensConfig(configProperties, MyCustomMapper.class);
+    }
+
+    @Override
+    public String getDisplayCategory() {
+        return TOKEN_MAPPER_CATEGORY;
+    }
+
+    @Override
+    public String getDisplayType() {
+        return "Company Custom Mapper"; // Tên hiển thị trên dropdown
+    }
+
+    @Override
+    public String getHelpText() {
+        return "Adds custom calculated values to the token.";
+    }
+
+    @Override
+    public List<ProviderConfigProperty> getConfigProperties() {
+        return configProperties;
+    }
+
+    @Override
+    public String getId() {
+        return PROVIDER_ID;
+    }
+
+    // Logic xử lý chính tại Runtime
+    @Override
+    protected void setClaim(IDToken token, ProtocolMapperModel mappingModel, 
+                            UserSessionModel userSession, KeycloakSession keycloakSession, 
+                            ClientSessionContext clientSessionCtx) {
+        
+        // 1. Tính toán logic (vd: Nối tên công ty)
+        String username = userSession.getUser().getUsername();
+        String customValue = "COMPANY-" + username.toUpperCase();
+        
+        // 2. Chèn dữ liệu vào token
+        OIDCAttributeMapperHelper.mapClaim(token, mappingModel, customValue);
+    }
+}
+```
+*Lưu ý:* Phải tạo file `src/main/resources/META-INF/services/org.keycloak.protocol.ProtocolMapper` chứa nội dung `com.company.keycloak.mapper.MyCustomMapper`.
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Lỗi ClassNotFoundException khi Deploy:** Điều này xảy ra khi Custom Mapper của bạn sử dụng một thư viện ngoài (như Jackson mới nhất) nhưng lại quên đóng gói vào trong file JAR.
+  - **Khắc phục:** Sử dụng Maven Shade Plugin để đóng gói tất cả các dependencies vào chung một tệp JAR (Fat JAR).
+- **Mapper xuất hiện trên UI nhưng Token không có dữ liệu:** Người dùng thường quên kiểm tra xem `transformAccessToken` có thực sự được gọi không.
+  - **Khắc phục:** Bật Log debug (`logger.info("Mapper invoked!")`). Kiểm tra xem thuộc tính cấu hình `Add to access token` trên Admin Console đã được gạt sang ON chưa.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior:** SPI là viết tắt của gì và mục đích của Protocol Mapper SPI trong Keycloak?
+   - *Đáp án:* SPI là Service Provider Interface. Mục đích là cho phép lập trình viên viết mã Java tùy chỉnh để thay đổi nội dung Token trước khi nó được mã hóa và gửi đi, giải quyết các bài toán mà cấu hình có sẵn không làm được.
+2. **Junior:** Thư mục nào trên server Keycloak dùng để chứa các file Custom SPI (file JAR)?
+   - *Đáp án:* Kể từ khi chuyển sang Quarkus, các file SPI được đưa vào thư mục `/opt/keycloak/providers/`.
+3. **Senior:** Tại sao việc thực hiện HTTP call tới một API bên ngoài bên trong `transformAccessToken` của Mapper lại nguy hiểm?
+   - *Đáp án:* Hàm này được gọi đồng bộ (synchronous) mỗi khi tạo token. Nếu API bên ngoài timeout hoặc chậm (2-3 giây), toàn bộ request đăng nhập của Keycloak sẽ bị treo. Nếu có 100 người đăng nhập cùng lúc, hệ thống sẽ cạn Thread và sập. Cần phải thiết lập Timeout siêu nhỏ (ví dụ 100ms) và dùng caching cơ chế bộ nhớ.
+4. **Senior:** Để Keycloak (Quarkus) nhận diện được Provider mới, ngoài việc copy file JAR, ta cần thực hiện hành động nào?
+   - *Đáp án:* Bắt buộc phải chạy lệnh build của Keycloak: `kc.sh build` (để Quarkus thực hiện quá trình Augmented/AOT compilation, quét classpath để tích hợp các classes mới vào hạt nhân ứng dụng). Sau đó mới chạy `kc.sh start`.
+5. **Senior:** Hãy giải thích quy trình đăng ký một lớp Java trở thành một ProtocolMapper hợp lệ cho Keycloak bằng `ServiceLoader`.
+   - *Đáp án:* Lớp Java phải kế thừa/implement `ProtocolMapper`. Sau đó, ta cần tạo một file text có tên đúng bằng cấu trúc package của Interface (`META-INF/services/org.keycloak.protocol.ProtocolMapper`). Nội dung file này là FQCN (Fully Qualified Class Name) của lớp triển khai. Tại lúc khởi động, JVM `ServiceLoader` sẽ quét file này và nạp các class vào bộ nhớ.
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak Server Developer Guide - Service Provider Interfaces (SPI)](https://www.keycloak.org/docs/latest/server_development/#_providers)
+- [Java ServiceLoader Documentation](https://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html)
+- [Custom Protocol Mapper Example (GitHub)](https://github.com/keycloak/keycloak-quickstarts/tree/latest/action-token-authenticator)

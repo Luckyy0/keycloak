@@ -1,65 +1,89 @@
-# Lab 1: Nối Mạng Cò Mồi Keycloak - Keycloak (OIDC Federation)
+> [!NOTE]
+> **Category:** Practical/Lab
+> **Goal:** Hướng dẫn chi tiết từng bước (Step-by-Step) cách cấu hình Keycloak hoạt động như một Identity Broker bằng cách tích hợp đăng nhập mạng xã hội (Google Social Login) và cấu hình Identity Provider Mappers.
 
-## 1. Mục Tiêu (Objectives)
-Trong bài lab này, chúng ta sẽ không nối với Google vì cần Đăng ký Developer Account phức tạp. Thay vào đó, chúng ta sẽ Dựng Lên 2 Trạm Keycloak Chạy Song Song Cùng Lúc:
-- Trạm 1: `kc-idp` (Đóng vai trò như Google - Nơi chứa dữ liệu Khách Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt).
-- Trạm 2: `kc-broker` (Đóng vai trò Cò Mồi Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp - Phục vụ App Kế Toán Lệnh Đáy DB).
-Mục tiêu là Bật Nút "Login bằng KC-IDP" trên màn hình của KC-Broker Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị!
+## 1. Kịch bản Thực hành (Lab Scenario)
 
----
+Giả sử bạn đang quản lý hệ thống phân quyền cho một ứng dụng thương mại điện tử. Ứng dụng này yêu cầu người dùng có thể đăng nhập nhanh chóng thông qua tài khoản Google của họ.
+Bạn sẽ phải:
+1. Tạo một ứng dụng trên Google Cloud Console để lấy thông tin kết nối OAuth 2.0 (Client ID & Client Secret).
+2. Cấu hình tính năng Identity Provider (Google) trên Keycloak.
+3. Cấu hình **Mapper** để tự động gán quyền (Role) `customer` cho bất kỳ ai đăng nhập qua Google.
+4. Kiểm thử quá trình Account Linking và đăng nhập First Broker Login.
 
-## 2. Chuẩn Bị (Prerequisites)
-Hệ thống Docker Compose Bài 20 Đã Chứa Sẵn 2 Cỗ Máy Keycloak Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ.
+## 2. Chuẩn bị Môi trường (Prerequisites)
 
-```bash
-cd code
-docker-compose up -d
-```
-- Trạm 1 `kc-idp` Chạy Ở Cổng Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: **`http://localhost:8081`** (admin/admin).
-- Trạm 2 `kc-broker` Chạy Ở Cổng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh: **`http://localhost:8080`** (admin/admin).
+- Keycloak Server đang hoạt động (ví dụ: `http://localhost:8080`).
+- Quyền Admin trên Keycloak.
+- Tạo một Realm mới trên Keycloak mang tên: `broker-demo-realm`.
+- Một tài khoản Google cá nhân (Gmail) hoặc Google Workspace để truy cập [Google Cloud Console](https://console.cloud.google.com).
+- Ứng dụng Client (tuỳ chọn) hoặc sử dụng tính năng **Account Console** mặc định của Keycloak để kiểm thử.
 
----
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-## 3. Các Bước Thực Hành (Lab Steps)
+### Bước 1: Tạo dự án và lấy Credentials từ Google
+1. Truy cập [Google Cloud Console](https://console.cloud.google.com).
+2. Ở thanh công cụ trên cùng, nhấn vào **Select a project** -> **New Project** -> Đặt tên (VD: `Keycloak Broker Demo`) -> Nhấn **Create**.
+3. Chọn dự án vừa tạo.
+4. Vào menu điều hướng bên trái, chọn **APIs & Services** -> **OAuth consent screen**.
+   - Chọn **External** -> Nhấn **Create**.
+   - Điền thông tin bắt buộc: App name (`Keycloak SSO`), User support email, Developer contact information.
+   - Nhấn **Save and Continue** qua các bước còn lại (không cần thêm Scope nâng cao).
+5. Chuyển sang mục **Credentials** (menu trái) -> Nhấn **Create Credentials** -> Chọn **OAuth client ID**.
+   - `Application type`: **Web application**.
+   - `Name`: `Keycloak Broker`.
+   - `Authorized redirect URIs`: Nhập URL sau (thay đổi localhost/port nếu cần):
+     `http://localhost:8080/realms/broker-demo-realm/broker/google/endpoint`
+   - Nhấn **Create**.
+6. Google sẽ hiển thị một popup chứa **Client ID** và **Client Secret**. Copy 2 chuỗi này vào một file note tạm thời.
 
-### Task 1: Mở Cửa Trạm IdP (Khởi Tạo OAuth2 Client Trên `kc-idp`)
-1. Truy Cập `kc-idp` tại `http://localhost:8081`. Đăng Nhập.
-2. Vô Menu **Clients**. Bấm Create client.
-3. **Client ID**: `broker-client` Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm.
-4. Bật Công Tắc **Client authentication = ON** Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh. Save Lại.
-5. Ở Tab Settings, Nhập Tạm **Valid redirect URIs**: `http://localhost:8080/*` (Tí Sửa Lại Chính Xác Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Save.
-6. Sang Tab **Credentials**, Copy Khối **`Client Secret`**.
-7. Tạo 1 User Mới Ở `kc-idp` Tên Là **`nguyen-van-teo`**, Cấp Password `123`.
+### Bước 2: Cấu hình Identity Provider trên Keycloak
+1. Truy cập Keycloak Admin Console, chọn realm `broker-demo-realm`.
+2. Ở menu bên trái, chọn **Identity Providers**.
+3. Chọn **Google** từ danh sách Social providers.
+4. Cuộn xuống phần **Config**:
+   - `Client ID`: Dán Client ID của Google.
+   - `Client Secret`: Dán Client Secret của Google.
+   - `Default Scopes`: `openid profile email` (có thể để trống, Keycloak tự động cấp).
+5. Nhấn **Add** (hoặc **Save**).
 
-### Task 2: Dựng Cáp Mạng Tại Trạm Cò Mồi (Identity Provider Trên `kc-broker`)
-1. Truy Cập `kc-broker` tại `http://localhost:8080`. Đăng Nhập Cấu Trúc Khung Rỗng XML Nặng Nề Lệnh Khớp Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-2. Vô Menu **Identity Providers** Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp.
-3. Bấm **Keycloak OpenID Connect** (Đấu Nối OIDC Chuẩn).
-4. Khai Báo Dữ Liệu Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh:
-   - **Alias**: `kc-idp` (Đây Sẽ Là Tên Cái Nút Hiện Lên Màn Hình Khúc Tới Ngay Lệnh).
-   - Cuộn Xuống Đáy Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Cấu Hình Endpoints Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ:
-     - **Authorization URL**: `http://localhost:8081/realms/master/protocol/openid-connect/auth`
-     - **Token URL**: `http://localhost:8081/realms/master/protocol/openid-connect/token`
-   - Cấu Hình Client Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép:
-     - **Client ID**: `broker-client`
-     - **Client Secret**: Dán Cái Secret Bạn Vừa Copy Ở Task 1 Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-5. Kéo Lên Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Lấy **`Redirect URI`** Của Keycloak Broker (Ví Dụ Mạch: `http://localhost:8080/realms/master/broker/kc-idp/endpoint`). Copy Nó Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Bấm ADD Save Lại Cấu Cắt Khung Đứt Băng Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ.
-6. (Quay Lại Máy `kc-idp` Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Paste Cái Dòng Vừa Copy Đè Lên Ô Valid Redirect URIs Cho Chuẩn Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần).
+### Bước 3: Cấu hình Mapper tự động gán Role
+**Mục tiêu**: Bất kỳ user nào đăng nhập bằng Google sẽ tự động nhận Role `customer`.
+1. Trong Realm `broker-demo-realm`, vào **Realm roles** -> Nhấn **Create role** -> Đặt tên `customer` -> Nhấn **Save**.
+2. Quay lại **Identity Providers** -> Chọn **Google**.
+3. Chuyển sang tab **Mappers** -> Nhấn **Add mapper**.
+4. Điền cấu hình:
+   - `Name`: `Assign Customer Role`
+   - `Sync Mode Override`: `Import` (Chỉ chạy ở lần đăng nhập đầu tiên) hoặc `Force` (Chạy ở mọi lần đăng nhập). Chọn `Import`.
+   - `Mapper Type`: `Hardcoded Role`
+   - `Role`: Chọn role `customer`.
+5. Nhấn **Save**.
 
-### Task 3: Chạy Thử Cửa Ải First Broker Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-1. Bạn Mở 1 Trình Duyệt Ẩn Danh (Incognito Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần).
-2. Gọi URL Lấy Code Mồi Của Thằng Cò Mồi `kc-broker`: 
-   `http://localhost:8080/realms/master/protocol/openid-connect/auth?client_id=account-console&response_type=code&redirect_uri=http://localhost:8080/realms/master/account/`
-3. Màn Hình Đăng Nhập Bật Lên Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. BUM! BẠN SẼ THẤY CÓ THÊM 1 NÚT **`kc-idp`** Ở BÊN PHẢI MÀN HÌNH Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
-4. Bấm Vào Nút Đó Cấu Trúc Khung Rỗng XML Nặng Nề Lệnh Khớp Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Trình Duyệt Văng Sang Màn Hình Của Máy Chủ Khác `localhost:8081`!
-5. Nhập `nguyen-van-teo` Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh / `123`.
-6. Đăng Nhập Thành Công Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Máy Tự Văng Ngược Lại `localhost:8080` Vô Trang Account Console Đỉnh Cao Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-7. **Kiểm Chứng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh:** Tắt Tab Ẩn Danh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích. Vô Admin Console Của `kc-broker`. Mở Menu Users Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. BẠN SẼ THẤY CÓ 1 THẰNG `nguyen-van-teo` VỪA ĐƯỢC MÁY CHỦ TỰ ĐỘNG TẠO RA Oanh Khung Dịch Lụa Mạch Lệnh! Vẻ Đẹp Hoàn Mỹ Của Brokering Lệnh Đáy Oanh Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+### Bước 4: Kiểm thử Đăng nhập
+1. Mở một trình duyệt ẩn danh (Incognito) hoặc sử dụng một trình duyệt khác.
+2. Truy cập URL cổng tự phục vụ của người dùng (Account Console):
+   `http://localhost:8080/realms/broker-demo-realm/account`
+3. Nhấn **Sign In**.
+4. Bạn sẽ thấy trên màn hình đăng nhập có xuất hiện một nút bổ sung: **Google**.
+5. Nhấn vào **Google**, bạn sẽ được chuyển hướng (redirect) sang trang đăng nhập của Google.
+6. Đăng nhập bằng tài khoản Gmail của bạn và đồng ý uỷ quyền (nếu được hỏi).
+7. Google sẽ redirect bạn trở lại Keycloak.
+8. Lần đầu tiên, Keycloak (First Broker Login Flow) có thể yêu cầu bạn nhập/kiểm tra lại thông tin (Update Account Information). Nhấn **Submit**.
+9. Bạn sẽ đăng nhập thành công vào trang quản lý Account của Keycloak.
 
----
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-## 4. Dọn Dẹp (Cleanup)
-Hủy 2 Cỗ Máy Docker Tránh Nặng RAM:
-```bash
-docker-compose down -v
-```
+- **Xác minh người dùng đã được Import**:
+  - Trở lại cửa sổ trình duyệt đang chạy quyền Admin.
+  - Vào **Users** -> Nhấn tìm kiếm. Bạn sẽ thấy tài khoản Gmail vừa đăng nhập hiển thị trong danh sách.
+  - Click vào User đó, chuyển sang tab **Role mapping**.
+  - Kiểm tra xem role `customer` đã được gán tự động thành công chưa.
+  - Chuyển sang tab **Identity Provider Links**, bạn sẽ thấy tài khoản này đang được liên kết với ID của Google.
+
+> [!WARNING]
+> **Troubleshooting: Lỗi `Redirect URI mismatch` từ Google**
+> Đây là lỗi cực kỳ phổ biến. Đảm bảo rằng URL trong mục `Authorized redirect URIs` trên Google Cloud Console khớp đến từng ký tự với URL trên Keycloak. Nếu bạn truy cập Keycloak bằng IP (VD: `127.0.0.1`), bạn phải khai báo URI dùng `127.0.0.1` trên Google, không thể dùng `localhost` hoặc ngược lại.
+
+> [!IMPORTANT]
+> **Troubleshooting: Không thấy nút Google xuất hiện**
+> Kiểm tra lại trong cấu hình Identity Provider của Keycloak, đảm bảo thuộc tính `Enabled` đang được bật thành `ON`. Đồng thời, trong phần Authentication -> Browser Flow, đảm bảo `Identity Provider Redirector` không bị cấu hình sai.

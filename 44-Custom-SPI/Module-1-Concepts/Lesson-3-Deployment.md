@@ -1,27 +1,94 @@
-# Lesson 3: Kích Nổ Lõi Quaytay (Deployment)
+# Bài học 3: Biên dịch và Triển khai (Deployment) Custom SPI
 
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Học cách biến cục Code SPI bằng Java thành file `.jar` và làm phép cho Keycloak chịu nhận dạng nó.
+> **Goal:** Tìm hiểu quy trình đóng gói (Build) mã nguồn Custom SPI thành file JAR, và cơ chế triển khai (Deployment) vào cấu trúc máy chủ Keycloak (kiến trúc Quarkus).
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Sau khi hoàn thành việc lập trình các lớp `Provider` và `ProviderFactory` theo chuẩn Service Provider Interfaces (SPI), mã nguồn này cần được đưa vào lõi thực thi của Keycloak. Keycloak dựa trên Quarkus runtime có một cơ chế tối ưu hóa thời gian khởi động (Boot-time optimization), được gọi là quá trình **Augmentation** (hoặc Build Phase).
 
-### 1.1. Bóng Ma META-INF Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-Khi Bạn Code Xong File Nhà Máy (`CustomEventListenerProviderFactory`) Và Cả File Công Nhân (`CustomEventListenerProvider`) Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bọn Mã Java Này Vẫn Nằm Chết Trí Trên Ram Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Keycloak Sẽ KHÔNG BAO GIỜ Tự Động Quét Trúng Được Đoạn Mã Này Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-Để Bật Được Radar Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp, Bắt Buộc Trong Cấu Trúc Dự Án Của Bạn Phải Tuân Thủ Luật Lệ Thượng Cổ Của Java ServiceLoader Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề:
-1. Bạn Phải Tạo Một Thư Mục Tên Chính Xác Là: `src/main/resources/META-INF/services/` Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-2. Bên Trong Đó Tạo 1 Tập Tin Không Có Đuôi Mở Rộng Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Tên Chính Xác Trùng Với Cây Phả Hệ Interface SPI Mà Bạn Đang Kế Thừa Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa: `org.keycloak.events.EventListenerProviderFactory` Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-3. Nội Dung Dòng Đầu Tiên Trong Tập Tin Đó: Là Đường Dẫn Định Danh Tuyệt Đối Tới Cái File Factory Mà Bạn Vừa Code Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần: `com.example.keycloak.CustomEventListenerProviderFactory` Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy.
+Quy trình triển khai SPI trên Keycloak hiện đại yêu cầu:
+1. **Đóng gói (Packaging):** Biên dịch Java code, tạo file `.jar`. Bao gồm tệp `META-INF/services`.
+2. **Cung cấp (Provisioning):** Đặt file `.jar` vào thư mục `/opt/keycloak/providers/`.
+3. **Biên dịch máy chủ (Re-building the Server):** Chạy lệnh `kc.sh build` để Quarkus đọc, giải nén các lớp Java, tối ưu hóa dependencies, và tái cấu trúc hệ thống nạp lớp (Classloader).
+4. **Khởi động (Starting):** Chạy `kc.sh start`.
 
-Nếu Thiếu Cái File META-INF Này Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Cục File Jar Của Bạn Bắn Vào Keycloak Chỉ Là Một Cục Gạch Không Có Sức Mệnh Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
+Quá trình Quarkus nhận diện và tích hợp Custom SPI diễn ra mạnh mẽ nhất ở giai đoạn Build (chứ không phải Runtime).
 
-### 1.2. Ném Bom Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-1. **Đóng Gói:** Gõ Lệnh `mvn clean package` Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Maven Sẽ Nén Toàn Bộ Ra Một Tập Tin `custom-spi-1.0.0.jar` Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề.
-2. **Cấy Ghép:** Bạn Chỉ Việc Tắt Keycloak Đang Chạy Đi Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Quăng File JAR Này Vào Thư Mục Tuyệt Mật `/opt/keycloak/providers/` Oanh Khung Dịch Lụa Mạch Lệnh.
-3. **Bật Cầu Dao:** Bật Ngược Lại Keycloak Bằng Lệnh Khởi Chạy Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Lõi Mới Quarkus Sẽ Quét Qua Cục Jar Này Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Đọc Khung META-INF Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, Phát Hiện Nhà Máy Mới -> Nhúng Nó Thẳng Vào Bụng Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị
-4. **Bật Bảng Giao Diện Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:** Đăng Nhập Trang Quản Trị -> Realm Settings -> Events -> Tab 'Event Listeners' -> Sẽ Hiện Ra Cái Tên Của ID Nhà Máy Bạn Đã Đặt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Bạn Đã Trở Thành Bậc Thầy Sáng Tạo Plugin Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
+```mermaid
+sequenceDiagram
+    participant Developer
+    participant Keycloak Providers Folder
+    participant Quarkus Build Engine (kc.sh build)
+    participant Quarkus Classloader
+    participant Runtime Server (kc.sh start)
 
----
+    Developer->>Keycloak Providers Folder: Copy `my-custom-spi.jar`
+    Developer->>Quarkus Build Engine (kc.sh build): Lệnh chạy quá trình build
+    Note over Quarkus Build Engine (kc.sh build): Bước Augmentation
+    Quarkus Build Engine (kc.sh build)->>Keycloak Providers Folder: Quét các thư mục META-INF/services
+    Quarkus Build Engine (kc.sh build)->>Quarkus Build Engine (kc.sh build): Gắn byte-code, tạo Fast-boot image
+    Quarkus Build Engine (kc.sh build)-->>Developer: "Build completed successfully"
+    Developer->>Runtime Server (kc.sh start): Lệnh khởi động server
+    Runtime Server (kc.sh start)->>Quarkus Classloader: Tải trước các SPI đã được cache
+    Note over Runtime Server (kc.sh start): Server boot cực nhanh (<3s)
+```
+**Giải thích cơ chế:**
+- Các phiên bản Keycloak cũ (Wildfly/JBoss) sử dụng "Hot Deployment", bạn chỉ việc ném file JAR vào thư mục là server tự load lại. Điều này tiện lợi nhưng làm quá trình khởi động chậm và tốn RAM.
+- Hệ thống Quarkus mới bắt buộc phải chạy lệnh **build** để đóng gói toàn bộ các cấu hình, phân tích SPI và nối các Class tĩnh lại với nhau. Quá trình này giúp hệ thống tiết kiệm được hàng trăm Megabyte RAM và thời gian boot rút ngắn đáng kể.
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Docs:** Deploying Providers.
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
+> [!IMPORTANT]
+> **Quy trình Docker Immutability:** Trong môi trường Production, không bao giờ truy cập vào container đang chạy, copy file JAR, chạy lệnh build rồi restart (bởi vì bản chất container là Ephemeral - tạm thời). Bạn PHẢI tạo một `Dockerfile` mới lấy image gốc từ Keycloak, thực hiện lệnh copy file JAR, và gọi lệnh `RUN /opt/keycloak/bin/kc.sh build`. Sau đó tạo ra một Image Keycloak mang tính bản quyền của công ty (Custom Image).
+
+> [!WARNING]
+> **Xung đột thư viện (Jar Hell):** Tránh đóng gói (Fat JAR/Uber JAR) các thư viện đã được Keycloak tích hợp sẵn (như Jackson, Resteasy, Hibernate) vào bên trong SPI của bạn, vì nó sẽ gây xung đột Classloader trong giai đoạn Build. Chỉ bao gồm các thư viện chuyên biệt (Third-party libraries) không có mặt trên nền tảng Quarkus/Keycloak.
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+Để tạo ra một Custom Keycloak Image chuẩn DevOps, chúng ta dùng Dockerfile sau:
+
+```dockerfile
+# Giai đoạn Build
+FROM quay.io/keycloak/keycloak:22.0.0 AS builder
+
+# 1. Kích hoạt thông số cần thiết
+ENV KC_HEALTH_ENABLED=true
+ENV KC_METRICS_ENABLED=true
+ENV KC_DB=postgres
+
+# 2. Copy file SPI được biên dịch vào thư mục providers
+COPY target/my-custom-event-listener.jar /opt/keycloak/providers/
+
+# 3. Lệnh quan trọng nhất: Tối ưu hoá toàn bộ cấu trúc Server (Augmentation)
+RUN /opt/keycloak/bin/kc.sh build
+
+# Giai đoạn Runtime
+FROM quay.io/keycloak/keycloak:22.0.0
+COPY --from=builder /opt/keycloak/ /opt/keycloak/
+
+# Đặt cấu hình khởi chạy
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
+CMD ["start"]
+```
+Cách build Image:
+```bash
+docker build -t my-company-keycloak:1.0 .
+docker run -p 8080:8080 my-company-keycloak:1.0
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Lỗi Provider Registration Failed:** Xảy ra khi file `META-INF/services/...` bên trong JAR chỉ định một package/class sai tên, bị lệch chính tả hoặc bạn quên thêm file này vào. Lệnh `kc.sh build` sẽ báo lỗi không tìm thấy `Factory Class`.
+- **Thiếu Memory khi Build:** Quá trình `kc.sh build` tiêu tốn rất nhiều CPU và RAM. Nếu CI/CD Pipeline (như GitLab CI, GitHub Actions) có cấu hình giới hạn (dưới 1GB RAM), tiến trình Build Quarkus có thể bị Out of Memory (Killed by OS). Cấp phát tối thiểu 2GB RAM cho quá trình build.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+1. **[Junior]** Bạn cần đặt file `.jar` Custom SPI vào thư mục nào trên Keycloak Server? (Thư mục `/opt/keycloak/providers/`).
+2. **[Junior]** Lệnh `kc.sh build` có bắt buộc phải chạy sau khi đưa file SPI mới vào hệ thống không? Tại sao?
+3. **[Senior]** Mô tả khái niệm "Quarkus Augmentation phase". Nó giúp ích gì cho hiệu năng của Keycloak so với kiến trúc JBoss cũ?
+4. **[Senior]** Khi viết Dockerfile để triển khai SPI lên Production, tại sao bạn cần sử dụng cấu trúc "Multi-stage build"? Nó giải quyết bài toán gì?
+5. **[Senior]** Nêu cách xử lý khi SPI của bạn cần một thư viện phụ trợ (ví dụ: Google Cloud SDK), nhưng việc gộp chung nó vào file JAR làm lệnh build của Keycloak gặp lỗi Classloader?
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak Official Docs: Configuring Providers](https://www.keycloak.org/server/configuration-provider)
+- [Keycloak Container Deployment Guide](https://www.keycloak.org/server/containers)
+- [Quarkus Build Steps (Augmentation Concept)](https://quarkus.io/guides/writing-extensions)

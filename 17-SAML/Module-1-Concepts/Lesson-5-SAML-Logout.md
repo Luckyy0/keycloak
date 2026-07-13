@@ -1,92 +1,118 @@
-# Lesson 5: Cơn Bão Đăng Xuất Đơn (SAML Single Logout - SLO)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Việc đăng nhập trong SAML đã phức tạp vì Cấu Trúc Khung Rỗng XML Nặng Nề. Thì việc Đăng Xuất (Logout) Trong SAML Lại Càng Đòi Hỏi Sự Chính Xác Khắc Nghiệt Đỉnh Đáy Oanh Mạng Gấp Trăm Lần So Với OIDC. Bài này tập trung vào luồng **SAML Single Logout (SLO)**.
+> **Goal:** Tìm hiểu cơ chế và thách thức của SAML Single Logout (SLO). Phân tích luồng Front-channel và Back-channel Logout, cách IdP và các SP đồng bộ trạng thái để đảm bảo phiên đăng nhập bị hủy hoàn toàn.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Bản Chất Single Logout (Cơn Bão Càn Quét Tất Cả Các App Khách Lệnh)
-Giống như Front-Channel Logout của OIDC (Bài 9 Chương 16). Nếu Khách hàng login 3 App Kế Toán, Nhân Sự, Kho bãi. Sau đó Khách Bấm Nút Đăng Xuất ở App Kế Toán.
-- App Kế Toán PHẢI Bắn Một Khối Nhựa Oanh Tĩnh Lụa Thép **`LogoutRequest` (XML)** Xuyên Thủng Lên Trạm Lãnh Chúa Keycloak.
-- Khi Nhận Lệnh, Lãnh Chúa KHÔNG THỂ Lặng Lẽ Trả Về Oanh Cáp Trọng Lõi Tự Trị Nửa Vời Thành Công (Như Front-channel OIDC Chỉ Dùng Iframe Sinh Lệnh Xóa Bọt Khung Oanh Lụa Không Cần Biết Kẻ Khác Sống Hay Chết Oanh Mạng Bắt Lụa).
-- SAML Ra Lệnh: Lãnh Chúa Phải Đích Thân Chạy Một Vòng Lặp Xé Xác (Logout Daisy Chain Lệnh Khúc Tới Ngay Mạch!). Nó Gửi Cục XML Tử Hình Lần Lượt Cho Thằng Nhân Sự (Chờ Thằng Nhân Sự Báo Đã Chết), Gửi Tiếp Cho Thằng Kho (Chờ Thằng Kho Báo Đã Chết Mạch Kẽ Trút Lụa Bọt Cắt Mạch Đứt Kẽ).
-- Cuối Cùng, Khi Tất Cả Chết Hết Trút Code Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Lãnh Chúa Mới Bắn Chốt Cục Khẳng Định Chết **`LogoutResponse` (XML)** Trả Về Khởi Điểm Bọc Lệnh Cũ (App Kế Toán) Báo Đã Quét Xong Rác Khủng API Đỉnh Đáy Oanh Mạng!
+**SAML Single Logout (SLO)** là quá trình cho phép người dùng đăng xuất khỏi tất cả các ứng dụng (Service Providers - SPs) mà họ đã đăng nhập trong cùng một phiên làm việc, chỉ bằng một thao tác duy nhất tại bất kỳ ứng dụng nào hoặc tại Identity Provider (IdP).
 
-### 1.2. Mạch Redirect Rút Lụa Lệnh Bọt (Front-Channel)
-Trong SAML, Luồng Daisy Chain (Dây Chuyền Trút Cáp Mạch Máu Cắt) Này Thường Được Vận Hành Tuyệt Đỉnh Trực Tiếp Qua Lõi Đáy URL Trình Duyệt Bọc Thép (Front-channel).
-1. Thằng Kế Toán Đẩy Nhảy Khách Lên Keycloak (Mang Theo Khối XML Request GET Bọt Khung Oanh Cáp).
-2. Keycloak Lệnh Nhảy Khách Sang Tab Thằng Nhân Sự Cắt Bọt Đứt Băng (Kèm Khối XML Yêu Cầu Tự Sát). Thằng Nhân Sự Chết Xong, Tự Động Lệnh Nhảy Trả Khách Về Lại Tab Keycloak Cũ Rích Oanh Khung Dịch Lụa.
-3. Cứ Thế Trình Duyệt Của Khách Bị Đẩy Văng Đít Chuyển Qua Chuyển Lại Đáy Lụa Giữa Các App (Trông Rất Kì Diệu Mạch Oanh Giao Dịch Dữ Lụa) Cho Đến Khi Sạch Bách Sóng Ngầm!
+Tại sao SLO lại là bài toán khó trong hệ thống phân tán?
+Trong Single Sign-On (SSO), một khi người dùng nhận được Assertion hợp lệ, SP sẽ tự tạo ra một local session (phiên làm việc cục bộ) và cấp Session Cookie (ví dụ: `JSESSIONID`) cho trình duyệt. Khi này, SP hoàn toàn độc lập với IdP. 
+Nếu người dùng nhấn Logout tại SP-A, SP-A xóa session cục bộ của nó, nhưng SP-B và IdP vẫn còn session hợp lệ. Người dùng vẫn có thể truy cập SP-B, và nếu truy cập SP-A lại, SP-A redirect sang IdP, IdP tự động cấp ngay một Assertion mới (do session của IdP vẫn sống). Điều này tạo ra rủi ro bảo mật khổng lồ trên máy tính công cộng.
 
----
+SLO sinh ra để giải quyết việc này bằng cách:
+1. Thông báo cho IdP hủy phiên trung tâm.
+2. IdP thông báo cho **TẤT CẢ** các SP liên quan trong phiên đó để chúng hủy phiên cục bộ (Local Session).
+
+SAML hỗ trợ 2 phương pháp chính để truyền tải thông điệp Logout (`LogoutRequest` / `LogoutResponse`):
+- **Front-channel Logout (Thông qua Trình duyệt):** Dùng HTTP-Redirect hoặc HTTP-POST. IdP điều khiển trình duyệt của người dùng redirect liên tục qua lại các SP để kích hoạt quá trình hủy session cookie.
+- **Back-channel Logout (Máy chủ đến Máy chủ):** IdP gửi trực tiếp HTTP SOAP hoặc HTTP-POST request từ mạng nội bộ tới các endpoint SLO của SP để xóa session. Trình duyệt không can thiệp.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Băng Tần Khung Kẽ Bọt Cắt Daisy Chain Logout Nhựa Bọc Cắt Chữ:
+Dưới đây là mô hình luồng **Front-channel Single Logout (SP-Initiated)**. Đây là luồng phổ biến nhưng dễ gặp lỗi nhất vì phụ thuộc vào mạng và trình duyệt của người dùng.
 
 ```mermaid
 sequenceDiagram
-    participant User as Trình Duyệt Khách Cắt Khung
-    participant App1 as Web Kế Toán (SP1)
-    participant KC as Keycloak (IdP)
-    participant App2 as Web Nhân Sự (SP2)
+    autonumber
+    actor User as User Browser
+    participant SP_A as Service Provider A (Nơi nhấn Logout)
+    participant IdP as Identity Provider (Keycloak)
+    participant SP_B as Service Provider B (Đã đăng nhập trước đó)
 
-    Note over User, KC: User Đã Login Sống Cả App1 Lẫn App2 Đáy DB Oanh Lụa.
+    User->>SP_A: Click "Logout" (GET /logout)
+    Note over SP_A: SP_A hủy Local Session.<br/>Tạo SAML LogoutRequest.
+    SP_A-->>User: 302 Redirect to IdP <br/> (Chứa LogoutRequest)
     
-    User->>App1: Bấm Đăng Xuất Trút Kẽ Mã Bơm.
-    App1->>KC: Redirect HTTP Lệnh Bắn <LogoutRequest> Nhử Mồi Oanh Cáp Giao Diện Chặt Mạch Nhựa Bọc
+    User->>IdP: GET /auth/realms/.../protocol/saml (LogoutRequest từ SP_A)
+    Note over IdP: IdP xác định User Session.<br/>Tra cứu danh sách các SP liên quan (SP_A, SP_B).<br/>IdP tự hủy Local Session của nó.
     
-    KC-->>KC: Bắn Bỏ Cấu Trúc Khung Rỗng SSO Của Chính Mình Lệnh Khớp Oanh Rỗng Chóp Cắt Bọt!
+    Note over IdP, User: Bắt đầu luồng Front-channel đến các SP khác
+    IdP-->>User: 302 Redirect to SP_B SLO Endpoint <br/>(Chứa LogoutRequest do IdP ký)
+    User->>SP_B: GET /saml/slo (LogoutRequest)
     
-    Note over KC, App2: Vòng Vây Tới Các Trạm SP Khác
-    KC->>User: Ép Redirect Trình Duyệt Bay Qua Web App2 Oanh Mạch Rút Trọng Lực OIDC Đáy Lụa <br/> (Mang Kèm <LogoutRequest> Của IdP Yêu Cầu Chết Lệnh Tĩnh).
+    Note over SP_B: SP_B nhận request, hủy Local Session của User.<br/>Tạo LogoutResponse xác nhận.
+    SP_B-->>User: 302 Redirect về IdP <br/>(Chứa LogoutResponse của SP_B)
+    User->>IdP: GET /auth/.../protocol/saml (LogoutResponse từ SP_B)
     
-    User->>App2: Trình Duyệt Đập Vô Máy Chủ Nhân Sự Khúc Tới Chặt Oanh Tĩnh.
-    App2-->>App2: Máy Chủ Xóa Session Oanh Tĩnh Lụa. Sinh Cục Khẳng Định Đã Tử Vong <LogoutResponse>.
+    Note over IdP: IdP nhận thấy tất cả SP đã logout thành công.
+    IdP-->>User: 302 Redirect về SP_A <br/>(Chứa LogoutResponse cuối cùng)
     
-    App2->>User: Lại Redirect Văng Trình Duyệt Trả Về Lãnh Chúa KC Lỗ Rò Lệnh (Mang Kèm Lời Trăng Trối).
-    User->>KC: Đập Vô Keycloak Chữ Nghĩa Cũ Cắt Cáp Lệnh.
-    
-    KC-->>KC: Ghi Nhận Nhân Sự Chết Oanh Mạng! Còn Kẻ Nào Không? Hết!
-    KC->>App1: Bắn Redirect Văng Trình Duyệt Trả Về Thằng Khởi Xướng App1 (Mang Cục <LogoutResponse> Final Bọt Lụa).
+    User->>SP_A: GET /saml/slo (LogoutResponse từ IdP)
+    SP_A-->>User: Hiển thị màn hình "Đăng xuất thành công toàn bộ"
 ```
 
----
+**Cơ chế cấp thấp của Back-channel Logout:**
+Ngược lại với luồng trên, nếu sử dụng Back-channel (SOAP Binding), từ bước 4, IdP sẽ *tự mình* tạo một HTTP POST request thẳng tới máy chủ `SP_B` (không thông qua Browser). `SP_B` phải tìm và xóa Session trong Database hoặc Cache (ví dụ Redis) của nó, thay vì dựa vào việc xóa Session Cookie trên trình duyệt.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!IMPORTANT]
-> **Tuyệt Đỉnh An Toàn Oanh Cáp Trọng Lực (Thảm Họa Đứt Gãy Dây Chuyền Lệnh Daisy Chain Đáy Oanh Mạng Bọc Thép)**
-> **Mũi Tử Huyệt Của SAML SLO Dây Chuyền:** Vì Cơ Chế Front-channel Quăng Khách Qua Lại Bằng URL Quá Nhiều Lần.
-> **Thảm Họa Chết Bọt Trắng Băng Tần:** Lỡ Đang Đẩy Khách Từ IdP Qua App Nhân Sự (Bước 4), Mà App Nhân Sự Lúc Đó Vừa Hay Bị Sập Server Lệnh Đáy (Down-time). Khách Bị Văng Vào Màn Hình 404 Của Thằng Nhân Sự Oanh Cáp Trọng Lõi Tự Trị. 
-> Lúc Này Chuỗi Lệnh Chết Hoàn Toàn Trượt Nhựa Dưới Đáy Mạch Oanh Giao Dịch! Khách Mắc Kẹt Ở App Nhân Sự. Còn Thằng Keycloak Thì Nằm Nhìn Chờ Dòng Mạch Ngầm Oanh Trút Lụa Trăng Trối Mãi Chả Thấy Oanh Lụa!
-> **Biện Pháp Sống Còn Lớp Trọng Lực Thép Mạch Lụa:** Chuẩn SAML Nâng Cao Cung Cấp Tính Năng Giống OIDC Là **SOAP Binding Logout (Back-channel)**. Tức Là Keycloak Cứ Chạy Ngầm Bắn HTTP POST Trực Tiếp Vào Backend Các Thằng Con Lệnh Oanh Rút! Nếu Thằng Nào Chết Mạng Thì Bỏ Qua Xử Trảm Thằng Khác Chữ Tĩnh Mạch Rỗng. Đảm Bảo Đứt Khung Vẫn Báo Trả Thành Công Cho Thằng Khởi Điểm Bọc Lệnh Cũ Đỉnh Chóp!
+> **NameID và SessionIndex là bắt buộc trong SLO:** Trong `LogoutRequest`, làm sao SP_B biết phải xóa phiên của user nào? Thông báo yêu cầu logout phải chứa `NameID` và `SessionIndex` giống hệt lúc nhận `SAMLResponse` khi đăng nhập. Cả SP và IdP phải lưu trữ ánh xạ giữa Local Session ID và `SessionIndex` của SAML.
 
----
+> [!WARNING]
+> **Vấn đề của Front-channel:** Nếu mạng của người dùng bị rớt giữa chừng (ví dụ đóng nắp laptop ngay lúc đang redirect ở bước 5), SP_B sẽ KHÔNG BAO GIỜ bị logout. Session ở SP_B vẫn sống và có thể bị lạm dụng.
+
+- **Ưu tiên Back-channel Logout:** Nếu các SP nằm trong cùng mạng nội bộ hoặc có thể giao tiếp server-to-server, hãy sử dụng Back-channel (SOAP) thay vì Front-channel. Nó đáng tin cậy hơn và không bị ảnh hưởng bởi việc chặn Third-Party Cookies của trình duyệt hiện đại (như Safari ITP, Chrome SameSite).
+- **Phải ký LogoutRequest:** Kẻ tấn công có thể cố tình gửi `LogoutRequest` giả mạo đến IdP để làm gián đoạn dịch vụ của một người dùng (Denial of Service - DoS). `LogoutRequest` PHẢI được ký điện tử bởi SP yêu cầu.
+- **Sử dụng Short-lived Sessions:** Vì SLO không bao giờ đảm bảo thành công 100% trên diện rộng, hãy cấu hình Local Session của SP sao cho nó hết hạn trong thời gian ngắn (ví dụ 15-30 phút), hoặc buộc nó thỉnh thoảng phải verify lại với IdP.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cấu Hình SLO SAML Đơn Đáy Lõi DB Trút Cắt Khung Tương Lai Trên Keycloak:
-1. Mở Cấu Hình Client SAML `web-ketoan`. 
-2. Tab **Settings**, Ở Nửa Thân Dưới Chữ Cốt Lõi Bạn Có Thấy Cờ Tĩnh Lệnh Nhựa Oanh Lụa: **`Logout Service POST Binding URL`** Hoặc **`Logout Service Redirect Binding URL`**.
-3. Điền Cái Lệnh API Dọn Rác Logout Của Thằng App Kế Toán Vào Đó: `https://web-ketoan.com/saml/SingleLogout`.
-4. Mặc định Oanh Khung Dịch Lụa Mạch Lệnh, Nếu Bạn Bỏ Trống, Keycloak Sẽ Dùng Lại Cái Đáy ACS URL Để Bắn Cả Khẳng Định Login Lẫn Khẳng Định Logout Lệnh Chóp Cắt Đứt Nối Dòng Json (Rất Khó Viết Code Cho Lập Trình Viên Tách Lệnh Oanh Rác Bọt Mạch Kéo). Nên Tốt Nhất Hãy Điền Link Riêng Kẽ Trút Rỗng Cáp Bọc Thép!
-5. Lúc Này Đảm Bảo Rằng Trong Cái Cục **IdP Metadata** Của Bài 3 Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống, Cả 2 Bên Đều Đã Import Đầy Đủ Tọa Độ Dịch Tễ Mạch Rỗng Này Cho Nhau Bọt Cắt Kẽ Mã Đáy!
+Ví dụ về một XML `LogoutRequest` do IdP gửi cho SP_B (Luồng Front-channel):
 
----
+```xml
+<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+                     xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+                     ID="LOGOUT_REQ_987654"
+                     Version="2.0"
+                     IssueInstant="2023-10-10T12:30:00Z"
+                     Destination="https://sp-b.example.com/saml/slo"
+                     NotOnOrAfter="2023-10-10T12:35:00Z">
+    <saml:Issuer>https://idp.example.com/auth/realms/master</saml:Issuer>
+    <saml:NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">user@example.com</saml:NameID>
+    <samlp:SessionIndex>session_987654321</samlp:SessionIndex>
+</samlp:LogoutRequest>
+```
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+**Cấu hình trên Keycloak:**
+1. Mở Client tương ứng trong Keycloak.
+2. Tìm tab **Advanced** (hoặc cuộn xuống phần Settings tùy version).
+3. Đặt `Logout Service Redirect Binding URL` cho luồng Front-channel (thường là `https://sp.example.com/saml/slo`).
+4. Nếu SP hỗ trợ Back-channel, đặt `Logout Service POST Binding URL` hoặc `Logout Service SOAP Binding URL`.
+5. Đảm bảo cấu hình `Frontchannel logout` (bật/tắt tùy nhu cầu).
 
-**1. Trong Giao Thức SAML Khung Cắt Oanh Lụa Mạch Lệnh SLO Dây Chuyền Trút Cáp Mạch. Tại Sao Có Cục Yêu Cầu 'LogoutRequest' Rác Nhựa Bọc Cắt Chữ Lại Đòi Hỏi Phải Có Chữ Ký XML Kẽ Lụa Oanh Bọc Bằng Private Key Của Trạm Đáy SP Khởi Điểm Chữ Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt? Nếu Không Ký Thì Xảy Ra Lỗ Hổng Bọt Khung Oanh Cáp Nào Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống?**
-- **Senior:** Dạ thưa sếp, Chữ Ký Này Chính Là Mệnh Lệnh Chống Khủng Bố Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Trượt Bọt Rỗng Đáy Chóp:
-  - Hãy Tưởng Tượng, Nếu Bất Cứ Ai Cũng Có Thể Tạo Ra Lệnh XML Thô Bạo `LogoutRequest` Cắt Oanh Khung Dịch Lụa Lệnh Rỗng, Xong Bắn Lên Keycloak Bằng HTTP GET Front-channel.
-  - Một Thằng Kẻ Trộm Cướp Bọn Phá Hoại Chỉ Cần Viết Tool Dội Lệnh Gửi Hàng Triệu Lệnh Chết Này Lên Oanh Tĩnh Lụa Thép! Cứ Thằng Khách Hàng Nào Login Vô Là Bị Kẻ Trộm Bắn Đứt Session Đỉnh Chóp (DOS Logout).
-  - Do Đó: Mọi Cuộc Tấn Công Oanh Khung Này Bị Đánh Sập Khi Cấu Hình ÉP BUỘC KÝ Lệnh Rút Lụa: **`Front Channel Logout Signature Required` = ON**.
-  - Keycloak Nhận Khối XML Lệnh Tử Hình Oanh Rỗng Chóp, Bắt Buộc Dùng Public Key Của Thằng Kế Toán Để Giải Mã Chữ Ký Cắt Khung. NẾU SAI CHỮ KÝ Oanh Mạng Bắt Giao Dịch, Lãnh Chúa Vứt Bỏ Coi Là Rác Rưởi Mạch Cáp 1 Phiên Trút Code Trượt Mạng Bọt Đỉnh Đáy Oanh Mạng! Chống Tấn Công Dội Rác DOS Tuyệt Đỉnh!
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
----
+- **Trình duyệt chặn Redirect/Cookie (Third-party Cookies):** Trong Front-channel SLO, IdP redirect qua SP_B bằng một thẻ `iframe` vô hình hoặc qua chuyển hướng top-level. Nếu SP_B dùng cookie nhưng cấu hình thiếu thuộc tính `SameSite=None; Secure`, trình duyệt (như Safari) sẽ không gửi cookie của SP_B lên khi được IdP redirect từ nguồn gốc khác. Hậu quả là SP_B không biết phải xóa session nào. **Khắc phục:** Chuyển sang Back-channel Logout, hoặc fix cấu hình Cookie.
+- **Infinite Redirect Loop (Vòng lặp vô hạn):** Nếu SP cấu hình sai, nhận `LogoutRequest` nhưng xử lý lỗi, nó không trả về `LogoutResponse` mà lại sinh ra một `AuthnRequest` hoặc redirect về trang chủ SP, IdP sẽ bị kẹt không thể hoàn thành chuỗi SLO. **Khắc phục:** Rà soát log của SP, đảm bảo SP luôn phản hồi `LogoutResponse` kể cả khi không tìm thấy local session.
+- **Node sập trong môi trường Cluster:** Đối với Back-channel Logout, request được gửi đến Load Balancer của SP. Nếu SP không dùng Centralized Cache (như Redis) để lưu Session, Load Balancer gửi `LogoutRequest` tới Node 1, nhưng Session của user lại nằm ở Node 2. Kết quả là user không bị logout. **Khắc phục:** SP bắt buộc phải dùng Distributed Session Storage cho Back-channel SLO.
 
-## 6. Tài liệu tham khảo (References)
-- **OASIS SAML V2.0:** Single Logout Profile.
-- **Keycloak Documentation:** Securing Applications - SAML Single Logout.
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior:** Phân biệt Front-channel Logout và Back-channel Logout trong SAML.
+   *Đáp án:* Front-channel dựa vào chuyển hướng trên trình duyệt của người dùng (HTTP-Redirect/POST) để xóa session cookie. Back-channel dùng kết nối trực tiếp từ máy chủ IdP đến máy chủ SP (Server-to-Server) để xóa session từ database/cache.
+2. **Junior:** SAML Single Logout (SLO) giải quyết vấn đề gì?
+   *Đáp án:* Đảm bảo khi người dùng nhấn Logout ở một ứng dụng, phiên làm việc của họ bị hủy trên tất cả các ứng dụng khác và trên chính IdP, ngăn chặn truy cập trái phép từ các session cũ còn sót lại.
+3. **Senior:** Tại sao Back-channel SLO lại gặp khó khăn đối với các ứng dụng triển khai theo kiến trúc Stateful (in-memory sessions) phía sau Load Balancer?
+   *Đáp án:* Back-channel SLO gọi HTTP POST/SOAP từ IdP trực tiếp tới SP. Không có cookie định tuyến của trình duyệt để Load Balancer thực hiện "Sticky Session". Yêu cầu xóa session có thể rơi vào một Node không chứa bộ nhớ in-memory của phiên đó, dẫn đến logout thất bại.
+4. **Senior:** Tham số `SessionIndex` trong SAML đóng vai trò gì trong quá trình SLO?
+   *Đáp án:* Một user (`NameID`) có thể đăng nhập nhiều phiên khác nhau trên cùng một trình duyệt hoặc thiết bị. `SessionIndex` giúp SP và IdP xác định chính xác phiên (session) cụ thể nào đang được yêu cầu hủy bỏ, tránh việc logout nhầm toàn bộ thiết bị của user.
+5. **Senior:** Một SP nhận được `LogoutRequest` từ IdP qua Front-channel nhưng người dùng phàn nàn rằng họ bị kẹt ở màn hình trắng, hoặc báo lỗi 400. Vấn đề thường do đâu?
+   *Đáp án:* Có thể SP không cấu hình đúng tham số chữ ký điện tử. IdP ký `LogoutRequest` nhưng SP không có Public Key chuẩn để xác thực chữ ký. SP ném ngoại lệ và không redirect trả `LogoutResponse` lại cho IdP, làm gãy toàn bộ chuỗi luồng SLO. Hoặc do SP thiết kế thiếu xử lý chuyển hướng về IdP khi kết thúc.
+
+## 7. Tài liệu tham khảo (References)
+
+- [SAML V2.0 Profiles - Single Logout Profile](https://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf)
+- [Keycloak SAML Adapter Logout](https://www.keycloak.org/docs/latest/securing_apps/#saml-logout)
+- [OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)

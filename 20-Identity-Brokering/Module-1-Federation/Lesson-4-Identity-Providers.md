@@ -1,66 +1,92 @@
-# Lesson 4: Đấu Nối Rừng Mạng Bọc Thép (Identity Providers)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Trong Admin Console, mục Identity Providers cho phép bạn Nối Cáp API đến với các Lãnh chúa Bố Già khác. Keycloak xây dựng sẵn một mâm cỗ Adapter hỗ trợ hàng chục loại mạng: Google, Facebook, Apple, OIDC Chung, SAML 2.0.
+> **Category:** Theory
+> **Goal:** Tìm hiểu chi tiết về các loại Identity Providers (IdP) được hỗ trợ trong Keycloak, cách thức cấu hình và cơ chế ánh xạ dữ liệu (Identity Provider Mappers) từ hệ thống ngoài vào Keycloak.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Bản Chất Đóng Vai Client Lệnh Khớp Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp
-Như bài 1 đã đề cập, khi bạn thêm 1 Identity Provider (IdP) Oanh Khung Dịch Lụa Mạch Lệnh, bạn đang Bắt Máy Chủ Keycloak hóa thân thành 1 Thằng App **OIDC Client** hoặc **SAML SP Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề**.
-Vì là Client, Keycloak Bắt Buộc Phải Sở Hữu 2 Tham Số Quyền Trượng Tại Nhà Của Bố Già:
-- **`Client ID`**
-- **`Client Secret`**
-(Bạn phải chạy lên Console Developer Của Google để tạo ứng dụng và lấy cục Mật Khẩu Này Đáy Oanh Mạch Rút Trọng Mạch Lệnh).
+Trong mô hình Identity Brokering, **Identity Provider (IdP)** là một hệ thống bên ngoài quản lý thông tin danh tính của người dùng (như tài khoản, mật khẩu, xác thực đa yếu tố) và chịu trách nhiệm xác thực người dùng đó.
+Keycloak hỗ trợ ba nhóm IdPs chính:
+1. **Social Networks**: Cung cấp cấu hình tích hợp sẵn cho các nền tảng mạng xã hội phổ biến (Google, Facebook, GitHub, X/Twitter). Dưới nền tảng, chúng thường dựa trên giao thức OAuth 2.0 hoặc OIDC.
+2. **OpenID Connect v1.0 (OIDC)**: Hỗ trợ tích hợp với bất kỳ nhà cung cấp nào tuân thủ chuẩn OIDC (như Azure AD, Okta, Auth0, hoặc một Keycloak Server khác).
+3. **SAML v2.0**: Chuẩn công nghiệp truyền thống thường thấy trong các hệ thống doanh nghiệp (Enterprise Systems) và tổ chức chính phủ (như Active Directory Federation Services - ADFS).
 
-### 1.2. Mạch Khai Báo Điều Hướng Bọc Lệnh Cũ (Redirect URI)
-Đỉnh Đáy Oanh Mạng Bắt Lụa Keycloak Làm Client Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bố Già Google Phải Trả Cái Token Đáy DB Về Chỗ Nào?
-- Tại Giao Diện Thêm IdP Của Keycloak Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Keycloak Đã Lệnh Tĩnh Tính Toán Sẵn Cho Bạn 1 Cục Bọc Thép **`Redirect URI Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh`**.
-- Ví dụ: `http://localhost:8080/realms/master/broker/google/endpoint`
-- BẮT BUỘC Phải Copy Cái Tọa Độ Lệnh Cửa Cắt Đứt Nối Tương Lai Này Lên Giao Diện Google Developer Paste Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Vào Vùng Dịch Tễ Băng Tần! Để Google Biết Đường Bắn XML Hoặc Code Về Đúng Đáy Bọc!
-
----
+**Identity Provider Mappers:**
+Một trong những tính năng cốt lõi khi kết nối IdP là khả năng dịch thuật dữ liệu (Mappers). Ví dụ: Google trả về `given_name`, nhưng ứng dụng của bạn cần thuộc tính `firstName`. Mapper giúp ánh xạ các claim (trong OIDC) hoặc attribute (trong SAML) từ IdP sang các trường dữ liệu tiêu chuẩn hoặc custom attribute của user cục bộ trong Keycloak.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Phân Tích Sự Liên Đới Cây Flow Trong Tọa Độ Identity Provider Đáy Lõi Tự Trị Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng:
+Khi một IdP được thêm vào Keycloak, hệ thống hoạt động như sau:
 
 ```mermaid
-graph TD
-    A[Bảng Giao Diện Oanh Khung Dịch Lụa Mạch Lệnh Identity Provider - Google] -->|Cấu Hình Mặc Định Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp| B(Cây Luồng: First Broker Login Flow Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)
-    A -->|Cấu Hình Mặc Định Đáy Lõi DB Trút Cắt Khung Tương Lai| C(Cây Luồng: Post Broker Login Flow Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp)
-    
-    A -->|Quyền Lực Data Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy| D[Tự Khai Mở Bảng Mạch 'Mappers' Cho Riêng Thằng Google Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa]
-    
-    style A fill:#f9f,stroke:#333,stroke-width:4px
-    style D fill:#bfb,stroke:#333,stroke-width:2px
+flowchart TD
+    A[Client Request Login] --> B[Keycloak Redirect to IdP]
+    B --> C[IdP Authenticates User]
+    C --> D{Loại IdP?}
+    D -- Social/OIDC --> E[IdP trả về ID Token (JWT)]
+    D -- SAML --> F[IdP trả về SAML Assertion (XML)]
+    E --> G[Keycloak xác minh chữ ký (JWKS)]
+    F --> H[Keycloak xác minh chữ ký (X.509 Certificate)]
+    G --> I[Kích hoạt Identity Provider Mappers]
+    H --> I
+    I --> J[Trích xuất và chuẩn hóa User Profile]
+    J --> K[First/Post Broker Login Flow]
 ```
-*Ghi Chú Đáy Lõi DB Trút Cắt Khung Tương Lai:* Mở Form Google Của Keycloak Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Bạn Sẽ Thấy Nó Cố Định Trói Chặt Vào Cái Thằng Hộp Cổ Thụ `First Broker Login` Đỉnh Cao (Bài 2 Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh). Bạn Có Quyền Vẽ Ra 1 Cây Lệnh Nhánh Mới Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Hoàn Toàn Tùy Biến, Sau Đó Đổi Binding Vào Chỗ Dropdown Của Form Này Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề!
 
----
+**Cơ chế cấp thấp đối với OIDC:**
+Keycloak lấy cấu hình động bằng cách truy cập endpoint `/.well-known/openid-configuration` của IdP. Nó tự động nạp các đường dẫn Authorization, Token, UserInfo và JWKS URI. Quá trình kiểm tra token được thực hiện nghiêm ngặt bằng việc đối chiếu chữ ký JWT với public key lấy từ JWKS.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
+> [!WARNING]
+> **Cảnh báo về OpenID Connect JWKS**: Khi tích hợp OIDC, bắt buộc phải sử dụng `JWKS URI` thay vì hardcode Public Key. Các nhà cung cấp (như Google/Microsoft) luân chuyển (rotate) khóa của họ liên tục. Hardcode key sẽ gây downtime toàn hệ thống khi khóa bị xoay.
+
 > [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Sức Mạnh Identity Provider Mappers Mạch Cắt Oanh Trọng Lõi Tự Trị Trút Code Lỗ Bọt Cắt Trắng Oanh Tĩnh)**
-> **Bài Toán Thực Tế API Trọng Lực Bọc Thép OIDC:** Khách Hàng Login Bằng Nút Google. Trên Cục Token Của Google Có Rất Nhiều Dữ Liệu Béo Bở Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống: `gender` (Giới Tính), `locale` (Quốc Gia), `picture` (Hình Ảnh). Nhưng Khi Chạy Lệnh Rút Lụa Cắt Bọt Đứt Băng Vô Mạch DB Keycloak Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ, Lãnh Chúa Chỉ Trích Xuất Cái Email Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Và Vứt Sạch Rác Còn Lại Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt. App Kế Toán Mất Hết Ảnh Avtar Đáy Oanh Mạch Rút Trọng Mạch Lệnh Của Khách Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-> **Biện Pháp Sống Còn Lớp Trọng Lực OIDC Đáy Lụa:** Không Phải Do Keycloak Ngu Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Mà Do Bạn Chưa Mở Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Cánh Cửa **`Identity Provider Mappers`**.
-> Bấm Vào Tab Mappers Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Của IdP Google Đó Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp. Bạn Chọn Khởi Tạo Một Lớp Mapping Loại: **`Attribute Importer`**. 
-> - Khai Báo `Claim` Gốc Của Google: `picture` Lệnh Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh.
-> - Bơm Khẳng Định Vô Cột Attribute Của Keycloak: `avatar_url` Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-> Lập Tức Các Dữ Liệu XML/JSON Của Đám Bên Ngoài Sẽ Chảy Thẳng Đáy Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Vào Tận Tủy Của Trái Tim DB Keycloak Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Hoàn Mỹ Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
+> **Bảo mật SAML XML External Entity (XXE)**: Khi sử dụng SAML, Keycloak phải parse XML do IdP gửi về. Đảm bảo bạn đang sử dụng phiên bản Keycloak mới nhất để tránh các lỗ hổng XXE, và luôn bật tính năng `Validate Signature` trên các SAML Assertions để chống lại các cuộc tấn công giả mạo (Spoofing).
 
----
+- **Kiểm soát quyền truy cập**: Sử dụng `Post Broker Login Flow` hoặc Mappers để chặn đăng nhập từ các người dùng thuộc một nhóm (Group/Tenant) nhất định trên IdP, tránh tình trạng "ai cũng có thể đăng nhập".
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-**1. Trong Cấu Hình Lệnh Identity Provider Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt. Em Thấy Một Cái Ô Nhập URL Là 'Token Endpoint' Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Nhưng Bỗng Dưng Sếp Thấy Có 1 Công Tắc Lệnh Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Tên Là 'Client Authentication' Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Và Cho Phép Chọn 'Client_Secret_Basic' Hoặc 'Client_Secret_Post' Đáy Oanh Mạch Rút Trọng Mạch Lệnh. Ô Hay Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Chẳng Phải Vừa Học Cửa Đó Ở Chương 18 (Client Authentication) Sao Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề? Vậy Lúc Này Ai Là Máy Chủ Oanh Cáp Giao Diện Lệnh Chặt Mạch Lụa, Ai Là Thằng Phải Bắn Đáy DB Chữ Khớp Oanh Cáp Basic Secret Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy?**
-- **Senior:** Dạ thưa sếp, Đây Chính Là Bản Đồ Chéo Ma Trận Đỉnh Cao Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Của Giao Thức Oanh Khung Dịch Lụa Mạch Lệnh:
-  - Ở Chương 18, Thằng Đội Mũ "Lãnh Chúa Máy Chủ Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ" LÀ KEYCLOAK Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Nên App Phải Điền Basic Secret Bắn Lên Keycloak Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
-  - Nhưng Đang Ở Cấu Hình Của Chương 20 Identity Brokering Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Keycloak Lại Lột Áo Lãnh Chúa Ra, Khoác Vào Chiếc Áo Khổ Sai Làm "THẰNG CLIENT Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa". Và Thằng Máy Chủ Chóp Đáy Lúc Này Chính Là GOOGLE Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp.
-  - Nên Cờ Công Tắc `Client Authentication` Này LÀ KEYCLOAK ĐANG HỎI SẾP Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt: "Sếp Ơi Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Chút Nữa Khách Bấm Nút Login Xong Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, Em (Keycloak) Bắn Secret Của Em Lên /token Của Thằng Google Bằng HTTP Basic Header Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Hay Là Bắn Ở Bụng Body Post Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Ạ?". Thằng Google Mà Đòi Basic Thì Mình Phải Set Basic Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần! Đây Chính Là Vẻ Đẹp Của Tiêu Chuẩn Hóa OAuth2 Mọi Lúc Mọi Nơi Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép!
+### Ví dụ Cấu hình Google Social Login:
+1. Lấy thông tin từ [Google Cloud Console](https://console.cloud.google.com/):
+   - Tạo OAuth 2.0 Client ID.
+   - Authorized redirect URIs: `https://<your-keycloak-domain>/realms/<realm>/broker/google/endpoint`
+2. Cấu hình trong Keycloak:
+   - Vào `Identity Providers` -> Chọn `Google`.
+   - Client ID: `<Google Client ID>`
+   - Client Secret: `<Google Client Secret>`
+   - Default Scopes: `openid profile email`
 
----
+### Cấu hình Hardcoded Role Mapper (Tự động gán quyền):
+Nếu muốn tất cả người dùng đăng nhập từ IdP có tên là "PartnerIdp" đều tự động được gán quyền "partner-role" trong Keycloak.
+1. Chuyển sang tab `Mappers` của IdP đó.
+2. Create Mapper -> Name: `Assign Partner Role`.
+3. Mapper Type: `Hardcoded Role`.
+4. Role: `partner-role`.
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Administration Guide - Identity Provider Configuration.
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **CORS block khi Redirect**: Đôi khi ứng dụng SPA cố gắng gọi ngầm Keycloak, và Keycloak lại redirect ngầm sang IdP. Các IdP (như Azure AD) chặn iframe (X-Frame-Options) hoặc không cho phép redirect tự động. Khắc phục: Phải bắt lỗi `login_required` và thực hiện redirect toàn trang thay vì gọi API ngầm.
+- **IdP không trả về Email**: Một số hệ thống SAML nội bộ hoặc Social login như GitHub (nếu user ẩn email) không cung cấp email. Vì Keycloak mặc định yêu cầu email, luồng đăng nhập có thể bị kẹt. Khắc phục: Yêu cầu người dùng tự nhập email trong bước `Update Profile` (First Broker Login Flow).
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+**Junior Level:**
+1. Kể tên 3 nhóm Identity Providers chính mà Keycloak hỗ trợ.
+   - *Đáp án:* Social Providers (Google, FB), OpenID Connect v1.0, và SAML 2.0.
+2. Tính năng "Identity Provider Mappers" dùng để làm gì?
+   - *Đáp án:* Dùng để ánh xạ, chuyển đổi dữ liệu (Claims/Attributes) từ IdP bên ngoài thành dữ liệu người dùng cục bộ (Attributes/Roles/Groups) trong Keycloak.
+
+**Senior Level:**
+3. Khi tích hợp một hệ thống SAML nội bộ vào Keycloak, nếu bạn gặp lỗi "Invalid Signature" dù đã tải đúng chứng chỉ số (Certificate), bạn sẽ kiểm tra những yếu tố nào?
+   - *Đáp án:* Cần kiểm tra: (1) Certificate đó là để ký (Signing) hay mã hóa (Encryption). (2) IdP ký trên toàn bộ SAML Response hay chỉ ký phần Assertion. (3) Định dạng XML bị thay đổi ngầm (whitespace/newline) bởi proxy làm hỏng tính toàn vẹn chữ ký. (4) Cấu hình NameID format.
+4. Trình bày cách bạn triển khai tính năng "Multi-Tenancy" khi chỉ sử dụng một Keycloak Realm nhưng nối với nhiều Azure AD của các đối tác khác nhau?
+   - *Đáp án:* Tạo nhiều IdP (Azure AD 1, Azure AD 2) trong cùng một Realm. Sử dụng `kc_idp_hint` trên Client app để định tuyến người dùng đúng Tenant, hoặc viết một Custom Authenticator cho bước đăng nhập đầu tiên (nhập email -> bóc tách domain -> tự động chuyển hướng đến IdP tương ứng - Home Realm Discovery).
+5. Làm thế nào để ngăn chặn người dùng từ một IdP cụ thể (Ví dụ: IdP của đối tác) đăng nhập vào ứng dụng dành riêng cho nhân viên nội bộ?
+   - *Đáp án:* Sử dụng chức năng Client Scope hoặc Authentication Flow đánh giá điều kiện. Trong Post Broker Login flow, thêm một Execution kiểm tra thuộc tính user hoặc IdP gốc; nếu không thoả mãn sẽ trả về lỗi `Access Denied`.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak Docs - Identity Providers](https://www.keycloak.org/docs/latest/server_admin/#_identity_broker)
+- [OpenID Connect Core 1.0 Specification](https://openid.net/specs/openid-connect-core-1_0.html)
+- [Google Identity Platform - OAuth 2.0](https://developers.google.com/identity/protocols/oauth2)

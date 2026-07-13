@@ -1,83 +1,99 @@
-# Lesson 5-6: Kính Hiển Vi Của Cấu Trúc Phân Tán (OpenTelemetry & Jaeger)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Lột xác sự nghiệp Dev với Distributed Tracing (Dò theo dấu vết phân tán). Hiểu cách cấu hình cho Keycloak phát ra bức xạ phóng xạ (Traces) OTel và dùng cỗ máy thời gian Jaeger để bắt bức xạ đó. Vẽ ra bản đồ thời gian chính xác nguyên nhân Đau Tim Chậm Mạng của toàn hệ thống.
+> **Category:** Theory
+> **Goal:** Hiểu sâu về Distributed Tracing, chuẩn W3C Trace Context, và cách Keycloak tích hợp OpenTelemetry để theo dõi một Request xuyên suốt hệ thống phân tán.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Cơn Ác Mộng Của Microservices (Chậm Ở Đâu?)
-Hệ thống hiện tại của bạn không chỉ có một Cục Gạch. Nó gồm: Trình Duyệt của Khách -> NGINX Reverse Proxy -> Keycloak -> Hệ Thống Postgres Database -> và cả Hàng Trăm Hệ Thống App Phụ (Spring Boot) đứng sau OIDC.
-Khi Khách hàng Bấm Nút Login. 5 Giây sau mới vào!
-Khách hàng Gọi Tổng Đài Phàn Nàn: "Hệ thống Bị Chậm".
-Bạn nhìn vào Metrics (Grafana): CPU của Keycloak và DB vẫn rất Mát Mẻ Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. RAM chưa quá 50%.
-Bạn Nhìn Vào Log: 5 Giây trước Thấy Một Dòng "Login Success" Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy.
-Nhưng... RỐT CUỘC LÀ TRONG 5 GIÂY ĐÓ Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, NÓ BỊ KẸT Ở KHÚC MÀNG NÀO? Là do Mạng wifi của nhà Khách hàng? Do NGINX phân giải SSL chậm? Do Postgres ngâm cái lệnh Select Password quá 4 Giây? Hay Do Keycloak Mã Hóa Đứt Mạch Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề?
-KHÔNG AI TRẢ LỜI ĐƯỢC Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Bằng Metrics Và Logging Thông Thường Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bạn Phải Cần Có Phép Màu Tracing Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+Khi hệ thống áp dụng kiến trúc Microservices, một thao tác của người dùng (ví dụ: Đăng nhập) có thể kéo theo chuỗi cuộc gọi HTTP/gRPC đan chéo qua lại giữa nhiều Server (Gateway -> Keycloak -> DB -> Identity Provider ngoài). Logs và Metrics thông thường không đủ để trả lời câu hỏi: *"Trong 5 bước của quy trình đăng nhập chậm 3 giây này, bước nào gây nghẽn cổ chai?"*
 
-### 1.2. Giải Phẫu Phép Màu OTel
-OpenTelemetry (OTel) là Bộ Tiêu Chuẩn Phóng Xạ Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-Từ Bản Keycloak Mới Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Red Hat Bơm Trực Tiếp Lõi OTel Vào Bụng. Bạn Khởi Động Với Cờ `--tracing-enabled=true`. 
-Cách Thức Kéo Kén Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:
-Khi 1 Request Vừa Chạm Cửa NGINX Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, NGINX Tự Động Sinh Ra 1 Mã Lệnh Gọi Là (TraceID = `abc-123`).
-NGINX Xử Lý Hết 1ms. Nó Đính Chữ `TraceID abc-123, Thời gian 1ms` Gửi Đẩy Lên Trên Bầu Trời (Cho Thằng Jaeger Nhặt).
-NGINX Đẩy Cú Yêu Cầu Xuống Keycloak Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần CÙNG VỚI CÁI TRACE_ID `abc-123` ĐÓ Oanh Khung Dịch Lụa Mạch Lệnh! 
-Keycloak Nhận Thấy Có Chữ Dấu Vết Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Nó Bắt Đầu Đếm Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Việc Vào Lõi Xác Thực Chữ Tốn `40ms`. Nó Cầm Cái DB Gõ Lệnh Tìm Tên Của User Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Khúc Chọc Vào Postgres Mất `4000ms`. Trả Về Mất `40ms`. Nó Cộng Lại Và Lại Phóng Bức Xạ OTel Bay Lên Trời Gửi Báo Cáo Cho Thằng Jaeger.
-Cuối Cùng Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Khi Bạn Mở Giao Diện Của Máy Tìm Dấu Jaeger Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Bạn Tìm Cái Mã `abc-123`.
-Trời Đất Mở Ra Một Cái Biểu Đồ Thác Nước (Waterfall Chart Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)! Bạn Thấy Rõ Ràng Khúc Thanh Đen Nginx Rất Ngắn (1ms), Khúc Java Khá Ngắn (80ms), NHƯNG KHÚC CHẠM VÀO DATABASE JDBC NÓ DÀI LOẰNG KÉO THEO 4000ms Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Bạn Vỗ Bàn La Toán Lên: ĐỂ BỐ KIỂM TRA LẠI DATABASE Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chắc Chắn Hụt Index Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh! Thấy Được Lỗ Đứt Ngay Tức Khắc!
+**Distributed Tracing (Truy vết phân tán)** ra đời để giải quyết bài toán này. Nó hoạt động dựa trên các nguyên tắc của chuẩn công nghiệp **OpenTelemetry (OTel)**:
 
----
+*   **Trace (Vết):** Đại diện cho toàn bộ vòng đời của một Request xuyên suốt các hệ thống. Có một `Trace ID` duy nhất sinh ra ở điểm chạm đầu tiên (Gateway).
+*   **Span (Khoảng):** Đại diện cho một đơn vị công việc logic bên trong một Trace. Mỗi dịch vụ xử lý request sẽ tạo ra một Span (có `Span ID` riêng), bắt đầu bằng thời gian nhận và kết thúc khi trả kết quả. Một Trace là một cây (Tree) gồm nhiều Spans.
+*   **Context Propagation (Lan truyền ngữ cảnh):** Kỹ thuật tiêm (inject) `Trace ID` và `Span ID` của hệ thống cha vào HTTP Headers (chuẩn W3C `traceparent`) để truyền sang hệ thống con. Nhờ đó Backend biết được nó đang thực thi cho luồng công việc nào.
+
+Keycloak hỗ trợ mạnh mẽ OpenTelemetry (OTel) nhờ vào lõi Quarkus. Hệ thống này sử dụng OTel SDK để tự động bọc (instrument) các hàm gọi HTTP, JAX-RS REST endpoints, và truy vấn JDBC vào Database.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Của Thác Nước Mổ Xẻ Dòng Cắt:
+Quá trình thu thập và xuất Trace từ Keycloak ra bên ngoài (ví dụ tới Jaeger hoặc Grafana Tempo).
 
 ```mermaid
 sequenceDiagram
-    participant WebUser as Giao Diện 
-    participant Nginx as Proxy Cổng (Có OTel)
-    participant KC as Lõi Keycloak (OTel Quarkus Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa)
-    participant DB as Postgres Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    participant Jaeger as Jaeger (Máy Thu Phát Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)
+    participant GW as API Gateway
+    participant HTTP as Keycloak Undertow HTTP
+    participant JAX as Keycloak JAX-RS Engine
+    participant DB as Postgres (JDBC)
+    participant OTel as OTel Collector / Jaeger
+
+    Note over GW,HTTP: HTTP Req có Header: traceparent: 00-4bf92...
+    GW->>HTTP: POST /realms/master/protocol/openid-connect/token
     
-    WebUser->>Nginx: Click Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề! Request Login Bay Tới
-    Nginx->>Nginx: Phủ Khăn Mệnh (Trace = X1 Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, Span = N1 Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa). Ghi Lệnh Chóp Nginx Mất 2ms
-    Nginx->>Jaeger: Ném Cục Báo Cáo Đoạn N1 (Chứa X1) Bay Lên Trời
-    Nginx->>KC: Bơm Gói Tin Có Đính Chữ (Header `traceparent: X1`) Sang Keycloak
+    Note over HTTP: Extract Context (Lấy Trace ID)<br>Bắt đầu Span (Root Keycloak Span)
+    HTTP->>JAX: Process OIDC Token Request
     
-    KC->>KC: Lõi Quarkus Thấy Chữ X1 Liền Đeo Khăn Oanh Khung Dịch Lụa Mạch Lệnh! Nhập Xác Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề! Span = K1 Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Xử Lý Tầng API Khớp Lệnh Mất 50ms Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-    KC->>DB: Trích Xuất JDBC Qua DB Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. (Span K2). Mất Xử Lý DB Tận 3000ms Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
-    DB-->>KC: Bơm Chữ Trả Về! Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp
-    KC->>Jaeger: Bơm Cục Báo Cáo Đoạn K1 Và K2 (Tất Cả Đều Chứa Trace X1) Bay Lên Trời
-    KC-->>Nginx: Trả Response Cuối Cùng! Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
+    Note over JAX: Bắt đầu Span con (Child Span)
+    JAX->>DB: Truy vấn DB lấy User Info (JDBC)
     
-    Note over Jaeger, Nginx: Lát Sau Thằng Sysadmin Đăng Nhập Giao Diện Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-    Jaeger->>Jaeger: Nó Nối Các Cục Rời Rạc Có Chung Mã X1 Thành Dòng Thời Gian Trực Quan (Waterfall) Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-    Jaeger->>WebUser: Màn Hình Cảnh Báo Hiện Rõ Chữ Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa: "Lệnh Phê Chuẩn JDBC Sang Postgres Chiếm 99% Thời Lượng Yêu Cầu!" 
+    Note over DB,JAX: JDBC Driver tự động sinh Span cho câu Query DB
+    DB-->>JAX: Kết quả DB
+    JAX-->>HTTP: Kết thúc Span con
+    HTTP-->>GW: HTTP 200 OK (Kết thúc Root Span)
+    
+    Note over HTTP,OTel: Quá trình Asynchronous (Bất đồng bộ)
+    HTTP->>OTel: OTel Exporter gửi gói Spans qua gRPC / HTTP
+    Note over OTel: Backend ráp nối các Spans thành sơ đồ Gantt
 ```
 
----
+*Cơ chế xuất (Exporting):* Gửi telemetry data không thực thi đồng bộ với User request. Các Spans được đưa vào một Batch buffer trên RAM, sau đó các luồng công việc ngầm (Background thread) sẽ dùng giao thức gRPC đẩy dữ liệu ra OTel Collector theo chu kỳ, do đó độ trễ tác động vào ứng dụng gần như bằng 0 (Zero overhead).
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Rò Rỉ Toàn Bộ Token Dưới Bụng Của Thám Tử)**
-> **Tội Ác Ngu Ngốc Mở Bung Chế Độ Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Ghi Lại Payload Của Lỗ Tracing Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh:** Rất Nhiều Dev Khi Test Bật OTel Lên Đã Hưng Phấn Bật Cho Nó Chụp Lại (Capture Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần) TOÀN BỘ Nội Dung Của Headers Lẫn Body Của Khách Hàng Gửi Vào. Nghĩa Là Khi Mở Jaeger Lên Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề, Bấm Bấm Sẽ Đọc Được Cả Dòng Chữ Mật Khẩu (Password Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh) Hoặc Là Cái Chuỗi Dài Loằng Ngoằng JWT Token Vừa Được Cấp Phép Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh!
-> **Hậu Quả Chết Lạc Lối Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng:** 
-> Jaeger Sinh Ra Nó Lưu Dữ Liệu Ở Database Không Mã Hóa Chuyên Dụng (Cassandra/ElasticSearch Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy). Các Kỹ Sư Quản Trị Hệ Thống Chỉ Cần Lên Search Là Thấy Mật Khẩu Khách Hàng Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề. Nếu Cục Database Của Jaeger Này Rò Rỉ Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Hacker Sở Hữu Hàng Triệu Cuộn Token Còn Hạn Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Và Thỏa Sức Hack Mọi Chỗ!
-> **Biện Pháp Sống Còn Khóa Khẩu Che Mắt Oanh Khung Dịch Lụa Mạch Lệnh:**
-> Việc Cấu Hình Tracing Chỉ Được Phép Lưu (Span Name Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Thời Gian Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Status Code HTTP Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy). TUYỆT ĐỐI CẤM Chụp Data Body (Nhất Là Form Payload `/token` Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp). Chú Ý Thiết Lập Kỹ Việc Chọn Lọc Dấu Vết (Sampling Rate Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) Ở Môi Trường Production Là 1% Đến 5% Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa (Nghĩa Là Chỉ Hút Dấu Của 1/100 Lượt Khách Để Theo Dõi Thống Kê Tổng Quát Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy). Chứ Hút 100% Cứ Đứa Nào Cắn Nút Login Cũng Vẽ Bức Xạ Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Thì Băng Tần Truyền Tải Chết Kẹt Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Và Cục Jaeger Chết Ngập Data Giác Thưa Sếp Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+*   **Sử dụng OTel Collector thay vì gửi trực tiếp:** Keycloak không nên cấu hình để đẩy Trace trực tiếp tới Backend như Jaeger hay Elastic. Cấu hình Keycloak đẩy dữ liệu vào một thành phần trung gian gọi là **OpenTelemetry Collector** (cài đặt như một sidecar hoặc DaemonSet). Collector sẽ chịu trách nhiệm retry, lọc, batching, và định tuyến tới Backend lưu trữ.
+*   **Kiểm soát Sampling Rate (Tỷ lệ lấy mẫu):** Trên môi trường Production có hàng chục ngàn Request mỗi giây, việc Trace 100% Request sẽ ngốn sạch bộ nhớ và CPU của hạ tầng Monitoring. Bạn BẮT BUỘC phải dùng `Probability Sampler` (Ví dụ: chỉ lấy mẫu ngẫu nhiên 5% - `0.05` tổng số Requests).
+> [!WARNING]
+> Cẩn thận với rò rỉ dữ liệu (Data Leakage) trong Spans. JDBC Tracing có thể vô tình đính kèm các câu lệnh SQL hoàn chỉnh chứa tham số nhạy cảm (như thông tin cá nhân, Password Hash) vào Attributes của Span.
 
----
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+Kích hoạt và cấu hình OpenTelemetry trong file `keycloak.conf`:
 
-**1. Em Hiểu Distributed Tracing (Jaeger Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) Và Logging Ở Bài Trước Khác Nhau Chỗ Nào Không? Tại Sao Mình Phải Gánh Thêm Mớ Chi Phí Chạy OTel Vào Bụng Hệ Thống Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh?**
-- **Senior:** Dạ Câu Này Sẽ Quyết Định Người Đó Chỉ Ở Đẳng Cấp Sysadmin (Đọc Log Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề) Hay Là Đã Lên Tầm Mắt Của Thần Mây (DevSecOps Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa)!
-  - **Logging Là Kể Chuyện Cục Bộ (Đồ Đá Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa):** Bạn Ghi Ra Dòng Chữ Rằng Lúc 8h Server A Xảy Ra Sự Kiện Này Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Cùng Lúc Đó Ở Server B Có Thêm 1 Chuyện Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bọn Em Tìm Được Lỗi Bằng Việc Gõ Lệnh Tìm Kiếm Nhưng Rất Khó Kết Nối Tương Lai Rằng Dòng Ở Máy A Là Nguồn Gốc Của Lệnh Chết Máu Ở Máy B Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-  - **Tracing Là Kính Hiển Vi Sợi Dây Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh:** Tracing Chèn Thẳng Mã Gen (Trace-ID Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp) Bắt Đầu Từ Cổng Nginx Chạy Mạch Máu Xuyên Rỗng Ruột Sang Thẳng Keycloak Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Cùng Một Thằng Khách Bấm Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, Lệnh Sẽ Đi 1 Trục Xuyên 5 Cái Máy Chủ (Nginx -> App Frontend -> App Backend -> Keycloak -> Database Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Và Trên Màn Hình Jaeger Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Bọn Em Thấy Trực Quan Y Như Một Cây Gia Phả! Nhìn Là Thấy Ngay Thằng Keycloak Màu Vàng Trả DB Quá Chậm Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. Rút Cắn Thời Gian Xử Lý Bug Chỉ Còn Vài Phút Thay Vì Ngồi Mò Log Của 5 Cục Vài Ngày Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh!
+```properties
+# Bật tính năng Tracing
+KC_TRACING_ENABLED=true
 
----
+# Cấu hình địa chỉ OTel Collector (thường dùng cổng chuẩn gRPC 4317 hoặc HTTP 4318)
+KC_TRACING_EXPORTER_OTLP_ENDPOINT=http://otel-collector.observability.svc.cluster.local:4317
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Administration Guide - Enabling OpenTelemetry.
+# Cấu hình giao thức xuất (grpc hoặc http/protobuf)
+KC_TRACING_EXPORTER_OTLP_PROTOCOL=grpc
+
+# Chiến lược Sampling: probability (lấy xác suất ngẫu nhiên)
+KC_TRACING_SAMPLER_TYPE=probability
+# Lấy mẫu 10% các luồng
+KC_TRACING_SAMPLER_PROBABILITY=0.1
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+*   **Mất dấu Trace (Broken Trace):** Nếu Keycloak gọi đến một Identity Provider bên ngoài (như Facebook Login) hoặc một hệ thống legacy (Mã nguồn cũ chưa hỗ trợ chuẩn W3C `traceparent` Header), ngữ cảnh Trace sẽ bị chặt đứt. Các Spans thực thi tại hệ thống legacy đó sẽ trở thành "mồ côi" (Orphan spans) hoặc bắt đầu một Trace ID hoàn toàn mới.
+*   **OTel Collector bị Crash / Mạng tắc nghẽn:** Buffer lưu trữ Spans trên RAM của Keycloak sẽ đầy (Ring Buffer Full). Lúc này, OTel SDK sẽ quyết định chủ động rớt bỏ (Drop) các Spans mới để tự bảo vệ sự ổn định của Keycloak, đánh đổi bằng việc mất dữ liệu giám sát.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1.  **Junior:** Phân biệt `Trace` và `Span` trong Distributed Tracing?
+    *   *Đáp án:* Trace đại diện cho toàn bộ hành trình của một giao dịch đi qua nhiều hệ thống. Span là một đoạn đường đi cụ thể, một đơn vị công việc bên trong Trace đó (như gọi API A, gọi DB B).
+2.  **Junior:** Kỹ thuật `Context Propagation` thực hiện việc gì?
+    *   *Đáp án:* Là việc truyền các mã định danh của Trace (Trace ID, Span ID) qua lại giữa các máy chủ khác nhau thông qua các HTTP Headers (VD: chuẩn W3C `traceparent`) để giữ tính liền mạch.
+3.  **Senior:** Tại sao không nên Trace 100% Request trên môi trường Production?
+    *   *Đáp án:* Quá trình khởi tạo object Span, gắn Label/Attribute và Export qua mạng dù nhẹ nhưng khi nhân với lượng lớn traffic sẽ tạo ra Overhead (Network I/O, Garbage Collection). Hơn nữa, ổ cứng của hệ thống Monitoring cũng không thể chịu nổi lượng dữ liệu khổng lồ đó. Giải pháp là Sampling (Head-based hoặc Tail-based sampling).
+4.  **Senior:** Keycloak làm thế nào để xuất dữ liệu Span ra ngoài mà không làm chậm việc phản hồi (Response) lại cho User?
+    *   *Đáp án:* OpenTelemetry sử dụng kỹ thuật Asynchronous Batch Exporting. Spans được thu thập đồng bộ nhưng xuất ra Collector thông qua một background thread riêng biệt nằm ngoài luồng phục vụ HTTP.
+5.  **Senior:** Nếu hệ thống của bạn sử dụng Kafka làm phương tiện giao tiếp Asynchronous giữa các Microservices thay vì HTTP REST, Distributed Tracing hoạt động thế nào?
+    *   *Đáp án:* Cơ chế Context Propagation vẫn được áp dụng, nhưng thay vì nhúng vào HTTP Header, Trace ID sẽ được nhúng vào Kafka Message Headers. Các SDK của OTel hỗ trợ việc bọc (instrument) Kafka Producer và Consumer để chiết xuất ID và nối tiếp luồng Trace.
+
+## 7. Tài liệu tham khảo (References)
+
+*   [Keycloak Docs: OpenTelemetry Distributed Tracing](https://www.keycloak.org/server/observability)
+*   [OpenTelemetry Official Documentation](https://opentelemetry.io/docs/)
+*   [W3C Trace Context Specification](https://www.w3.org/TR/trace-context/)

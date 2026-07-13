@@ -1,55 +1,164 @@
-# Lab 1: Tự Code Đỉnh Đèo - Custom Trạm Gác Security Filter
-
 > [!NOTE]
 > **Category:** Practical/Lab (Thực hành)
-> **Goal:** Học cách lập trình tạo ra một Trạm Gác Cá Nhân (Custom Filter) chèn thẳng vào đầu Băng Chuyền Sinh Tử của Spring Security để kiểm tra IP độc hại.
+> **Goal:** Tích hợp Spring Boot (đóng vai trò Resource Server) với Keycloak (Authorization Server) để bảo vệ REST API bằng JWT, và trích xuất Role từ Keycloak để phân quyền người dùng.
 
-## 1. Yêu cầu (Prerequisites)
-- Dự án Spring Boot Java Cấu Trúc Khung Rỗng XML Nặng Nề.
-- Công Cụ Postman Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
+## 1. Kịch bản Thực hành (Lab Scenario)
+Bạn đang phát triển một API backend cho hệ thống quản lý nhân sự. Yêu cầu đặt ra là mọi API đều phải được bảo vệ. 
+- API `/api/public/info` cho phép truy cập tự do.
+- API `/api/users/profile` yêu cầu người dùng phải đăng nhập (bất kỳ role nào).
+- API `/api/admin/dashboard` yêu cầu người dùng phải có quyền (role) là `admin`.
+Bạn sẽ sử dụng Keycloak để tạo các user/role này, sinh ra JWT (Access Token), và gọi vào Spring Boot để kiểm chứng quá trình phân quyền hoạt động.
 
-## 2. Các bước thực hiện (Step-by-step)
+## 2. Chuẩn bị Môi trường (Prerequisites)
+- Keycloak Server đang chạy (có thể dùng Docker: `docker run -p 8080:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:latest start-dev`).
+- JDK 17+ và Maven/Gradle.
+- Một dự án Spring Boot mới có các dependencies: `spring-boot-starter-web`, `spring-boot-starter-security`, `spring-boot-starter-oauth2-resource-server`.
+- Postman hoặc cURL để test API.
 
-### Bước 1: Khắc Gỗ Trạm Gác Riêng
-Tạo 1 Class tên là `EvilIpBlockerFilter`. Nó kế thừa cái Khuôn Cơ Bản Nhất `OncePerRequestFilter` Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy (Màng Lọc Chỉ Xử Lý Bóp Đúng Mộc 1 Lần Cho 1 Lượt Khách Tới).
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
+
+**Bước 1: Cấu hình Keycloak**
+1. Đăng nhập vào Keycloak Admin Console (http://localhost:8080).
+2. Tạo một Realm mới tên là `spring-boot-realm`.
+3. Tạo một Client mới:
+   - Client ID: `spring-app`
+   - Client Authentication: `Off` (Public client vì chúng ta chỉ dùng để sinh token qua Postman).
+   - Valid Redirect URIs: `*`
+4. Tạo Realm Roles:
+   - Tạo role `admin`
+   - Tạo role `user`
+5. Tạo User:
+   - User 1: `john_admin`, gán password, sau đó gán Role Mapping là `admin`.
+   - User 2: `jane_user`, gán password, gán Role Mapping là `user`.
+
+**Bước 2: Cấu hình Spring Boot application.yml**
+Mở file `application.yml` trong project Spring Boot và thêm cấu hình kết nối tới Keycloak:
+
+```yaml
+server:
+  port: 8081
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/spring-boot-realm
+          jwk-set-uri: http://localhost:8080/realms/spring-boot-realm/protocol/openid-connect/certs
+```
+
+**Bước 3: Viết mã cấu hình Security và REST Controller**
+Tạo file `SecurityConfig.java`:
+
 ```java
-@Component
-public class EvilIpBlockerFilter extends OncePerRequestFilter {
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.core.convert.converter.Converter;
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-        
-        // 1. Dò Thám IP Khách Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-        String ipAddress = request.getRemoteAddr();
-        
-        // 2. Chặn Đầu Súng Nếu Trúng IP Độc (Ví Dụ Thằng IP .222 Là Máy Thử Độc)
-        if ("192.168.1.222".equals(ipAddress)) {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.getWriter().write("CÚT NGAY THẰNG HACKER Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh!");
-            return; // Đứt Gánh Dây Chuyền Sinh Tử Ở Đây, Không Đi Tiếp Tới Các Filter Sau!
-        }
-        
-        // 3. Nếu Khách Vãng Lai Tốt, Đóng Chốt Ký Thẻ Và Đẩy Tiếp Băng Chuyền Chạy
-        filterChain.doFilter(request, response);
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("admin")
+                .anyRequest().authenticated()
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+            );
+        return http.build();
+    }
+
+    private JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(new Converter<Jwt, Collection<GrantedAuthority>>() {
+            @Override
+            public Collection<GrantedAuthority> convert(Jwt jwt) {
+                Map<String, Object> realmAccess = (Map<String, Object>) jwt.getClaims().get("realm_access");
+                if (realmAccess == null || realmAccess.isEmpty()) {
+                    return List.of();
+                }
+                List<String> roles = (List<String>) realmAccess.get("roles");
+                return roles.stream()
+                        .map(roleName -> new SimpleGrantedAuthority("ROLE_" + roleName))
+                        .collect(Collectors.toList());
+            }
+        });
+        return converter;
     }
 }
 ```
 
-### Bước 2: Nâng Trạm Gác Lên Dây Chuyền Chính
-Chạy Sang File Config Của Sếp Tổng Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh `SecurityConfig`. Tại Chỗ Gắn Đồ Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:
+Tạo file `ApiController.java`:
+
 ```java
-@Bean
-public SecurityFilterChain filterChain(HttpSecurity http, EvilIpBlockerFilter evilFilter) throws Exception {
-    http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
-    
-    // Yêu cầu Sếp Nhét Cái Đồ Chơi Này Lên Đứng NGAY TRƯỚC HÀNG RÀO Kiếm Token UsernamePassword Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    http.addFilterBefore(evilFilter, UsernamePasswordAuthenticationFilter.class);
-    
-    return http.build();
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api")
+public class ApiController {
+
+    @GetMapping("/public/info")
+    public String publicInfo() {
+        return "This is public info";
+    }
+
+    @GetMapping("/users/profile")
+    public String userProfile() {
+        return "This is user profile";
+    }
+
+    @GetMapping("/admin/dashboard")
+    public String adminDashboard() {
+        return "This is admin dashboard";
+    }
 }
 ```
+Chạy ứng dụng Spring Boot.
 
-### Bước 3: Hưởng Thành Quả Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần
-Khi bạn mở Postman Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề. Cố giả lập Request đến từ IP `.222`. Kể Cả Khi Bạn Mang Đầy Đủ Mã Token Quý Giá Trong Két Sắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Ngay Vừa Chạm Cửa Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Băng Chuyền Của Lớp Bọc IP Blocker Đã Vạch Lỗi Và Cắn Phập Thẳng Ra Chữ 403 Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Hệ Thông Thậm Chí Còn Chưa Kịp Rà Đọc Xem Dòng Chữ Token Của Bạn Là Ai Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
-Đây Là Cách Bạn Code Một Khúc Tùy Biến Thêm Logic Vào Lõi Thép Vững Chắc Của Spring Boot Oanh Khung Dịch Lụa Mạch Lệnh! Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
+**Bước 4: Sinh Token và Test API**
+Mở Postman để sinh token từ Keycloak bằng luồng `Password Credentials` (cho tiện test) hoặc copy từ Keycloak Console:
+```bash
+curl -X POST http://localhost:8080/realms/spring-boot-realm/protocol/openid-connect/token \
+  -d "client_id=spring-app" \
+  -d "username=john_admin" \
+  -d "password=mypassword" \
+  -d "grant_type=password"
+```
+Copy trường `access_token` từ chuỗi JSON trả về.
+
+Gọi API trên Spring Boot bằng token vừa sinh ra:
+```bash
+curl -H "Authorization: Bearer <access_token>" http://localhost:8081/api/admin/dashboard
+```
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+**Kiểm tra tính đúng đắn:**
+- Gọi `GET /api/public/info` không cần Header Authorization -> Phải trả về `200 OK`.
+- Gọi `GET /api/admin/dashboard` không có token -> Trả về `401 Unauthorized`.
+- Gọi `GET /api/admin/dashboard` với token của `jane_user` (chỉ có role user) -> Trả về `403 Forbidden` (Vì thiếu quyền admin).
+- Gọi `GET /api/admin/dashboard` với token của `john_admin` -> Phải trả về `200 OK` kèm nội dung "This is admin dashboard".
+
+> [!TIP]
+> Nếu bạn bị lỗi 403 mặc dù đã đăng nhập bằng user admin, hãy giải mã (decode) JWT của bạn tại [jwt.io](https://jwt.io) để kiểm tra xem cấu trúc JSON có chứa block `realm_access.roles` với giá trị `"admin"` không.
+
+> [!WARNING]
+> Đảm bảo rằng cấu hình `jwtAuthenticationConverter` đã tự động gán thêm tiền tố `ROLE_` trước tên role. Vì phương thức `.hasRole("admin")` của Spring Boot tự động ngầm định nối tiền tố này khi kiểm tra. Nếu bạn convert không có `ROLE_`, Spring sẽ so sánh sai và trả về 403.

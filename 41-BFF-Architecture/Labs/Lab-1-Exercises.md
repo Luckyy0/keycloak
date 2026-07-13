@@ -1,85 +1,111 @@
-# Lab 1: Tự Code Mô Hình BFF Chuẩn Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-
 > [!NOTE]
 > **Category:** Practical/Lab (Thực hành)
-> **Goal:** Thiết lập một Dự Án Cấu Hình Spring Boot Đứng Giữa Làm BFF Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Nhét JWT vào Bụng Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Cấp Phát Cookie Và Viết Endpoint `/api/me`.
+> **Goal:** Xây dựng một ứng dụng Backend-For-Frontend sử dụng Spring Cloud Gateway tích hợp Keycloak OIDC, bảo vệ SPA an toàn bằng Cookie.
 
-## 1. Yêu cầu (Prerequisites)
-- Dự án Java 17+ Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Dependency Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp: `spring-boot-starter-web` (Web MVC truyền thống Oanh Khung Dịch Lụa Mạch Lệnh), `spring-boot-starter-oauth2-client` Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, `spring-boot-starter-security`.
+## 1. Kịch bản Thực hành (Lab Scenario)
+Bạn được giao nhiệm vụ nâng cấp kiến trúc bảo mật cho hệ thống "E-Commerce SPA". 
+Hiện tại, SPA lưu Access Token trực tiếp trên `localStorage`, vi phạm chính sách bảo mật. 
+Bạn cần triển khai một BFF (Spring Cloud Gateway) đứng trước SPA và API. Mọi xác thực sẽ do BFF đảm nhiệm thông qua Authorization Code Flow với Keycloak. Frontend chỉ cần gửi Cookie.
 
-## 2. Các bước thực hiện (Step-by-step)
+## 2. Chuẩn bị Môi trường (Prerequisites)
+- Docker và Docker Compose cài đặt trên máy chủ.
+- Keycloak đã chạy ở `http://localhost:8080`.
+- Java 17 và Maven (hoặc IDE như IntelliJ/Eclipse).
+- Trình duyệt web (Chrome/Firefox) có công cụ Developer Tools để kiểm tra Cookie.
 
-### Bước 1: Cấu Hình Cookie Sắt Đá Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh
-Tạo file `application.yml` Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần:
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
+
+**Bước 1: Cấu hình Client trên Keycloak**
+1. Đăng nhập Keycloak Admin Console.
+2. Tạo Realm mới hoặc sử dụng Realm hiện tại (VD: `myrealm`).
+3. Điều hướng tới **Clients** -> **Create client**:
+   - Client ID: `spring-bff`
+   - Client Authentication: `On` (để lấy Client Secret).
+   - Standard Flow: `On`.
+   - Valid Redirect URIs: `http://localhost:8081/login/oauth2/code/keycloak`
+4. Lấy Client Secret trong tab **Credentials**.
+
+**Bước 2: Khởi tạo Project Spring Boot**
+Tạo một Spring Boot Project với các dependencies: `spring-boot-starter-webflux`, `spring-cloud-starter-gateway`, `spring-boot-starter-oauth2-client`.
+
+**Bước 3: Cấu hình `application.yml` cho Spring Cloud Gateway**
+Mở tệp `application.yml` và cấu hình như sau:
+
 ```yaml
 server:
-  port: 8080
-  servlet:
-    session:
-      cookie:
-        http-only: true
-        secure: false # Đổi Thành True Khi Lên Môi Trường Thật Có Chứng Chỉ SSL Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-        same-site: lax
-        
+  port: 8081
+
 spring:
+  cloud:
+    gateway:
+      default-filters:
+        - TokenRelay= # Tự động forward Access Token thành Bearer header
+      routes:
+        - id: resource-server
+          uri: http://localhost:8082 # Địa chỉ Backend API thực tế
+          predicates:
+            - Path=/api/**
   security:
     oauth2:
       client:
+        registration:
+          keycloak:
+            client-id: spring-bff
+            client-secret: <YOUR_CLIENT_SECRET>
+            scope: openid, profile
+            authorization-grant-type: authorization_code
         provider:
           keycloak:
-            issuer-uri: http://localhost:8180/realms/my-company
-        registration:
-          bff-client:
-            provider: keycloak
-            client-id: bff-client
-            client-secret: xxxx-yyyy-zzzz
-            authorization-grant-type: authorization_code
-            scope: openid, profile
+            issuer-uri: http://localhost:8080/realms/myrealm
 ```
 
-### Bước 2: Bật Lớp Lọc Security Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-Bạn viết Code cấu hình Bật Chế Độ Cấp JWT Xong Xong Nhét Vô Session Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
+**Bước 4: Cấu hình Security Configuration**
+Tạo class `SecurityConfig.java`:
+
 ```java
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration
-@EnableWebSecurity
-public class BffSecurityConfig {
+@EnableWebFluxSecurity
+public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
-            .authorizeHttpRequests(authorize -> authorize
-                .anyRequest().authenticated()
+            .authorizeExchange(exchanges -> exchanges
+                .pathMatchers("/", "/index.html").permitAll()
+                .anyExchange().authenticated()
             )
-            .oauth2Login(Customizer.withDefaults()); // Mấu chốt ở đây Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề!
+            .oauth2Login(withDefaults())
+            .csrf(csrf -> csrf.disable()); // Trong thực tế cần bật CSRF và cấu hình Cookie
         return http.build();
     }
 }
 ```
 
-### Bước 3: Code Đầu API "Ping Trạng Thái" (Endpoint /api/me) Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng
-Viết một cái Controller Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, dùng lệnh Spring Security Bóc Vỏ Session Lấy Chữ Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị:
-```java
-@RestController
-public class UserController {
+**Bước 5: Khởi chạy và Kiểm tra**
+1. Chạy ứng dụng Spring Boot Gateway (`localhost:8081`).
+2. Mở trình duyệt, truy cập `http://localhost:8081/api/test`.
+3. Spring Gateway sẽ chuyển hướng (302 Redirect) sang giao diện đăng nhập Keycloak.
+4. Đăng nhập bằng tài khoản Keycloak.
+5. Keycloak trả về Redirect đến `/login/oauth2/code/keycloak`.
+6. Gateway nhận Code, lấy Token, lưu Session và chuyển tiếp (Proxy) request đến API.
 
-    @GetMapping("/api/me")
-    public Map<String, Object> getUserInfo(@AuthenticationPrincipal OidcUser oidcUser) {
-        // Trả Về 1 Cái Bản Đồ Chứa Thông Tin Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Không Hề Trả Về Token Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề!
-        Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("name", oidcUser.getFullName());
-        userInfo.put("email", oidcUser.getEmail());
-        userInfo.put("username", oidcUser.getPreferredUsername());
-        
-        return userInfo;
-    }
-}
-```
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-### Bước 4: Chạy Kiểm Thử Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh
-1. Bật Dự Án Spring Boot BFF Này Lên Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-2. Bạn Vào Trình Duyệt Mở `http://localhost:8080/api/me` Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
-3. Chắc Chắn Bị Đá Sang Keycloak Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-4. Đăng Nhập Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-5. Khi Về Lại Trình Duyệt Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Nhìn Kết Quả Trả Về Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: Một Dòng JSON Đẹp Đẽ Hiện Lên Tên Của Bạn Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. 
-6. Bấm F12 -> Application -> Cookies Oanh Khung Dịch Lụa Mạch Lệnh. Bạn Sẽ Thấy 1 Cái Cookie JSESSIONID Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Có Dấu Tick V Bật Sáng Ở Cột "HttpOnly" Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Không Hề Thấy 1 Bóng Dáng Nào Của Chuỗi JWT Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. 
-7. Thử Vào Console Gõ `document.cookie` Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Enter Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. BUM Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! Không Hiện Ra Chữ JSESSIONID Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Hacker Khóc Thét Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+**Nghiệm thu (Verification):**
+- Mở **Developer Tools** (F12) trên trình duyệt, chuyển sang tab **Application** -> **Cookies**.
+- Bạn PHẢI nhìn thấy Cookie tên `SESSION` với flag `HttpOnly` được bật.
+- Không có bất kỳ Access Token nào hiển thị trong Cookie hay Local Storage.
+- Kiểm tra logs của Backend API (Cổng 8082), API PHẢI nhận được Request đi kèm Header `Authorization: Bearer <token>`.
+
+**Xử lý sự cố (Troubleshooting):**
+- **Lỗi HTTP 500 [invalid_token_response]:** Kiểm tra lại Client Secret và Client ID trong file `application.yml` xem có khớp với Keycloak không.
+- **Lỗi HTTP 404 (Not Found):** Đảm bảo Resource Server API đang chạy đúng cổng 8082 và cấu hình Route Predicates `Path=/api/**` là chính xác.
+- **Vòng lặp Redirect vô tận:** Do cấu hình `issuer-uri` sai. Đảm bảo `issuer-uri` trong cấu hình Spring trùng khớp chính xác 100% với cấu hình Frontend URL của Keycloak.

@@ -1,67 +1,107 @@
-# Lab 1: Giải Mã Bí Ẩn OpenID Connect (OIDC)
+> [!NOTE]
+> **Category:** Practical/Lab
+> **Goal:** Hướng dẫn chi tiết cách cấu hình và thực thi các OpenID Connect (OIDC) flow cốt lõi (Authorization Code Flow, Implicit Flow, Client Credentials Flow) bằng Keycloak và công cụ dòng lệnh (cURL, Postman).
 
-## 1. Mục Tiêu (Objectives)
-Thực hành đóng vai Hacker và Trình duyệt để phân tích Giao Thức Đăng Nhập Tiêu Chuẩn.
-- **Task 1:** Đọc và hiểu file OIDC Discovery.
-- **Task 2:** Chạy luồng OIDC bằng Postman để lấy ID Token, Bóc tách ID Token xem `nonce`.
-- **Task 3:** Gọi Cửa Phụ `/userinfo` bằng Access Token.
-- **Task 4:** Vận hành luồng OIDC Front-channel Logout.
+## 1. Kịch bản Thực hành (Lab Scenario)
 
----
+Trong môi trường doanh nghiệp hiện đại, các ứng dụng (Web App, SPA, Microservices) cần giao tiếp với nhau và với người dùng một cách an toàn. Giao thức OIDC là tiêu chuẩn de facto cho việc xác thực và phân quyền (Authentication & Authorization) hiện nay.
+Trong bài Lab này, chúng ta sẽ đóng vai trò là một System Administrator tích hợp ba ứng dụng tiêu biểu vào Keycloak:
+- **Ứng dụng Web truyền thống (Traditional Web App)**: Cần sử dụng **Authorization Code Flow** vì có khả năng bảo mật thông tin Client Secret một cách an toàn trên server.
+- **Ứng dụng Single Page Application (SPA)**: Giả lập việc lấy token trực tiếp qua trình duyệt với **Implicit Flow** (Mặc dù PKCE được khuyến cáo thay thế hiện nay, việc hiểu Implicit Flow vẫn cần thiết cho hệ thống cũ).
+- **Backend Service (Microservice)**: Cần giao tiếp trực tiếp với một API khác mà không có sự tương tác của người dùng, sử dụng **Client Credentials Flow**.
 
-## 2. Chuẩn Bị (Prerequisites)
-Khởi động hệ thống Keycloak bằng docker-compose đã cung cấp.
+## 2. Chuẩn bị Môi trường (Prerequisites)
 
-```bash
-cd code
-docker-compose up -d
-```
-Mở **Postman**. Truy cập Admin Console Keycloak tại `http://localhost:8080/` với tài khoản `admin` / `admin`.
+- **Keycloak Server**: Đang chạy (ví dụ tại `http://localhost:8080`).
+- **Tài khoản Admin Keycloak**: Đã được thiết lập.
+- **Realm**: Một Realm mới mang tên `oidc-demo-realm`.
+- **User**: Một user test tên `testuser` (password: `testpass`) thuộc `oidc-demo-realm`.
+- **Công cụ kiểm thử**: Postman hoặc công cụ dòng lệnh `cURL` + tiện ích `jq` để parse JSON.
 
----
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-## 3. Các Bước Thực Hành (Lab Steps)
+### Bước 1: Tạo Realm và User cơ bản
+1. Đăng nhập vào **Keycloak Admin Console**.
+2. Click vào tên Realm hiện tại ở góc trên bên trái, chọn **Create Realm**.
+3. Nhập `Realm name`: `oidc-demo-realm` và nhấn **Create**.
+4. Chuyển sang mục **Users** ở menu bên trái. Nhấn **Add user**.
+   - `Username`: `testuser`
+   - Nhấn **Create**.
+5. Chuyển sang tab **Credentials**, nhấn **Set password**.
+   - `Password`: `testpass`
+   - `Password confirmation`: `testpass`
+   - Tắt `Temporary` -> Nhấn **Save**.
 
-### Task 1: Khám Phá OIDC Discovery Tĩnh Oanh
-1. Mở Trình duyệt, không cần đăng nhập, dán thẳng URL Này Vào:
-   `http://localhost:8080/realms/master/.well-known/openid-configuration`
-2. Đọc cục JSON. Tìm các dòng chứa chữ `userinfo_endpoint`, `end_session_endpoint`.
-3. Nhìn xem Keycloak của bạn đang hỗ trợ `scopes_supported` gồm những chữ gì? Có chữ `openid` không? Đỉnh Chóp!
+### Bước 2: Thực hành Authorization Code Flow
+**Mục tiêu**: Lấy Authorization Code và đổi lấy ID Token, Access Token.
 
-### Task 2: Chạy Luồng Auth Code Sinh ID Token Rút Lụa Bọt
-1. Trên Keycloak, tạo 1 Client tên `oidc-lab-app`. Bật **Client authentication** sang **ON**. Lưu Lại Cấp Tốc.
-2. Tại Tab Settings của `oidc-lab-app`, mục `Valid redirect URIs` điền `https://oauth.pstmn.io/v1/callback`.
-3. Giờ ta đóng vai Frontend gọi Nhử Mồi Bọt Cắt Lụa. Dán Dòng Này Vào Trình Duyệt:
-   `http://localhost:8080/realms/master/protocol/openid-connect/auth?client_id=oidc-lab-app&response_type=code&redirect_uri=https://oauth.pstmn.io/v1/callback&scope=openid profile email&nonce=N99_OanhMang&state=S88_TrutKhoe`
-4. Login `admin`/`admin`. Bị đá sang Postman. Nhìn URL có `code=...`. Copy Cái Code Đó Lại!
-5. Mở Postman App Đập Mạch Đổi Code Lấy JWT Lụa:
-   - Request `POST` Tới: `http://localhost:8080/realms/master/protocol/openid-connect/token`
-   - Body (`x-www-form-urlencoded`):
-     - `grant_type`: `authorization_code`
-     - `code`: `[Paste Code Vào Đáy]`
-     - `client_id`: `oidc-lab-app`
-     - `client_secret`: `[Lấy Secret Từ Tab Credentials Của Keycloak]`
-     - `redirect_uri`: `https://oauth.pstmn.io/v1/callback`
-6. Send Lệnh. Bùm! Khác Với Bài OAuth2. Lần Này Ngoài Access Token, Bạn Nhận Được Thêm 1 Cục JSON Là **`id_token`**.
-7. Copy Cục `id_token` Đó, Mở Trang Web `https://jwt.io` Bằng Trình Duyệt Dán Vô Bóc Đáy! Nhìn Xem Có Cái Chữ Khớp Lệnh `nonce: N99_OanhMang` Ở Trong Đó Chưa? Tuyệt Vời!
+1. **Tạo Client**:
+   - Vào **Clients** -> **Create client**.
+   - `Client type`: `OpenID Connect`.
+   - `Client ID`: `web-app-client`.
+   - Nhấn **Next**.
+   - Bật **Client authentication** (để biến nó thành Confidential Client).
+   - Chọn **Standard flow** (tương đương Authorization Code Flow).
+   - Nhấn **Next**.
+   - `Valid redirect URIs`: `http://localhost:8000/*` (hoặc một URL giả định).
+   - Nhấn **Save**.
+2. **Lấy Client Secret**:
+   - Chuyển sang tab **Credentials** của client vừa tạo, copy `Client secret`.
+3. **Mô phỏng Request lấy Code**:
+   - Mở trình duyệt và truy cập URL sau (thay đổi thông tin nếu cần):
+     ```text
+     http://localhost:8080/realms/oidc-demo-realm/protocol/openid-connect/auth?client_id=web-app-client&response_type=code&redirect_uri=http://localhost:8000/callback&scope=openid
+     ```
+   - Trình duyệt sẽ chuyển hướng đến trang đăng nhập của Keycloak. Nhập `testuser` / `testpass`.
+   - Sau khi đăng nhập, trình duyệt sẽ redirect về: `http://localhost:8000/callback?code=eyJhbG...`
+   - Copy giá trị của tham số `code`.
+4. **Đổi Code lấy Token (Exchange Token)**:
+   - Mở terminal, sử dụng `cURL`:
+     ```bash
+     curl -X POST http://localhost:8080/realms/oidc-demo-realm/protocol/openid-connect/token \
+       -H "Content-Type: application/x-www-form-urlencoded" \
+       -d "grant_type=authorization_code" \
+       -d "client_id=web-app-client" \
+       -d "client_secret=<YOUR_CLIENT_SECRET>" \
+       -d "code=<CODE_TU_BUOC_TREN>" \
+       -d "redirect_uri=http://localhost:8000/callback"
+     ```
+   - Bạn sẽ nhận được JSON response chứa `access_token`, `id_token`, và `refresh_token`.
 
-### Task 3: Chọc API UserInfo Rút Dữ Liệu Hồ Sơ Khách Oanh Lụa
-1. Bạn Cần Bốc Khối Chữ **`access_token`** Vừa Lấy Ở Bước Postman Bên Trên.
-2. Tạo 1 Request `GET` Mới Bằng Postman Khung Cắt:
-   - URL: `http://localhost:8080/realms/master/protocol/openid-connect/userinfo`
-   - Tab **Authorization**: Chọn Type Là `Bearer Token`. Paste cái Access Token Vào Ô Tĩnh.
-3. Bấm Send Giao Dịch Oanh. Bạn Sẽ Nhận Về Nguyên Cục JSON Chứa Tên, Preferred_username Trút Lệnh Đáy Oanh Mạng!
+### Bước 3: Thực hành Client Credentials Flow
+**Mục tiêu**: Lấy Access Token cho một Service Account, không qua tương tác người dùng.
 
-### Task 4: Chạy Đăng Xuất (End_Session_Endpoint) Trượt Nhựa
-1. Trong Request Mới Trên Postman, Cấu Hình Lệnh `GET` Tĩnh Bọt:
-   - URL: `http://localhost:8080/realms/master/protocol/openid-connect/logout?id_token_hint=[Paste Cục ID_Token Vào Đây]`
-2. Send Lệnh. Nó Sẽ Báo `200 OK` HTML. 
-3. Giờ Bạn Thử Quay Lại Task 3, Đập Access Token Lại Bằng Postman Lên UserInfo Xem. Nó Báo Lỗi `401 Unauthorized` Oanh Khung Dịch Lụa Ngay Tức Khắc Vì Cơn Bão Logout Đã Hủy Session Oanh Rỗng Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng!
+1. **Tạo Client**:
+   - Vào **Clients** -> **Create client**.
+   - `Client ID`: `backend-service-client`.
+   - Nhấn **Next**. Bật **Client authentication**.
+   - Tắt **Standard flow**, bật **Service accounts roles** (cho phép Client Credentials).
+   - Nhấn **Save**.
+2. **Lấy Token qua cURL**:
+   - Copy `Client secret` từ tab Credentials.
+   - Chạy lệnh sau trong terminal:
+     ```bash
+     curl -X POST http://localhost:8080/realms/oidc-demo-realm/protocol/openid-connect/token \
+       -H "Content-Type: application/x-www-form-urlencoded" \
+       -d "grant_type=client_credentials" \
+       -d "client_id=backend-service-client" \
+       -d "client_secret=<YOUR_CLIENT_SECRET>"
+     ```
+   - Nhận được JSON response chứa `access_token` (không có `id_token` hay `refresh_token` vì đây là uỷ quyền máy-máy).
 
----
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-## 4. Dọn Dẹp (Cleanup)
-Sau khi hoàn thành OIDC Lab, hủy Docker tránh lãng phí RAM Máy:
-```bash
-docker-compose down -v
-```
+- **Kiểm tra Token (JWT Analysis)**:
+  Copy giá trị `access_token` hoặc `id_token` thu được và dán vào [jwt.io](https://jwt.io). Phân tích phần Payload để đảm bảo:
+  - `iss`: Phải là `http://localhost:8080/realms/oidc-demo-realm`.
+  - `aud`: Tương ứng với Client ID.
+  - `sub`: ID của user (`testuser`) hoặc Service Account ID.
+
+> [!WARNING]
+> **Troubleshooting: Lỗi `invalid_grant`**
+> - Xảy ra khi Authorization Code đã hết hạn (mặc định Keycloak chỉ cho phép mã này sống trong 1 phút) hoặc Code đã được sử dụng một lần.
+> - Khắc phục: Yêu cầu lấy Code mới qua trình duyệt và đổi Token ngay lập tức.
+
+> [!WARNING]
+> **Troubleshooting: Lỗi `invalid_client` hoặc `unauthorized_client`**
+> - Thường do nhập sai `Client Secret` hoặc quên bật **Client authentication** trong cấu hình Client trên Keycloak. Kiểm tra kỹ lại tab Credentials.

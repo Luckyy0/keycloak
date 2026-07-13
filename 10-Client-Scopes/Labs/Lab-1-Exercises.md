@@ -1,94 +1,108 @@
-# Lab 1: Giải Phẫu JWT & Cỗ Máy Lọc Quyền (Client Scope Evaluation)
-
 > [!NOTE]
-> Bài Lab này đưa bạn vào vai Kiến Trúc Sư Hệ Thống chuyên chống thảm họa Token Bloat (Token phình to vỡ Headers). Bạn sẽ thiết kế 1 Optional Scope chứa quyền Nhạy cảm. Dùng Postman đóng vai React App, tự tay gắn tham số `scope=` để xem Token có được Keycloak bơm quyền vào hay không, và check chức năng Evaluate.
+> **Category:** Practical/Lab
+> **Goal:** Thiết lập và quản lý Client Scopes trong Keycloak. Sinh viên sẽ học cách tạo một Scope tùy chỉnh, cấu hình Protocol Mappers để nhúng dữ liệu (claims) vào Access Token, và kiểm thử sự khác biệt giữa Default Scope và Optional Scope.
 
-## Chuẩn bị
-- Máy có Docker và Docker-Compose.
-- Có cài đặt Postman hoặc Terminal.
-- JWT Decoder (trang `jwt.io`).
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## Bước 1: Ráp Khung Áo Giáp Lõi Tĩnh OIDC Database
+Giả sử ứng dụng của bạn là một Hệ thống Quản trị Nhân sự (`HR-App`). Ứng dụng này khi lấy Access Token cần biết "Phòng ban" (Department) của người dùng để quyết định hiển thị module tương ứng.
 
-1. Đi vào thư mục `10-Client-Scopes/code`. 
-2. Mở file `docker-compose.yml`. Mọi thứ đã có đủ bản KC 24+. 
+Tuy nhiên, bạn không muốn thông tin Phòng ban lúc nào cũng xuất hiện trong mọi Token (để giảm kích thước Token). Bạn quyết định tạo ra một **Client Scope** tên là `department-scope` với cấu hình ánh xạ thuộc tính (User Attribute Mapper) và cấu hình nó ở dạng **Optional Scope**. Nghĩa là ứng dụng Client phải chủ động yêu cầu scope `department-scope` khi đăng nhập thì Token trả về mới có thông tin này.
 
-## Bước 2: Bật Cụm Động Cơ OIDC Kéo Nhựa Giao Mạng
+Nhiệm vụ của bạn: Tạo cấu hình Client Scope, gắn vào Client và kiểm tra sự thay đổi của Token dựa trên các tham số cấu hình.
 
-1. Khởi động OIDC bằng lệnh Thép Tĩnh Nền:
-```bash
-docker-compose up -d
-```
-2. Đăng Nhập Chỉnh Sửa Tại Admin Console: `http://localhost:8080/admin` (admin/admin).
-3. Tạo 1 Lãnh Thổ Realm Mới: `Vingroup_Scopes`.
+## 2. Chuẩn bị Môi trường (Prerequisites)
 
-## Bước 3: Tạo Khách Hàng Và Cờ Quyền (Users & Roles)
+- Máy chủ Keycloak đang chạy ở phiên bản mới nhất.
+- Truy cập vào Keycloak Admin Console với quyền quản trị viên.
+- Đã có sẵn một Realm (VD: `myrealm`).
+- Đã tạo một User (VD: `alice`) và đã cấu hình mật khẩu.
+- Đã tạo một Client (VD: `hr-client`) với tính năng **Standard Flow** (Authorization Code) hoặc **Direct Access Grants** (Password) được bật.
+- Cài đặt Postman hoặc cURL để giả lập request lấy Token.
 
-1. Vô Bảng `Realm roles`. Bấm `Create role`. 
-2. Tên Quyền: `doc-bao-cao-vip`. Bấm Save.
-3. Vô Bảng `Users`. Nhấn `Add user`.
-   - Username: `sep_lon`. Save lại.
-   - Ở tab `Credentials`, đặt mật khẩu `pass`.
-   - Ở tab `Role mapping`, Assign cái role `doc-bao-cao-vip` cho `sep_lon`.
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-## Bước 4: Tạo Client Và Đóng Van Tự Sát OOM
+### Bước 3.1: Gán dữ liệu thuộc tính cho User
 
-1. Vô Bảng `Clients`. Tạo 1 Client tên là `app-bao-cao-react`.
-2. Capabilities Config: `Client authentication = OFF` (Public Client).
-3. Valid redirect URIs: Điền `http://localhost:3000/*`. Bấm Save.
-4. **THAO TÁC SỐNG CÒN:** Vô Tab `Client scopes` của `app-bao-cao-react`.
-   - Chạy Xuống Cuối Bảng, Ở Khúc Các Scopes Mặc Định.
-   - Tìm dòng `roles`. Bấm `Action -> Remove` để vứt cờ Roles ra khỏi Default!
+1. Trên Admin Console, chọn Realm `myrealm`.
+2. Vào **Users** -> Nhấp vào user `alice`.
+3. Chuyển sang tab **Attributes**.
+4. Thêm một thuộc tính mới:
+   - Key: `department`
+   - Value: `IT-Security`
+5. Nhấp **Save**.
 
-## Bước 5: Tạo Gói Optional Scope Đổ Khuôn Quyền Mạch Oanh Liệt
+### Bước 3.2: Tạo Client Scope và Mapper
 
-1. Đứng Ở Thanh Menu Trái (Realm Menu), Bấm `Client scopes`.
-2. Tạo Mới Scope tên là: `scope-bao-cao-mat`.
-   - Type: Chọn `Optional`.
-   - Display on consent screen: `ON` (để Khách thấy khi bấm Login).
-   - Bấm Save.
-3. Vô Tab `Scope` Của Thằng Mới Tạo Này, Nhấn `Assign role`.
-   - Chọn cờ `doc-bao-cao-vip` ghim vô bụng nó.
+1. Trình đơn bên trái, chọn **Client Scopes**.
+2. Nhấp **Create client scope**.
+3. Điền thông tin:
+   - **Name**: `department-scope`
+   - **Type**: `Default` (ta sẽ đổi ở bước sau khi gắn vào client).
+   - **Include in token scope**: Bật (ON) - Đảm bảo tên scope này xuất hiện trong claim `scope` của token.
+4. Nhấp **Save**.
+5. Sau khi lưu, bạn đang ở trang chi tiết của `department-scope`. Chuyển sang tab **Mappers**.
+6. Nhấp **Configure a new mapper** -> Chọn **User Attribute**.
+7. Điền thông tin ánh xạ:
+   - **Name**: `department-mapper`
+   - **User Attribute**: `department` (Khớp đúng với Key đã tạo ở bước 3.1)
+   - **Token Claim Name**: `user_department` (Đây là tên trường sẽ xuất hiện trong file JSON Token).
+   - **Claim JSON Type**: `String`
+   - **Add to ID token**: Bật (ON)
+   - **Add to access token**: Bật (ON)
+   - **Add to userinfo**: Bật (ON)
+8. Nhấp **Save**.
 
-## Bước 6: Ghim Kén Optional Vào Client React
+### Bước 3.3: Gắn Client Scope vào Client (Dạng Optional)
 
-1. Vô Menu `Clients` -> Mở thằng `app-bao-cao-react`.
-2. Tab `Client scopes` -> Bấm nút `Add client scope`.
-3. Tích chọn `scope-bao-cao-mat`. Bấm Nút **`Add -> Optional`**.
+1. Trình đơn bên trái, chọn **Clients** -> Nhấp vào client `hr-client`.
+2. Chuyển sang tab **Client scopes**.
+3. Bạn sẽ thấy danh sách các scopes mặc định (như `email`, `profile`).
+4. Nhấp nút **Add client scope**.
+5. Tìm `department-scope`, chọn nó, và nhấp **Add -> Optional**.
+   *(Giải thích: Optional có nghĩa là client phải gửi kèm tham số `scope=department-scope` trong request thì mapper mới hoạt động).*
 
-## Bước 7: Thực Chiến Bắn Lệnh Gọi API Mở Khóa Động
+### Bước 3.4: Lấy Token thông qua Postman
 
-Bây giờ bạn sẽ gọi Direct Access Grants (User/Pass API) để test, thay vì Mở Trình Duyệt cho nhanh (để kiểm tra JWT Token sinh ra sao). Tạm Vô Bảng App `app-bao-cao-react` Bật `Direct access grants = ON` Lên Lại Lệnh Để Test Cục Oanh Kẽ (Thực Tế Enterprise Không Bật Cho React).
+Để chứng minh sự khác biệt, ta sẽ thực hiện 2 lần lấy Token.
 
-**CÚ BẮN SỐ 1: Bắn Bình Thường (Không Kèm Optional Scope)**
-```bash
-curl -X POST \
-  http://localhost:8080/realms/Vingroup_Scopes/protocol/openid-connect/token \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=password' \
-  -d 'client_id=app-bao-cao-react' \
-  -d 'username=sep_lon' \
-  -d 'password=pass'
-```
--> Dán Token lên `jwt.io`. BÙM! Dòng `realm_access.roles` trống trơn không có cờ `doc-bao-cao-vip`. Dù Khách Hàng thật sự nắm quyền này ở Keycloak Database! (Vì ta đã gỡ Default Scope và chưa gọi Optional).
+**Lần 1: Lấy Token KHÔNG kèm tham số scope tùy chỉnh**
+1. Mở Postman, tạo request POST tới endpoint:
+   `http://localhost:8080/realms/myrealm/protocol/openid-connect/token`
+2. Tại tab `Body` (chọn `x-www-form-urlencoded`), điền:
+   - `client_id`: `hr-client`
+   - `grant_type`: `password`
+   - `username`: `alice`
+   - `password`: `(mật khẩu của alice)`
+   - *Không truyền trường scope.*
+3. Gửi Request và copy chuỗi `access_token` từ kết quả.
+4. Dán chuỗi đó lên [jwt.io](https://jwt.io).
+5. Bạn sẽ thấy trong Payload KHÔNG CÓ trường `user_department`.
 
-**CÚ BẮN SỐ 2: Ép Cửa Bơm Data Động Bằng Thẻ Phím Mạch Oanh Kẽ Khung Mã Code**
-```bash
-curl -X POST \
-  http://localhost:8080/realms/Vingroup_Scopes/protocol/openid-connect/token \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=password' \
-  -d 'client_id=app-bao-cao-react' \
-  -d 'username=sep_lon' \
-  -d 'password=pass' \
-  -d 'scope=openid scope-bao-cao-mat'
-```
--> Dán Token Lần Này Lên `jwt.io`. BÙM BÙM! Phép thuật của Lõi Đánh Giá Token (Token Evaluation Engine). Cờ `doc-bao-cao-vip` Đã Nằm Chình Ình Trong JSON Payload.
+**Lần 2: Lấy Token CÓ yêu cầu Scope Optional**
+1. Quay lại Postman, thêm một tham số vào Body:
+   - `scope`: `openid department-scope`
+   *(Lưu ý: Luôn truyền `openid` để kích hoạt giao thức OIDC).*
+2. Gửi Request và copy `access_token` mới.
+3. Giải mã trên jwt.io.
+4. Lần này, bạn sẽ thấy Payload xuất hiện thêm thông tin:
+   `"user_department": "IT-Security"`
 
-## Bước 8: Dọn Lệnh Rác Sóng Lưới Mạng OIDC Khép Kín Cấu Cắt
-```bash
-docker-compose down -v
-```
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-> [!TIP]
-> Just-in-Time Token Scope Mạch Này Giúp Bạn Điều Tiết Toàn Bộ Hệ Thống Enterprise Trăm Ứng Dụng Giữ Mức Token Tối Thiểu Nhanh Chóng Cắt Giao Lỗi RAM Đứt 431 Nginx! Ngủ Ngon Khỏi Canh Trực Lệnh OOM Database Lệnh Kéo Bơm Đáy Lên Rìa Đáy Cục Nhựa Dữ Mạch!
+### 4.1. Nghiệm thu (Verification)
+
+Quá trình Lab được xem là thành công nếu:
+- Khi request có kèm `scope=department-scope`, JWT Access Token sinh ra có chứa claim `user_department` mang giá trị `IT-Security`.
+- Khi request không kèm scope đó, thông tin `user_department` bị lược bỏ. Điều này chứng minh tính chất "Optional" của Scope đã hoạt động đúng như thiết kế, giúp bảo vệ quyền riêng tư và tối ưu kích thước Token.
+
+### 4.2. Khắc phục sự cố (Troubleshooting)
+
+- **Token hoàn toàn không chứa claim `user_department` dù đã gửi đúng scope:**
+  - *Nguyên nhân 1:* Cấu hình Mapper bị sai tên User Attribute. Keycloak phân biệt chữ hoa, chữ thường. Hãy chắc chắn attribute của user là `department` chứ không phải `Department`.
+  - *Nguyên nhân 2:* Client Scope chưa được gán vào Client. Nếu bạn tạo Scope xong mà quên gán vào Client `hr-client` ở tab Client Scopes, Keycloak sẽ từ chối scope request đó (scope sẽ bị bỏ qua một cách im lặng).
+- **Lỗi `invalid_scope` trả về từ API:**
+  - *Nguyên nhân:* Tên scope trong Postman gửi lên bị viết sai chính tả (ví dụ gửi lên `department-scopes`).
+  - *Khắc phục:* Kiểm tra lại chuẩn xác tên Client Scope.
+- **Dữ liệu trả về là null dù đã ánh xạ:**
+  - *Nguyên nhân:* User `alice` chưa được định nghĩa giá trị cho attribute `department`, hoặc bạn đang dùng một tài khoản User khác để test.
+  - *Khắc phục:* Vào lại hồ sơ User trên Admin Console để kiểm tra tab Attributes.

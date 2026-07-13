@@ -1,42 +1,139 @@
-# Lesson 1: Băng Chuyền Sinh Tử & Tàng Kinh Các (Filter Chain & Security Context)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Nắm trùm Khái niệm Quan Trọng Nhất Của Spring Security: Luồng Chảy Của Request Qua Dây Chuyền Lọc (Filter Chain) Và Nơi Cất Giấu Danh Tính User (Security Context).
+> **Goal:** Hiểu rõ cấu trúc nền tảng của Spring Security bao gồm `SecurityFilterChain`, `DelegatingFilterProxy`, và cách `SecurityContext` lưu trữ thông tin xác thực cho từng request.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Spring Security hoạt động hoàn toàn dựa trên cơ chế **Servlet Filters** (đối với ứng dụng Servlet-based) hoặc **WebFilters** (đối với WebFlux).
 
-### 1.1. Băng Chuyền Kiểm Duyệt (Security Filter Chain)
-Khi một Thằng Khách Hàng Gọi API `/api/users` Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Dữ Liệu Đó KHÔNG HỀ Rơi Thẳng Vào Hàm Trong Code Java Của Bạn Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! 
-Nó Bị Chặn Lại Ở Ngoài Cổng Bằng Một Cỗ Máy Mang Tên **DelegatingFilterProxy Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề**. Cỗ Máy Này Chứa Một Dây Chuyền Băng Chuyền Khổng Lồ (Gồm Hơn 15 Cái Màng Lọc - Filter Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Mặc Định Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa).
-Gói Tin Sẽ Bị Ném Lên Băng Chuyền Và Chạy Lần Lượt Qua Từng Cái Màng Lọc Một Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:
-1. `CorsFilter`: Mày Ở Domain Lạ Tới Phải Không? Có Dấu Đóng Mộc Cho Đi Không? Không Thì Văng Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
-2. `CsrfFilter`: Có Phải Mày Đang Bị Thằng Trộm Dùng Form Ảo Bắn Lên Không Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa? Đưa Mã Token CSRF Ra Kiểm Tra Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-3. `BearerTokenAuthenticationFilter` (Nếu Chơi Keycloak Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa): Móc Bức Thư JWT Token Ra Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. Xác Thực Chữ Ký Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Trích Xuất Cái Tên "Nguyen Van A" Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy.
-4. `AuthorizationFilter` (Trạm Cuối Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh): Thằng "Nguyen Van A" Này Có Chức Danh (Role) "ADMIN" Để Chạy Lọt Vào API `/api/users` Của Mình Hay Không Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa?
-Nếu Vượt Qua Sạch Sành Sanh 15 Cái Lưới Này Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Gói Tin Mới Thực Sự Được Nhỏ Giọt Rớt Xuống Hàm `@GetMapping` Của Bạn Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Đứt Ở Khúc Nào Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, Bị Tát Văng Mã Lỗi 401 Hoặc 403 Tại Khúc Đó Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề!
+Bất kỳ HTTP Request nào gửi đến ứng dụng Spring Boot đều phải đi qua một chuỗi các Filters trước khi đến được với `DispatcherServlet` và các Controllers của bạn. Spring Security chèn vào chuỗi này một Filter đặc biệt có tên là `DelegatingFilterProxy`. Nhiệm vụ của `DelegatingFilterProxy` không phải là thực hiện bảo mật, mà là cầu nối (bridge) giữa vòng đời của Servlet Container (như Tomcat) và ApplicationContext (IoC Container) của Spring. Nó ủy quyền xử lý cho một bean tên là `FilterChainProxy`.
 
-### 1.2. Két Sắt Mang Tên SecurityContextHolder
-Sau Khi Thằng `BearerTokenFilter` Đọc Xong Cái JWT Token Và Biết Được Tên Tuổi Khách Hàng Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, Nó Phải Lưu Lại Ở Đâu Để Lát Nữa Các Hàm Khác Còn Biết Chứ Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh?
-Spring Bỏ Thông Tin Người Dùng Vào Một Cái Thẻ Tên Gọi Là `Authentication` Oanh Khung Dịch Lụa Mạch Lệnh. Sau Đó Cất Kín Cái Thẻ Đó Vào Một Cái Két Sắt Gọi Là `SecurityContext` Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp.
-Và Tuyệt Diệu Hơn Nữa Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Két Sắt Này Được Buộc Chặt Vào Chân Của Người Đưa Thư (ThreadLocal Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)! 
-Có Nghĩa Là: Dù Bạn Ở Controller Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Hay Mò Sâu Xuống Tận Database Repository Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Bạn Chỉ Cần Hét Lên:
-`SecurityContextHolder.getContext().getAuthentication().getName()`
-Là Lập Tức Bốc Ra Được Đúng Cái Tên Thằng Đang Gọi Hàm Của Mình Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị! Không Cần Phải Truyền Tham Số Nối Đuôi Từ Hàm Này Sang Hàm Khác Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
+**`FilterChainProxy`** là trung tâm của Spring Security. Nó quản lý nhiều **`SecurityFilterChain`**. Mỗi `SecurityFilterChain` là một tập hợp các Security Filters (như `CorsFilter`, `CsrfFilter`, `BearerTokenAuthenticationFilter`, `AuthorizationFilter`) được áp dụng cho một tập hợp các URL nhất định.
 
----
+**`SecurityContext` và `SecurityContextHolder`**:
+Khi một Request đi qua Filter xác thực (ví dụ bằng JWT), nếu thành công, thông tin của người dùng (đối tượng `Authentication`) sẽ được lưu vào `SecurityContext`. Spring Security cung cấp một class tiện ích là `SecurityContextHolder` để lưu trữ `SecurityContext` này theo cơ chế mặc định là `ThreadLocal`. Điều này đảm bảo rằng bất kỳ phương thức nào trong cùng một thread xử lý HTTP request đó đều có thể truy xuất thông tin người dùng đang đăng nhập mà không cần phải truyền đối tượng `Authentication` qua từng tham số hàm.
 
-## 3. Câu hỏi Phỏng vấn (Interview Questions)
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-**1. Trong Dự Án Spring Boot Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Em Đang Chạy Một Request API Bình Thường Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Em Đứng Ở Controller Lấy Tên Người Dùng Bằng `SecurityContextHolder` Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Rất Ngon Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Sau Đó Trong Controller Em Khởi Tạo Một Cục Mã Không Đồng Bộ Chạy Background Bằng `@Async` (Thread Khác Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp). Khi Bay Vào Trong Cái Hàm Async Đó Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Em Bốc `SecurityContextHolder` Thì Lại Nhận Về NullPointerException Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề. Tại Sao Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng? Phải Fix Làm Sao Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy?**
-- **Senior:** Dạ Thưa Sếp Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, Cái Cây Kim Trúng Ngay Chỗ Tử Huyệt Của `ThreadLocal` Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
-  - `ThreadLocal` Có Nghĩa Là: Dữ Liệu Ai Nấy Xài Oanh Khung Dịch Lụa Mạch Lệnh. Cục Két Sắt Danh Tính Của Mày Đang Bị Cột Chặt Vào Cái Cổ Chân Của Thằng Công Nhân Xử Lý Yêu Cầu (Main Request Thread Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh). 
-  - Khi Em Bật Lệnh `@Async` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Tức Là Hệ Thống Gọi Sinh Ra Thằng Công Nhân Mới Tinh (Background Thread Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề). Thằng Này Mới Chạy Ra Đời Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Lấy Đâu Ra Mật Mã Trong Bụng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa? Thế Nên Két Sắt Của Nó Trống Trơn Bằng Null Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-  - **Cách Fix Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:** Thay Vì Dùng `ThreadLocal` Mặc Định Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp, Bọn Em Chỉnh Cờ Hệ Thống Spring Security Sang Chế Độ Huyết Mạch Cha Truyền Con Nối: Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-    `SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);`
-    Khi Chỉnh Cờ Này Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Mỗi Lần Thằng Cha Đẻ Ra Thằng Con `@Async` Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Spring Tự Động Kẻ Một Bản Sao Lưu Của Cục Két Sắt Chuyền Thẳng Xuyên Vào Bụng Thằng Con Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Tomcat as Servlet Container
+    participant Delegating as DelegatingFilterProxy
+    participant FilterProxy as FilterChainProxy
+    participant FilterChain as SecurityFilterChain
+    participant SecContext as SecurityContextHolder
+    participant Dispatcher as DispatcherServlet
 
----
+    Client->>Tomcat: HTTP Request
+    Tomcat->>Delegating: Chuyển Request qua các chuẩn Servlet Filters
+    Delegating->>FilterProxy: Ủy quyền cho Spring Bean (springSecurityFilterChain)
+    FilterProxy->>FilterProxy: So sánh Request URL để chọn SecurityFilterChain phù hợp
+    FilterProxy->>FilterChain: Thực thi chuỗi Security Filters
+    
+    Note over FilterChain: Các Filters thực hiện Authentication/Authorization
+    FilterChain->>SecContext: Lưu/Lấy thông tin Authentication từ ThreadLocal
+    
+    FilterChain->>Dispatcher: Cho phép Request đi tiếp tới Controller
+    Dispatcher-->>Client: Trả về HTTP Response
+    
+    Note over FilterChain: Sau khi response hoàn tất, FilterChain dọn dẹp (clear) SecurityContext
+    FilterChain->>SecContext: clearContext() để tránh rò rỉ bộ nhớ (Memory Leak)
+```
 
-## 5. Tài liệu tham khảo (References)
-- **Spring Security Docs:** Architecture (Filter, SecurityContextHolder).
+**Cơ chế `ThreadLocal`**: `SecurityContextHolder` sử dụng `ThreadLocal` để gắn kết dữ liệu với luồng hiện tại. Tuy nhiên, sau khi HTTP Request xử lý xong, Spring Security luôn gọi phương thức `clearContext()` bằng một filter tên là `SecurityContextHolderFilter` (hoặc `SecurityContextPersistenceFilter` ở phiên bản cũ) để đảm bảo thread khi được trả về Thread Pool của Tomcat không mang theo thông tin của người dùng cũ.
+
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
+
+> [!IMPORTANT]
+> Khi xử lý các tác vụ bất đồng bộ (ví dụ: dùng `@Async` hoặc tạo Thread mới bằng `CompletableFuture`), `SecurityContext` **sẽ bị mất** vì thread mới không chia sẻ biến `ThreadLocal` của thread gốc. Bạn phải cấu hình chiến lược lưu trữ (Strategy) thành `MODE_INHERITABLETHREADLOCAL` hoặc sử dụng `DelegatingSecurityContextExecutor`.
+
+> [!WARNING]
+> Không nên nhồi nhét quá nhiều logic nghiệp vụ vào Custom Filters. Security Filters chỉ nên làm nhiệm vụ bảo mật (AuthN/AuthZ). Việc gọi DB hay APIs bên ngoài chậm chạp trong Filters sẽ chặn (block) toàn bộ request và làm giảm hiệu suất hệ thống nghiêm trọng.
+
+- **Thứ tự Filter:** Nếu bạn tạo một Filter tùy chỉnh (Custom Filter), hãy chú ý đến vị trí chèn (sử dụng `.addFilterBefore()` hoặc `.addFilterAfter()`). Việc đặt sai vị trí (ví dụ: kiểm tra quyền trước khi xác thực JWT) sẽ làm vỡ kiến trúc bảo mật.
+- **Multiple Filter Chains:** Sử dụng nhiều `SecurityFilterChain` beans với `@Order` để phân tách logic bảo mật cho các phần khác nhau của ứng dụng (ví dụ: API dành cho Mobile cần stateless JWT, còn Admin Portal cần stateful Session Cookie).
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+
+Ví dụ cấu hình nhiều `SecurityFilterChain` trong một ứng dụng Spring Boot:
+
+```java
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    // Filter Chain 1: Dành riêng cho Actuator Health Check (Độ ưu tiên cao hơn)
+    @Bean
+    @Order(1)
+    public SecurityFilterChain actuatorFilterChain(HttpSecurity http) throws Exception {
+        http.securityMatcher("/actuator/**")
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/actuator/health").permitAll()
+                .anyRequest().hasRole("SUPER_ADMIN")
+            )
+            .httpBasic(basic -> {}); // Dùng HTTP Basic cho Actuator thay vì JWT
+        return http.build();
+    }
+
+    // Filter Chain 2: Dành cho REST APIs chính (Mặc định bắt các request còn lại)
+    @Bean
+    @Order(2)
+    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
+        http
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/api/public/**").permitAll()
+                .anyRequest().authenticated()
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {})); // Sử dụng JWT
+        return http.build();
+    }
+}
+```
+
+Cách lấy thông tin xác thực từ Controller bất cứ đâu:
+```java
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class MeController {
+
+    @GetMapping("/api/me")
+    public String getMyDetails() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+            return "Hello, " + jwt.getClaimAsString("preferred_username");
+        }
+        return "Anonymous";
+    }
+}
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Tạo ra 2 SecurityFilterChain nhưng quên cấu hình `securityMatcher`**: Nếu Chain có mức độ ưu tiên cao (`@Order(1)`) không chỉ định `.securityMatcher("/some/path")`, nó sẽ bắt **tất cả** các request. Do đó, Chain thứ 2 (`@Order(2)`) sẽ vĩnh viễn không bao giờ được gọi tới (Unreachable Code).
+- **Lỗi ở Filter nhưng muốn trả về JSON thống nhất với ExceptionHandler của Controller:** `@ControllerAdvice` chỉ hoạt động ở tầng `DispatcherServlet`. Nếu có Exception văng ra ở tầng Filter (ví dụ JWT không hợp lệ), nó sẽ không đi đến ControllerAdvice. Cần cấu hình `AuthenticationEntryPoint` hoặc dùng `HandlerExceptionResolver` để chuyển tiếp ngoại lệ từ Filter sang ControllerAdvice.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+1. **[Junior]** Sự khác biệt giữa `DelegatingFilterProxy` và `FilterChainProxy` là gì?
+   - *Đáp án:* `DelegatingFilterProxy` là một Servlet Filter chuẩn đóng vai trò cầu nối, trong khi `FilterChainProxy` là một Spring Bean quản lý vòng đời và định tuyến request đến các `SecurityFilterChain` cụ thể.
+2. **[Junior]** Làm thế nào để lấy được username của người dùng đang đăng nhập ở tầng Service mà không cần truyền tham số từ Controller?
+   - *Đáp án:* Sử dụng `SecurityContextHolder.getContext().getAuthentication().getName()`.
+3. **[Senior]** Làm thế nào để truyền `SecurityContext` từ luồng chính (Main Thread) sang một luồng mới chạy bằng `@Async`?
+   - *Đáp án:* Phải thiết lập chiến lược cho `SecurityContextHolder` là `MODE_INHERITABLETHREADLOCAL` hoặc cung cấp một `TaskExecutor` tùy chỉnh được wrap bởi `DelegatingSecurityContextExecutor`.
+4. **[Senior]** Tại sao việc quên gọi `clearContext()` trong tự thiết kế Custom Filter lại gây ra lỗ hổng bảo mật nghiêm trọng?
+   - *Đáp án:* Vì Thread được trả về Thread Pool và tái sử dụng cho request của người dùng khác. Người dùng mới có thể vô tình kế thừa quyền hạn (`Authentication`) của người dùng trước đó.
+5. **[Senior]** Nếu muốn ghi log tất cả HTTP Request bất kể thành công hay thất bại xác thực, bạn nên đặt Filter của mình ở vị trí nào trong Spring Security Filter Chain?
+   - *Đáp án:* Nên đặt trước các filter xác thực (ví dụ sử dụng `.addFilterBefore(myLogFilter, UsernamePasswordAuthenticationFilter.class)` hoặc trước cả `SecurityContextPersistenceFilter`) hoặc đăng ký nó như một Servlet Filter bên ngoài vòng quản lý của Spring Security.
+
+## 7. Tài liệu tham khảo (References)
+- [Spring Security Reference: Architecture](https://docs.spring.io/spring-security/reference/servlet/architecture.html)
+- [Baeldung: Spring Security Context](https://www.baeldung.com/spring-security-context)

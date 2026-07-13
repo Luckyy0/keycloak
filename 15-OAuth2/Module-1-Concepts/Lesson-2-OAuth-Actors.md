@@ -1,89 +1,95 @@
-# Lesson 2: Bốn Diễn Viên Trong Vở Kịch (OAuth Actors)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Trong tài liệu RFC 6749, quy trình OAuth2 là một vở kịch với 4 nhân vật (Actors) lúc nào cũng giao tiếp với nhau. Hiểu rõ tên gọi và vai trò của 4 nhân vật này là bước đầu tiên để bạn không bao giờ bị rối trí khi đọc các tài liệu tiếng Anh bảo mật nâng cao.
+> **Goal:** Nắm vững định nghĩa, vai trò và sự tương tác giữa 4 thực thể cốt lõi (Actors) trong giao thức OAuth 2.0 theo đặc tả RFC 6749.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Cấu Trúc Bốn Vai Trò Của OAuth2
-Hãy tưởng tượng kịch bản: Bạn (Nguyễn Văn A) tải app **Tiktok** về điện thoại. Tiktok muốn tìm xem bạn bè của bạn có ai chơi Tiktok không bằng cách xin quyền truy cập vào danh bạ **Google Contacts**. Bốn nhân vật ở đây là:
+Giao thức OAuth 2.0 không chỉ là một luồng (flow) đơn lẻ, mà là một khuôn khổ (framework) xác định cách thức ủy quyền (delegation of authorization). Để framework này hoạt động, nó định nghĩa rõ ràng 4 vai trò tham gia vào quá trình cấp phát và xác thực quyền truy cập. Bất kỳ kiến trúc bảo mật nào sử dụng OAuth 2.0 đều phải ánh xạ các thành phần thực tế vào đúng 4 vai trò này.
 
-1. **Resource Owner (Chủ sở hữu tài nguyên):**
-   - **Chính là Bạn (Người Dùng).**
-   - Bạn là người sở hữu "Cục dữ liệu Danh bạ". Bạn là người có thẩm quyền cao nhất để phán quyết: "Có cho thằng Tiktok sờ vào danh bạ của tao hay không?".
+**Bốn thực thể cốt lõi (Actors) bao gồm:**
+1. **Resource Owner (Chủ sở hữu tài nguyên):** Thường là người dùng cuối (End-User). Đây là thực thể có khả năng cấp quyền truy cập vào các tài nguyên được bảo vệ. Ví dụ: Chủ tài khoản Google Photos muốn cho phép một ứng dụng in ấn truy cập vào kho ảnh của họ.
+2. **Resource Server (Máy chủ tài nguyên):** Máy chủ lưu trữ các tài nguyên được bảo vệ, có khả năng chấp nhận và phản hồi các yêu cầu truy cập thông qua việc xác thực Access Token. Ví dụ: Google Photos API.
+3. **Client (Ứng dụng khách):** Ứng dụng đưa ra yêu cầu truy cập tài nguyên thay mặt cho Resource Owner và với sự ủy quyền của họ. Lưu ý: Thuật ngữ "Client" ở đây không ngụ ý bất kỳ giới hạn nào về mặt kiến trúc; nó có thể là ứng dụng Web, ứng dụng Mobile, hoặc ứng dụng Server-to-Server.
+4. **Authorization Server (Máy chủ cấp quyền):** Máy chủ đảm nhiệm việc xác thực Resource Owner và cấp phát các Token (Access Token, Refresh Token) cho Client sau khi Client lấy được sự chấp thuận (Consent). Ví dụ: Keycloak, Auth0, Google Sign-In.
 
-2. **Client (Khách hàng / Ứng dụng bên thứ 3):**
-   - **Chính là Ứng dụng Tiktok.**
-   - Đừng nhầm Client là User! Client là Phần Mềm (Website, App Mobile, SmartTV) đang muốn ĐI XIN QUYỀN TRUY CẬP để phục vụ một tính năng nào đó. Thằng này là thằng háo hức chờ lấy Token nhất.
-
-3. **Authorization Server (Máy chủ Ủy quyền):**
-   - **Chính là Google (Cụ thể là màn hình Đăng Nhập & Xin quyền của Google).** (Trong các hệ thống tự dựng, đây chính là **Keycloak**).
-   - Nhiệm vụ: Là quan tòa. Nó hiển thị form bắt Resource Owner nhập pass. Sau đó nó hỏi "Có đồng ý cho Tiktok lấy danh bạ không?". Nếu đồng ý, Máy Chủ Ủy Quyền sẽ In ra Cấp cái Token.
-
-4. **Resource Server (Máy chủ Tài nguyên):**
-   - **Chính là Máy chủ chứa Data Danh bạ của Google (API Server).** (Trong hệ thống của bạn, đây là các API Spring Boot, NodeJS).
-   - Nhiệm vụ: Giữ nhà. Ai đưa Token hợp lệ đến thì nhả dữ liệu (Danh bạ) ra. Nó hoàn toàn không quan tâm cái Token đó được tạo ra như thế nào, nó chỉ kiểm tra chữ ký Token có hợp lệ từ ông Authorization Server cấp hay không thôi.
-
----
+**Tại sao cần phân chia 4 vai trò này?**
+Mô hình Client-Server truyền thống, khi Client yêu cầu truy cập dữ liệu của user trên Server, Client phải yêu cầu user cung cấp trực tiếp mật khẩu (Password). Sự ra đời của OAuth 2.0 tách biệt quá trình "đăng nhập" (Authorization Server đảm nhận) khỏi "truy cập dữ liệu" (Resource Server đảm nhận). Điều này giúp Client thao tác trên dữ liệu của user mà không bao giờ nhìn thấy mật khẩu của họ.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Giao Tiếp Giữa 4 Diễn Viên Trong Thế Giới Thực:
+Tuy OAuth 2.0 có nhiều luồng (Grant Types), nhưng luồng giao tiếp trừu tượng cơ bản giữa 4 Actor luôn diễn ra theo mô hình sau:
 
 ```mermaid
-flowchart TD
-    A[Client: Tiktok App] -->|1. Cho tao mượn danh bạ| B(Resource Owner: User Bạn)
+sequenceDiagram
+    autonumber
+    participant RO as Resource Owner (User)
+    participant Client as Client Application
+    participant AS as Authorization Server (Keycloak)
+    participant RS as Resource Server (API)
+
+    Client->>RO: 1. Yêu cầu Ủy quyền (Authorization Request)
+    RO-->>Client: 2. Chấp thuận Ủy quyền (Authorization Grant)
     
-    B -->|2. Ok tao đồng ý, mày tới nhà Google xin thẻ đi| A
+    Client->>AS: 3. Gửi Authorization Grant để xin Token
+    AS-->>Client: 4. Cấp phát Access Token (sau khi kiểm tra Hợp lệ)
     
-    A -->|3. Đưa User tới cửa Gõ Cửa Xin Cấp Quyền| C[Authorization Server: Cổng Login Google / Keycloak]
-    
-    C -->|4. Hỏi User: Mày nhập Pass đi, và đồng ý cho Tiktok không?| B
-    B -->|5. Nhập Pass, Bấm Allow| C
-    
-    C -->|6. Cấp Access Token Cho Tiktok| A
-    
-    A -->|7. Cầm Token Chạy Tới Nhà Kho Gõ Cửa API| D[Resource Server: Google API / Spring Boot]
-    
-    D -->|8. Quét Check Token Hợp Lệ -> Trả Data Danh Bạ| A
+    Client->>RS: 5. Gửi Request + Access Token (trong Header)
+    RS-->>Client: 6. Phản hồi Dữ liệu Tài nguyên được Bảo vệ
 ```
 
----
+**Phân tích chi tiết:**
+- **Bước 1 & 2 (Abstract):** Trong thực tế, Client không trực tiếp hỏi Resource Owner. Quá trình này thường được chuyển hướng qua Authorization Server. Authorization Server sẽ hiển thị giao diện đăng nhập và Consent Screen (Màn hình cấp quyền) cho Resource Owner.
+- **Bước 3 & 4:** Client sử dụng "bằng chứng" rằng user đã đồng ý (ví dụ: Authorization Code) để nộp cho Authorization Server. Authorization Server sẽ kiểm tra tính hợp lệ và trả về Access Token.
+- **Bước 5 & 6:** Client dùng Access Token (thường dưới dạng Bearer Token) kẹp vào HTTP Header `Authorization: Bearer <token>` để gọi API của Resource Server. Resource Server sẽ giải mã (nếu là JWT) hoặc gọi hàm Token Introspection lên AS để xác minh Token, sau đó trả về dữ liệu.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!IMPORTANT]
-> **Tuyệt Đỉnh An Toàn Cấp Kiến Trúc (Tách Biệt Authorization Server Và Resource Server Ra Hai Cụm Riêng Biệt)**
-> **Tội Ác Thiết Kế Hệ Thống Monolith Cổ Đại:** Lập trình viên thiết kế một con App NodeJS khổng lồ. Vừa code tính năng tạo User, nhận request Login (So sánh Password), vừa kiêm luôn việc cấp phát Token tự chế. Xong cũng ở trong cục code NodeJS đó, nhét luôn logic quản lý API đơn hàng, giỏ hàng! Gom 2 vai trò Authorization Server và Resource Server làm một.
-> **Hậu Quả:** Bất cứ lúc nào đoạn code API Giỏ Hàng bị lỗi văng Exception làm sập RAM NodeJS, cái hệ thống Login cũng chết ngắc theo! Hệ thống khó Scale (mở rộng), không thể chia sẻ cho các App di động hoặc đối tác bên ngoài gọi API vì dính chặt Logic xác thực vào bụng App cục bộ.
-> **Biện Pháp Sống Còn Lớp Trọng:** BẮT BUỘC TÁCH RỜI! 
-> - **Authorization Server:** Chạy độc lập 1 con **Keycloak**. Nắm giữ toàn bộ Database User, chuyên tâm nhiệm vụ nhả Token.
-> - **Resource Server:** Là hàng chục con Microservices API (NodeJS, Java, Go). Bọn này chỉ mang nhiệm vụ nhẹ nhàng: Bắt HTTP Header lấy JWT Token ra verify chữ ký. Nếu hợp lệ, trả Data. Xong! 
-> Bằng cách này, Hệ thống vô địch ở khả năng chịu tải (Scale) và chia sẻ bảo mật (Zero-Trust).
+> [!WARNING]
+> Không bao giờ gộp Authorization Server và Resource Server trên cùng một service nếu hệ thống có ý định mở rộng (Microservices). Việc tách biệt chúng giúp phân tán tải và đảm bảo an ninh (AS giữ Private Key để ký Token, RS chỉ giữ Public Key để xác minh).
 
----
+> [!IMPORTANT]
+> - **Nguyên tắc "Least Privilege" cho Client:** Client chỉ nên yêu cầu các quyền (Scopes) tối thiểu cần thiết để hoạt động.
+> - **Xác thực Client trên AS:** Nếu Client là "Confidential Client" (có khả năng giữ bí mật), AS phải yêu cầu Client xác thực (ví dụ bằng `client_secret`) trước khi cấp Token để ngăn chặn kẻ tấn công giả mạo Client.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Mapping Các Vai Trò Này Với Giao Diện Keycloak Console:
-1. Khi bạn thao tác tạo một User có tên "nguyenvana" trên Keycloak. Bạn đang tạo Data cho vai trò **Resource Owner**.
-2. Khi bạn click Menu **Clients** và bấm Create một ứng dụng tên `react-dashboard`. Bạn đang đăng ký danh tính cho vai trò **Client**.
-3. Bản thân toàn bộ giao diện Admin Console và máy chủ Port 8080 mà Keycloak đang chạy chính là hạt nhân của **Authorization Server**.
-4. Keycloak KHÔNG PHẢI là **Resource Server** (Trừ API quản trị nội bộ của nó). Resource Server là phần mềm bạn tự code (Spring Boot / Express) chạy ở Port 3000. Để biến app NodeJS thành Resource Server, bạn cài thư viện `keycloak-connect` hoặc `passport-jwt` để nó biết cách Verify Token do Keycloak đẻ ra.
+Trong một hệ thống Microservices thực tế, việc phân rã 4 Actors diễn ra như sau:
+- **Resource Owner:** Con người thao tác trên Web Browser.
+- **Client:** Một ứng dụng ReactJS (Frontend) hoặc một Spring Boot Web MVC.
+- **Authorization Server:** Keycloak Server chạy tại cổng 8080.
+- **Resource Server:** Một API viết bằng NodeJS hoặc Spring Boot REST chạy tại cổng 8081, cấu hình để nhận `Bearer Token` do Keycloak cấp.
 
----
+**Ví dụ cấu hình Spring Boot đóng vai trò Resource Server:**
+```yaml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # URL của Authorization Server để RS tải Public Key phục vụ việc verify Token
+          issuer-uri: http://keycloak-server:8080/realms/myrealm
+```
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
-**1. Một Hệ Thống Chạy Ngầm (Cronjob) Ban Đêm Của Công Ty Cần Giao Tiếp Với API Kế Toán (Resource Server) Để Kéo Data Chạy Báo Cáo. Hỏi Lúc Này Ai Là Resource Owner Trong 4 Actor Của OAuth2? Hệ Thống Có Cần Trình Duyệt Để Đăng Nhập Không?**
-- **Senior:** Dạ thưa sếp, Trong trường hợp kết nối Máy-Giao-Tiếp-Với-Máy (Machine to Machine - M2M), **Resource Owner đã bị hợp nhất (Merge) luôn vào vai trò của Client**.
-  - Phần mềm Cronjob đó vừa đóng vai trò là Client đi xin dữ liệu, lại vừa đóng vai trò là Chủ sở hữu của chính Dữ liệu nó xin (Vì nó không gọi thay mặt cho một con người cụ thể nào cả).
-  - Lúc này, Hệ thống KHÔNG THỂ VÀ KHÔNG CẦN dùng Trình duyệt để hiện nút bấm (Vì đâu có con người ngồi canh 2h sáng để bấm Allow). 
-  - OAuth2 cung cấp một luồng riêng biệt tên là **Client Credentials Flow** cho Actor khuyết tật này. Nó chỉ ném Client_ID và Client_Secret lên Authorization Server (Keycloak) là giật ngay Access Token về đập API luôn tốc độ cao mạch lụa!
+- **Client Server-to-Server (Máy không có người dùng):** Trong trường hợp hai server giao tiếp với nhau qua API chạy ngầm, không có người dùng thực. Lúc này, Client đồng thời đóng vai trò là Resource Owner cho chính tài nguyên của nó. Nó sẽ sử dụng luồng `Client Credentials Grant` để xin Access Token trực tiếp từ AS.
+- **Mô hình kiến trúc Gateway:** Trong nhiều thiết kế, một API Gateway đóng vai trò là Client kết hợp với Resource Server (BFF - Backend for Frontend). Nó tự thực hiện giao tiếp với AS lấy Token, rồi đính kèm Token đẩy xuống các Microservices bên dưới.
+- **Token bị lộ:** Nếu Access Token (đang nằm ở Client) bị đánh cắp, kẻ tấn công có thể giả mạo Client gọi tới Resource Server. Biện pháp duy nhất của RS là kiểm tra Token Expiry (Token sống ngắn) hoặc dùng các cơ chế nâng cao như MTLS (Sender-Constrained Tokens).
 
----
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
 
-## 6. Tài liệu tham khảo (References)
-- **RFC 6749:** Section 1.1 Roles.
-- **Keycloak Documentation:** Securing Applications and Services Guide.
+1. **(Junior)** Định nghĩa 4 Actor trong OAuth 2.0.
+   - *Đáp án:* Resource Owner (User), Client (Ứng dụng cần truy cập data), Authorization Server (Hệ thống xác thực & cấp Token - vd: Keycloak), Resource Server (Server lưu trữ data, verify Token).
+2. **(Junior)** Keycloak đóng vai trò nào trong 4 Actor này?
+   - *Đáp án:* Keycloak đóng vai trò là Authorization Server (Máy chủ ủy quyền). Nó xác thực user và cấp Access Token/Refresh Token.
+3. **(Senior)** Nếu một Backend Service gọi API của một Backend Service khác ngầm định không qua người dùng, thì ai đóng vai trò Resource Owner?
+   - *Đáp án:* Khi dùng `Client Credentials`, chính Backend gọi API (Client) tự đóng vai trò là Resource Owner cho các tài nguyên mà nó quản lý. Không có User Context liên quan.
+4. **(Senior)** Tại sao Resource Server cần biết Authorization Server là ai? Làm cách nào RS kiểm chứng Token do AS cấp?
+   - *Đáp án:* RS cần biết cấu hình của AS (như JWKS URL) để tải Public Key về. Khi RS nhận được Access Token (JWT), nó sẽ dùng Public Key này để verify chữ ký (Signature). Hoặc RS có thể gọi trực tiếp lên Token Introspection Endpoint của AS.
+5. **(Senior)** Nêu sự khác biệt giữa Confidential Client và Public Client.
+   - *Đáp án:* Confidential Client có thể giữ bí mật credential (như client_secret), thường là Web Server (Spring Boot, NodeJS). Public Client không thể giữ bí mật credential (SPA, Mobile Apps), vì code chạy trên máy khách, do đó phải dùng PKCE.
+
+## 7. Tài liệu tham khảo (References)
+
+- [RFC 6749: The OAuth 2.0 Authorization Framework - Section 1.1 Roles](https://datatracker.ietf.org/doc/html/rfc6749#section-1.1)
+- [Keycloak Architecture - OAuth 2.0 Concepts](https://www.keycloak.org/docs/latest/securing_apps/#_oauth2)

@@ -1,86 +1,132 @@
-# Lesson 1: Móc Nối Cơ Sở Dữ Liệu Ngoại Lai (External Database)
-
 > [!NOTE]
-> **Category:** Theory & Practical (Lý thuyết & Thực hành)
-> **Goal:** Học cách implements các Interface Thần Thánh `UserStorageProvider`, `UserLookupProvider`, `CredentialInputValidator` để biến một bảng Database `tbl_khachhang` vô danh trong MySQL cũ kỹ thành Nguồn Dữ Liệu Xác Thực Chính Thức của Keycloak. 
+> **Category:** Theory
+> **Goal:** Hiểu sâu về kiến trúc, cơ chế hoạt động và lý do sử dụng Custom User Storage SPI trong Keycloak để tích hợp với External Database.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Bản Chất Của Sự Lừa Dối (The Art of Deception)
-Kiến trúc SPI của Keycloak được thiết kế để tách rời **Lõi Logic** (Cấp phát Token, Quản lý Session) ra khỏi **Nơi Lưu Trữ Dữ Liệu** (Database). Khi một khách hàng gõ Username/Password trên màn hình đăng nhập, Keycloak sẽ trải qua 2 bước dò tìm:
-1. **Dò trong Local Database (Của Keycloak):** Xem thằng User này có tồn tại trong DB của mình không.
-2. **Dò trong danh sách các Federation / User Storage (Của Bạn Viết):** Nếu Local DB không có, nó sẽ tuần tự gọi hàm `getUserByUsername()` vào các Provider mà bạn đã viết.
+Trong các hệ thống Enterprise, thông tin người dùng thường không nằm sẵn trong Keycloak mà được lưu trữ ở các hệ thống có sẵn (Legacy Systems) như Relational Database (MySQL, PostgreSQL, Oracle), NoSQL, hoặc các hệ thống ERP/CRM. Việc di chuyển toàn bộ dữ liệu người dùng (Migration) sang database nội bộ của Keycloak đôi khi là không khả thi do các ràng buộc về đồng bộ dữ liệu, chính sách bảo mật, hoặc vì các ứng dụng khác vẫn đang đọc/ghi trực tiếp vào cơ sở dữ liệu đó.
 
-Nếu Code Java của bạn chọc sang MySQL cũ, tìm thấy User, và trả về cho Keycloak một Object `UserModel` (Là một Interface đại diện cho cấu trúc User của Keycloak). Keycloak lập tức "tin sái cổ" rằng thằng User này là thật! 
-Tiếp theo, khi Keycloak cần kiểm tra Mật Khẩu, nó lại gọi tiếp vào hàm `isValid(RealmModel, UserModel, CredentialInput)` trong Code của bạn. Code của bạn lại chọc sang MySQL kiểm tra Hash Password. Nếu khớp, trả về `true`. Thế là Đăng Nhập Thành Công!
+Để giải quyết bài toán này, Keycloak cung cấp **User Storage SPI (Service Provider Interface)**. Đây là một cơ chế mở rộng cho phép Keycloak kết nối trực tiếp đến các External Database hoặc hệ thống định danh bên ngoài. Thay vì copy dữ liệu, Keycloak sẽ ủy quyền (delegate) việc tìm kiếm, xác thực (authentication), và quản lý thông tin người dùng cho User Storage Provider mà chúng ta tự triển khai (Custom Provider).
 
-### 1.2. Bộ Ba Interface Sát Thủ
-Để làm được phép thuật trên, Class Java của bạn không chỉ implements 1 mà phải ráp nối nhiều Interface cùng lúc (Theo triết lý Interface Segregation của SOLID):
-- `UserStorageProvider`: Interface gốc rễ. Bắt buộc phải có để xưng danh mình là một Nơi Chứa User.
-- `UserLookupProvider`: Cấp cho bạn siêu năng lực Tìm Kiếm: `getUserById`, `getUserByUsername`, `getUserByEmail`. (Keycloak sẽ gọi mấy hàm này để truy xuất người).
-- `CredentialInputValidator`: Cấp cho bạn siêu năng lực Kiểm Tra Mật Khẩu: `isValid()`, `isConfiguredFor()`, `supportsCredentialType()`. (Chuyên dùng để Xác Thực Password khách nhập vào).
-
-Nếu bạn KHÔNG implements `UserLookupProvider`, Keycloak sẽ mù màu không biết tìm User ở đâu. Nếu KHÔNG implements `CredentialInputValidator`, bạn chỉ có thể lôi được danh sách User lên giao diện Admin để ngắm chứ không cho khách Login được (Vì không có hàm kiểm tra Pass)!
-
----
+**Tại sao lại sử dụng Custom User Storage SPI?**
+- **Tránh Data Duplication:** Dữ liệu người dùng chỉ tồn tại ở một nơi duy nhất (Single Source of Truth), giảm thiểu rủi ro sai lệch dữ liệu giữa Keycloak và hệ thống cũ.
+- **Phù hợp với kiến trúc Legacy:** Các ứng dụng cũ vẫn tiếp tục hoạt động bình thường mà không cần thay đổi.
+- **Bảo mật:** Không cần lưu trữ mật khẩu (hoặc hash của mật khẩu) trên Keycloak nếu chính sách bảo mật không cho phép.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Của Việc "Đá Luồng" Sang Database Ngoại Lai:
+Khi một người dùng thực hiện Login, Keycloak sẽ tìm kiếm người dùng trong Local Database trước. Nếu không thấy (hoặc dựa trên cấu hình), Keycloak sẽ tuần tự gọi đến các User Storage Providers đã được cấu hình trong Realm.
 
 ```mermaid
 sequenceDiagram
-    participant User as Khách Hàng (Browser)
-    participant Core as Lõi Keycloak (Authentication Flow)
-    participant StorageManager as User Storage Manager (Trung Tâm Dò Tìm)
-    participant MyProvider as Custom Code Của Bạn (MySQL Provider)
-    participant MySQL as MySQL Database (Hệ Thống Cũ)
-    
-    User->>Core: Nhập Tên "TeoNguyen", Pass "123456" (Và Bấm Submit)
-    Core->>StorageManager: "Ê, tìm cho tao thằng TeoNguyen coi!"
-    
-    StorageManager->>StorageManager: Tìm trong PostgreSQL Nội Bộ (Không Có!)
-    
-    StorageManager->>MyProvider: Kích Hoạt Hàm getUserByUsername("TeoNguyen")
-    MyProvider->>MySQL: Phóng Lệnh SQL: SELECT * FROM TBL_KHACH WHERE username='TeoNguyen'
-    MySQL->>MyProvider: Trả Về Dữ Liệu Gốc Của Teo.
-    MyProvider->>StorageManager: Nặn Ra Cục Nhựa AbstractUserAdapter Bọc Dữ Liệu Của Teo Và Trả Về
-    StorageManager->>Core: "Có TeoNguyen đây rồi thưa sếp!"
-    
-    Core->>StorageManager: "Ok, giờ kiểm tra xem Pass 123456 có đúng không?"
-    StorageManager->>MyProvider: Kích Hoạt Hàm isValid(UserModel, CredentialInput("123456"))
-    MyProvider->>MySQL: (Hoặc lấy Hash MD5 Hồi Nãy Ra Tự Check) So Sánh Băm Chuỗi.
-    MyProvider->>StorageManager: Khớp! Trả Về Boolean TRUE!
-    
-    StorageManager->>Core: "Pass Đúng Sếp Ơi!"
-    Core->>User: Cấp Phát Access Token - Cho Phép Chui Vào Hệ Thống!
+    participant User as User / Browser
+    participant KC as Keycloak (Authentication Engine)
+    participant SPI as Custom User Storage Provider (Java)
+    participant ExtDB as External Database
+
+    User->>KC: Gửi Request Login (username, password)
+    KC->>KC: Tìm user trong Local Database
+    alt Không tìm thấy trong Local Database
+        KC->>SPI: Gọi getUserByUsername(username)
+        SPI->>ExtDB: Query Database (SELECT * FROM users WHERE username = ?)
+        ExtDB-->>SPI: Trả về User Record (hoặc Null)
+        alt User tồn tại trong External DB
+            SPI-->>KC: Trả về đối tượng UserModel
+            KC->>SPI: Gọi isValid(realm, user, credentialInput) (kiểm tra password)
+            SPI->>ExtDB: So sánh hash password / Gọi procedure xác thực
+            ExtDB-->>SPI: Kết quả (True/False)
+            SPI-->>KC: Trả về True/False
+            alt Xác thực thành công
+                KC->>KC: Sinh Token (JWT)
+                KC-->>User: Trả về Access Token, ID Token
+            else Xác thực thất bại
+                KC-->>User: Báo lỗi Invalid Credentials
+            end
+        else Không tồn tại
+            SPI-->>KC: Trả về Null
+            KC-->>User: Báo lỗi User Not Found
+        end
+    else Tìm thấy trong Local Database
+        KC->>KC: Xác thực nội bộ
+        KC-->>User: Trả về Token
+    end
 ```
 
----
+**Chi tiết cấp thấp:**
+- Custom Provider phải implements các Interface cốt lõi như `UserStorageProvider`, `UserLookupProvider`, `CredentialInputValidator`.
+- Keycloak sử dụng JBoss Marshalling và Hibernate để quản lý transaction. Khi SPI trả về `UserModel`, Keycloak sẽ wrap (gói) đối tượng này bằng bộ đệm (Local Cache) nếu được cấu hình.
+- Các interface này là Stateful hoặc Stateless tùy thuộc vào việc chúng ta có inject `EntityManager` hay kết nối REST client.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Rác Bộ Nhớ Nóng - N+1 Query Khét Lẹt)**
-> **Tội Ác Truy Vấn DB Dày Đặc Trong Vòng Đời Của 1 User:** Trong lúc Khách hàng đang thao tác Login, duyệt web, lấy Token... Lõi Keycloak có một thói quen rất "ngáo" là nó sẽ gọi hàm `getUserByUsername()` hoặc `getUserById()` KHÔNG CHỈ 1 LẦN, mà có thể lên tới 5-10 LẦN cho cùng một Request! Nếu Trong Code Java Của Bạn, Mỗi Lần Keycloak Gọi Hàm `getUser...` Là Bạn Lại Phóng 1 Câu Lệnh `SELECT * FROM MySQL` Ra Ngoài... Thì Hệ Thống MySQL Sẽ Chết Ngộp Trong Lượng Kết Nối Khổng Lồ (N+1 Query Problem)!
-> **Hậu Quả Chết Ngộp Cục Bộ:** 
-> 100 User Login Cùng Lúc -> Bắn 1000 Câu Lệnh SQL Sang Hệ Thống Cũ (Vốn Dĩ Đã Yếu Sinh Lý) -> MySQL Treo 100% CPU -> Toàn Bộ Công Ty Đứng Hình Chửi Thề Gọi Cảnh Sát!
-> **Biện Pháp Sống Còn Lớp Trọng Lực Cõi Âm:** BẮT BUỘC Phải Áp Dụng **Local Request Cache (Bộ Nhớ Đệm Trong 1 Vòng Đời Phiên Bản)**. Keycloak Cung Cấp Đối Tượng `session.getAttribute()` (Chỉ Sống Trọng Tròn 1 HTTP Request). Khi Hàm `getUserByUsername` Được Gọi Lần Đầu, Bạn Xuống DB Lấy Lên, Xong Lưu Nó Vào Biến Local Session: `session.setAttribute("user_teo", userModel)`. 
-> Lần Thứ 2, Thứ 3, Thứ 10 Trong Cùng 1 Milisec Đó Mà Keycloak Có Dở Chứng Gọi Lại Hàm Nhờ Lấy Thằng Teo... Bạn Đừng Xuống DB Nữa! Lôi Thẳng Biến `user_teo` Trong RAM Ra Mà Trả Về (Memory Caching)! Cứu Rỗi Hàng Triệu Chu Kỳ Máy!
-> 
-> *Lưu ý:* Keycloak cũng có Bật Sẵn Cache Infinispan Mức Độ Realm Cho Mấy Thằng Custom Storage Này (Nó tự động Cache Object UserModel của bạn trong Memory Cluster). Nhưng Request Caching (Như Đã Nói Ở Trên) Vẫn Là Lá Chắn Phòng Ngự Cấp Thấp Tuyệt Đối Cần Thiết Bổ Trợ Nhau!
+- **Connection Pooling:** Không mở kết nối mới đến External Database cho mỗi Request. Luôn sử dụng Connection Pool (như HikariCP, hoặc tận dụng JNDI Data Source cấu hình sẵn trên Quarkus/Wildfly).
+- **Caching:** Kích hoạt User Cache (Infinispan) cho Custom Provider. Nếu External Database thay đổi, cần có cơ chế Evict Cache (thông qua REST API hoặc Message Broker) để tránh việc Keycloak sử dụng dữ liệu cũ (Stale Data).
+- **Read-Only vs Read-Write:** Nếu Keycloak không được phép thay đổi dữ liệu trên External DB, hãy implement Provider ở chế độ Read-Only. Không implement interface `UserRegistrationProvider`.
+- **Security:** Mã hóa chuỗi kết nối (Connection String) và thông tin đăng nhập vào DB. Không bao giờ log thông tin mật khẩu của người dùng ra file log trong quá trình debug SPI.
 
----
+> [!WARNING]
+> Nếu External Database phản hồi chậm, toàn bộ quá trình đăng nhập của Keycloak sẽ bị treo (Bottleneck). Cần thiết lập Timeout nghiêm ngặt khi query tới External DB.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-**1. Khách Hàng Hỏi: "Anh Ơi, Khi Em Tích Hợp Cái User Storage Này Để Đọc Dữ Liệu Từ Database Oracle Cũ. Lỡ Một Ngày Nào Đó Cái Mạng LAN Từ Keycloak Sang Con Oracle Bị Đứt Hoặc Con Oracle Sập Nguồn Thì Sao? Lúc Đó User Đang Xài Có Bị Văng Ra Hay Không? Có Ai Log In Được Không?"**
-- **Senior:** Dạ Câu Hỏi Rất Sát Thực Tế Ạ. Khi Viết Custom User Storage, Mình Phải Hiểu Rõ Về Cơ Chế Cache Của Keycloak Để Đánh Giá Tác Động:
-  - **Với Khách Đang Xài (Đã Có Session & Token):** Keycloak Dùng Kỹ Thuật Sinh Ra JWT Vô Hướng (Stateless) Và Chỉ Chạm Vào Session Nội Bộ Của Keycloak. Khách Đang Gọi API Bằng Token Bất Biến Sẽ KHÔNG Bị Văng Ngay Lập Tức! Tuy Nhiên, Khi Token Hết Hạn Và Họ Cần Dùng `Refresh Token` Để Đổi Lấy Token Mới, Keycloak (Tùy Cấu Hình Check-Status) Có Thể Sẽ Kích Hoạt Hàm Dò Tìm Ngược Về User Storage Để Xem User Đó Có Vừa Bị Xóa Khỏi Oracle Hay Không. Nếu Oracle Đứt Mạng -> Quá Trình Refresh Thất Bại -> Khách Lúc Đó Mới Bị Văng!
-  - **Với Khách Mới Login:** Chắc Chắn 100% Là Chết Lập Tức (Trừ Khi User Đó Vừa Login Cách Đây Vài Phút Vẫn Còn Kẹt Trong Bộ Nhớ Infinispan Cache Của Keycloak, Có Thể Tranh Thủ Bypass DB Đi Thẳng Vào).
-  - **Cách Phòng Chống Rủi Ro:** Trong Kiến Trúc Enterprise, Bọn Em Không Bao Giờ Cho Keycloak Chọc Trực Tiếp Sang DB Cũ Read-Time (Đọc Chết Thẳng). Bọn Em Sẽ Dùng Một Cơ Chế Khác Là **Synchronization (Đồng Bộ Hóa Dữ Liệu Chạy Ngầm)**. Tức Là Cho Code Java Đọc DB Oracle Vào Ban Đêm, Hút Toàn Bộ Hàng Triệu Khách Hàng Ném Về Lưu Trữ Ở Local Database PostgreSQL Của Keycloak (Nhập Cư Dữ Liệu Luôn). Sau Đó Keycloak Chỉ Chơi Trực Tiếp Với DB Nội Bộ Của Nó. Oracle Có Sập Hay Cháy Nhà Kho Thì Keycloak Vẫn Trơ Trơ Chạy Tốc Độ Ánh Sáng Nhờ DB Local! (Đó là lý do Keycloak cung cấp Giao diện `ImportSynchronization`).
+Dưới đây là một phần mã nguồn Java tối giản minh họa một Custom User Storage Provider class:
 
----
+```java
+public class MyCustomUserStorageProvider implements UserStorageProvider, 
+        UserLookupProvider, CredentialInputValidator {
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Developer Guide - User Storage SPI.
+    private KeycloakSession session;
+    private ComponentModel model;
+    private Connection dbConnection; // Được khởi tạo thông qua DataSource
+
+    public MyCustomUserStorageProvider(KeycloakSession session, ComponentModel model) {
+        this.session = session;
+        this.model = model;
+        // Khởi tạo connection pool từ properties trong model
+    }
+
+    @Override
+    public UserModel getUserByUsername(RealmModel realm, String username) {
+        // Thực thi SQL query đến External Database
+        // Nếu thấy, trả về AbstractUserAdapterFederatedStorage
+        return null; // Giả lập
+    }
+
+    @Override
+    public boolean isValid(RealmModel realm, UserModel user, CredentialInput credentialInput) {
+        if (!(credentialInput instanceof UserLoginCredentialModel)) return false;
+        String password = credentialInput.getChallengeResponse();
+        // So sánh mật khẩu từ DB với mật khẩu user nhập vào
+        return checkPasswordInExternalDb(user.getUsername(), password);
+    }
+
+    @Override
+    public void close() {
+        // Đóng kết nối hoặc dọn dẹp resource (được Keycloak gọi cuối mỗi transaction)
+    }
+}
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **External Database bị Offline (Downtime):** Nếu Keycloak không thể kết nối đến External DB, người dùng sẽ không thể đăng nhập. **Khắc phục:** Sử dụng kiến trúc High Availability (HA) cho External DB. Hoặc bật tính năng `Import Users` trong Keycloak để cache user nội bộ trong Keycloak DB, cho phép đăng nhập tạm thời dựa vào cache.
+- **Trùng lặp Username (Username Collision):** Người dùng có username `admin` tồn tại ở cả Local Keycloak DB và External DB. **Khắc phục:** Keycloak ưu tiên Local DB trước. Nếu cần, cấu hình "Priority" của các Provider hoặc bắt buộc namespace (vd: `ext_admin`).
+- **Mật khẩu sử dụng thuật toán Hash cũ (Legacy Hashing):** DB cũ dùng MD5 hoặc SHA-1. **Khắc phục:** Implement thuật toán so sánh tương ứng trong `CredentialInputValidator`, đồng thời có thể dùng cơ chế tự động chuyển đổi sang bcrypt/pbkdf2 khi người dùng đăng nhập thành công lần đầu.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **(Junior)** User Storage SPI trong Keycloak dùng để làm gì? Nêu một ví dụ thực tế.
+   - *Đáp án:* Dùng để tích hợp với DB ngoài chứa thông tin người dùng có sẵn, giúp đăng nhập bằng user cũ mà không cần migrate dữ liệu vào Keycloak.
+2. **(Junior)** Những Interface nào bắt buộc phải implement để Keycloak có thể tìm kiếm và xác thực mật khẩu người dùng từ database ngoài?
+   - *Đáp án:* `UserLookupProvider` (tìm user) và `CredentialInputValidator` (kiểm tra password).
+3. **(Senior)** Sự khác biệt giữa chế độ "Import Users" (ON) và "Import Users" (OFF) trong User Storage Federation là gì?
+   - *Đáp án:* ON: Keycloak copy thông tin user vào Local DB ngay lần đăng nhập đầu, sau đó chỉ đồng bộ khi cần. OFF: Keycloak không lưu thông tin (ngoại trừ ID mapping), mọi request đều phải query DB ngoài.
+4. **(Senior)** Làm thế nào để giải quyết vấn đề hiệu năng nếu Custom User Storage Provider phải gọi qua HTTP REST API tới một hệ thống Identity cũ rất chậm?
+   - *Đáp án:* Sử dụng Caching (Infinispan) cho các queries. Tăng số luồng hoặc thiết lập Timeout ngắt sớm (Circuit Breaker).
+5. **(Senior)** Keycloak gọi phương thức `close()` của Provider khi nào? Nếu không dọn dẹp tài nguyên ở đây thì có sao không?
+   - *Đáp án:* Gọi cuối mỗi HTTP Request/Transaction. Nếu không đóng Connection/File, server sẽ bị cạn kiệt tài nguyên (Resource Leak) và crash.
+
+## 7. Tài liệu tham khảo (References)
+
+- Keycloak Server Developer Guide: [User Storage SPI](https://www.keycloak.org/docs/latest/server_development/#_user-storage-spi)
+- Keycloak JavaDocs: `org.keycloak.storage.UserStorageProvider`

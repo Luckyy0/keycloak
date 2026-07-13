@@ -1,0 +1,26 @@
+{
+  "id": "Cty_Super_App_VN_2025",
+  "realm": "Cty_Super_App_VN_2025",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "web",
+      "enabled": true,
+      "publicClient": true,
+      "redirectUris": [
+        "*"
+      ],
+      "webOrigins": [
+        "*"
+      ]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "ROLE_TESTER"
+      }
+    ]
+  },
+  "bruteForceProtected": false
+}

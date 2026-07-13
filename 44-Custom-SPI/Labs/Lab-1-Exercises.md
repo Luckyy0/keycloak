@@ -1,30 +1,165 @@
-# Lab 1: Phát Triển Một Plugin Hoàn Chỉnh Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
+# Lab 1: Xây dựng và Triển khai Custom EventListener SPI
 
 > [!NOTE]
-> **Category:** Practical/Lab (Thực hành)
-> **Goal:** Tự code bằng Java một Kiến trúc SPI bắt Sự kiện và tạo hệ thống File META-INF để chuẩn bị Đóng Gói (Deploy).
+> **Category:** Practical/Lab
+> **Goal:** Viết mã nguồn Java để tạo một Custom EventListener SPI. Biên dịch thành JAR thông qua Maven và triển khai lên máy chủ Keycloak bằng kiến trúc Docker.
 
-## 1. Yêu cầu (Prerequisites)
-- Một dự án Maven Rỗng (Chỉ cần dependency `keycloak-server-spi` và `keycloak-server-spi-private`). Không cần dùng Spring Boot ở đây Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, vì Code này ném trọn vẹn vào bụng Keycloak chạy thuần Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề.
+## 1. Kịch bản Thực hành (Lab Scenario)
+Công ty của bạn vừa quyết định tích hợp hệ thống Identity (Keycloak) với nền tảng Gửi Email Marketing (Ví dụ: Mailchimp, SendGrid). Yêu cầu đặt ra là: Bất cứ khi nào một người dùng mới **Đăng ký (Register)** thành công trên Keycloak, hệ thống phải in ra màn hình Console một dòng log có chứa nội dung đặc biệt: `[MARKETING-SYNC] User <Email> has registered. Syncing to CRM...`. Trong thực tế, bạn sẽ dùng HTTP Client để gọi REST API của Mailchimp, nhưng ở bài Lab này, chúng ta tập trung vào việc tạo SPI và in log ra console.
 
-## 2. Các bước thực hiện (Step-by-step)
+## 2. Chuẩn bị Môi trường (Prerequisites)
+- **Java Development Kit (JDK):** Version 17 trở lên.
+- **Apache Maven:** Cài đặt Maven để quản lý dependencies và biên dịch.
+- **Docker:** Để khởi chạy môi trường giả lập Keycloak (phiên bản 22+).
+- Một trình soạn thảo mã nguồn (IntelliJ IDEA, Eclipse, hoặc VS Code).
 
-### Bước 1: Viết Lõi Công Nhân Lắng Nghe Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-Tạo File `CustomEventListenerProvider.java` Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. 
-Cái class này sẽ im lìm theo dõi mọi hành động Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, phát hiện ông Khách Hàng nào vừa Đăng Ký Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, nó chửi ra Log luôn Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
-(Tham khảo Code mẫu trong `code/src/main/java...`) Oanh Khung Dịch Lụa Mạch Lệnh
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-### Bước 2: Viết Lõi Nhà Máy Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị
-Tạo File `CustomEventListenerProviderFactory.java` Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-Đăng Ký Khai Sinh ID Của Cái Plugin Này Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: Trả về chữ `"my-custom-logger"`. 
-(Tham khảo Code mẫu) Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề
+**Bước 1: Khởi tạo Project Maven**
+Tạo một thư mục mới có tên `keycloak-custom-listener` và tạo file `pom.xml`:
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.company.keycloak</groupId>
+    <artifactId>marketing-sync-listener</artifactId>
+    <version>1.0-SNAPSHOT</version>
 
-### Bước 3: Đánh Dấu Cột Mốc META-INF Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-Tạo Thư mục `src/main/resources/META-INF/services/` Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh.
-Tạo File Tên Cực Chuẩn: `org.keycloak.events.EventListenerProviderFactory` Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-Gõ Nội Dung File Bằng Đường Dẫn Lớp Java Mà Chúng Ta Vừa Chế Tạo Ở Bước 2 Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh
+    <dependencies>
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-server-spi</artifactId>
+            <version>22.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-server-spi-private</artifactId>
+            <version>22.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
 
-### Bước 4: Chạy Đóng Gói Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần
-Chạy `mvn package` Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Cầm Lấy File `custom-spi-demo-1.0.0.jar` Sinh Ra Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-Mang Bỏ Vào `/providers/` của Keycloak Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
-Tận Hưởng Quyền Năng Của Thượng Đế Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
+**Bước 2: Viết mã nguồn Java cho Provider**
+Tạo cấu trúc thư mục Java `src/main/java/com/company/keycloak/` và file `MarketingEventListenerProvider.java`:
+```java
+package com.company.keycloak;
+
+import org.keycloak.events.Event;
+import org.keycloak.events.EventListenerProvider;
+import org.keycloak.events.EventType;
+import org.keycloak.events.admin.AdminEvent;
+
+public class MarketingEventListenerProvider implements EventListenerProvider {
+
+    @Override
+    public void onEvent(Event event) {
+        if (event.getType() == EventType.REGISTER) {
+            String email = event.getDetails().get("email");
+            System.out.println("[MARKETING-SYNC] User " + email + " has registered. Syncing to CRM...");
+        }
+    }
+
+    @Override
+    public void onEvent(AdminEvent adminEvent, boolean includeRepresentation) {}
+
+    @Override
+    public void close() {}
+}
+```
+
+**Bước 3: Viết mã nguồn cho Provider Factory**
+Tạo tiếp file `MarketingEventListenerProviderFactory.java`:
+```java
+package com.company.keycloak;
+
+import org.keycloak.Config;
+import org.keycloak.events.EventListenerProvider;
+import org.keycloak.events.EventListenerProviderFactory;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.KeycloakSessionFactory;
+
+public class MarketingEventListenerProviderFactory implements EventListenerProviderFactory {
+
+    @Override
+    public EventListenerProvider create(KeycloakSession session) {
+        return new MarketingEventListenerProvider();
+    }
+
+    @Override
+    public void init(Config.Scope config) {}
+
+    @Override
+    public void postInit(KeycloakSessionFactory factory) {}
+
+    @Override
+    public void close() {}
+
+    @Override
+    public String getId() {
+        return "marketing-sync-listener";
+    }
+}
+```
+
+**Bước 4: Đăng ký Service**
+Tạo thư mục `src/main/resources/META-INF/services/` và tạo file có tên chính xác là `org.keycloak.events.EventListenerProviderFactory`.
+Bên trong file đó, ghi đường dẫn tuyệt đối tới lớp Factory của bạn:
+```text
+com.company.keycloak.MarketingEventListenerProviderFactory
+```
+
+**Bước 5: Biên dịch và Build Image Docker**
+Mở terminal, chạy lệnh Maven để tạo JAR:
+```bash
+mvn clean package
+```
+Sẽ có một file xuất hiện tại `target/marketing-sync-listener-1.0-SNAPSHOT.jar`.
+Tiếp theo, tạo file `Dockerfile` ở thư mục gốc:
+```dockerfile
+FROM quay.io/keycloak/keycloak:22.0.0 AS builder
+COPY target/marketing-sync-listener-1.0-SNAPSHOT.jar /opt/keycloak/providers/
+RUN /opt/keycloak/bin/kc.sh build
+
+FROM quay.io/keycloak/keycloak:22.0.0
+COPY --from=builder /opt/keycloak/ /opt/keycloak/
+ENV KEYCLOAK_ADMIN=admin
+ENV KEYCLOAK_ADMIN_PASSWORD=admin
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
+CMD ["start-dev"]
+```
+Build và chạy Docker:
+```bash
+docker build -t my-custom-keycloak .
+docker run --name custom-kc -p 8080:8080 my-custom-keycloak
+```
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+**Nghiệm thu:**
+1. Truy cập Admin Console `http://localhost:8080`, đăng nhập (admin/admin).
+2. Vào **Realm Settings** -> **Events** -> Chuyển qua tab **Event Listeners**.
+3. Bạn sẽ thấy `marketing-sync-listener` xuất hiện trong hộp thoại. Thêm nó vào danh sách và lưu lại.
+4. Mở cửa sổ ẩn danh, tiến hành đăng ký tài khoản mới (Register) cho người dùng.
+5. Quan sát Docker console log (hoặc dùng `docker logs custom-kc`). Bạn phải thấy dòng chữ `[MARKETING-SYNC] User <email> has registered...`.
+
+**Troubleshooting (Khắc phục sự cố):**
+- **Không thấy ID của EventListener trên màn hình UI:** Kiểm tra lại file `META-INF/services/...`. Tên file phải khớp với tên Interface của Keycloak, nội dung file phải chứa đường dẫn Package chính xác.
+- **Lỗi ClassNotFound khi Build Docker:** Đảm bảo cấu trúc Maven chuẩn, file JAR được sinh ra phải chứa thư mục `com/company/...` thay vì file JAR rỗng.
+- **Lỗi Provider Registration Failed:** Do dùng sai phiên bản dependency `keycloak-server-spi`. Phiên bản Keycloak Container chạy bản 22, thì dependency trong Maven cũng phải là 22.

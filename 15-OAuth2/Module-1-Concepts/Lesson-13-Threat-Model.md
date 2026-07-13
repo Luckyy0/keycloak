@@ -1,93 +1,126 @@
-# Lesson 13: Mô Hình Lưới Lọc Thảm Họa (Threat Model)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Hacker không bao giờ ngủ. Trong thế giới OAuth2/OIDC, bạn có thể thiết lập đúng Flow, nhưng nếu bị lệch một tham số, toàn bộ CSDL của bạn có thể bị lộ. Bài học cuối cùng về Oauth2 này tổng hợp 3 mũi tấn công Chí Mạng mà mọi chuyên gia Keycloak phải hiểu tường tận: XSS, CSRF, và Man-In-The-Middle (MITM).
+> **Goal:** Phân tích mô hình các mối đe dọa an ninh (Threat Model) đối với OAuth 2.0 dựa trên tiêu chuẩn RFC 6819. Hiểu sâu các hình thức tấn công vào quy trình ủy quyền và cách áp dụng các biện pháp phòng vệ thực tiễn trong cấu hình Keycloak.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Mũi Tấn Công XSS (Cross-Site Scripting) Hủy Diệt Token
-- **Hacker Làm Gì:** Kẻ thù nhúng được một đoạn code Javascript độc hại chạy trực tiếp trên Giao diện Web SPA (React/Vue) của bạn (Thông qua thẻ `<script>` ở bình luận bài viết chẳng hạn).
-- **Tai Họa Giáng Xuống:** Khi đoạn JS của Hacker chạy, nó sẽ thực thi lệnh `localStorage.getItem('access_token')`. Nó lấy được Chìa khóa JWT của User đang login và âm thầm gửi HTTP ném tuột về server của nó. Cướp Phiên (Session Hijacking) Hoàn Hảo Mù Lòa!
-- **Tấm Khiên Cản Phá (Bịt Cửa Token RAM Mạng):** Bạn PHẢI thiết lập Cơ chế gọi là `BFF (Backend For Frontend)` Đáy Lõi Trọng Lực API Oanh Thép Cắt Bọt. Lúc Này Backend OIDC Của Lãnh Chúa KHÔNG CẦN Trả Cục Access Token Về Cho Giao Diện Trình Duyệt LocalStorage Nữa. Nó Bọc Token Vào Cục **`HttpOnly Cookie`** Có Cờ `Secure=true`. Mã Script Dù Có XSS Tinh Ranh Thế Nào Cũng Đụng Vào Lệnh Chặn Tĩnh Của Trình Duyệt "Security Exception" Cấm Gọi Lệnh Đọc Cookie Kẽ Mạch! Token Được Lưu Dưới Thép, Gọi API Trình Duyệt Tự Gắn Vô Đầu Headers Lụa! 
+Giao thức OAuth 2.0 ban đầu được thiết kế linh hoạt nhưng lại không chứa sẵn nhiều lớp bảo mật mặc định ngoài việc phụ thuộc vào TLS/SSL. **RFC 6819 (OAuth 2.0 Threat Model and Security Considerations)** ra đời để liệt kê và phân tích các vectơ tấn công (attack vectors) có thể xảy ra trong luồng ủy quyền.
 
-### 1.2. Mũi Tấn Công CSRF (Cross-Site Request Forgery) Lừa Đảo Phiên
-- **Hacker Làm Gì:** Giả sử ngân hàng dùng API Chuyển Tiền bằng Cookie Token. Hacker dụ bạn mở một cái link có tên Miền rác `nhan-qua-free.com`. Trong cái trang Web Rác kia, nó viết sẵn 1 nút Form Bấm Lụa Gọi POST Giao Dịch API Bank Chuyển Tiền Vô Túi Hacker. Do Bạn Vừa Login Ngân Hàng Tab Bên Cạnh (Cookie Còn Sống Tĩnh Oanh Khung). Lệnh Giả Mạo Chạy Chóp Sóng Lấy Phiên Của Bạn Rút Mạch Máu Cắt!
-- **Tấm Khiên Cản Phá OIDC Đáy Lõi (Parameter State Đánh Gục CSRF Auth Lụa Mạch):** Trong Quá Trình Bắt Dội Mồi Login Code OAuth2, Keycloak Phát Sinh Một Tham Số Cực Quan Trọng Tên Lệnh Là **`State`**. Giá Trị Random Rỗng Tĩnh. Nếu Hacker Redirect Mồi Lừa User Để Ăn Cắp Session Đăng Nhập, OIDC Sẽ Yêu Cầu Khớp State Lấy Access Token Bọc. Trượt Cờ State Chữ Lệnh, Keycloak Vả 400 Bad Request Hủy Lụa Mạch CSRF Bất Chấp!
+### Các ranh giới niềm tin (Trust Boundaries)
+Mô hình rủi ro xoay quanh việc truyền dữ liệu nhạy cảm (Authorization Code, Access Token, Refresh Token) đi qua các khu vực không tin cậy. Các khu vực này bao gồm:
+1. **Trình duyệt của người dùng (User-Agent):** Dễ bị mã độc (Malware), XSS (Cross-Site Scripting), hoặc các tiện ích mở rộng (Extensions) đánh cắp dữ liệu.
+2. **Mạng truyền dẫn (Network):** Dễ bị nghe lén (Eavesdropping), tấn công Man-in-the-Middle (MitM) trên mạng Wi-Fi công cộng.
+3. **Ứng dụng của bên thứ ba (Client Application):** Mã nguồn có thể chứa lỗ hổng rò rỉ bí mật (Client Secret Leak), hoặc bản thân Client là một ứng dụng độc hại giả mạo (Phishing Client).
+
+### Các loại tấn công phổ biến theo RFC 6819:
+- **Token Theft (Đánh cắp Token):** Lấy được Access Token từ cơ sở dữ liệu của Client bị lỗi hoặc do Token bị ghi vào Log files.
+- **Authorization Code Interception:** Đánh cắp mã ủy quyền (Code) trên đường truyền hoặc thông qua các lỗ hổng của hệ điều hành Mobile (Custom URL Scheme hijacking).
+- **Cross-Site Request Forgery (CSRF):** Ép người dùng gửi một request ủy quyền ngoài ý muốn để gắn tài khoản của kẻ tấn công vào ứng dụng của nạn nhân.
+- **Phishing & Clickjacking:** Dụ dỗ người dùng nhập mật khẩu vào một trang đăng nhập giả mạo, hoặc nhúng trang đăng nhập thật vào một `iframe` ẩn.
 
 ---
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Đánh Chặn Mạch Hacker Nhờ Khớp Lệnh Thép Của Nginx Và Token Lõi Oanh Khung:
+Dưới đây là sơ đồ mô tả cơ chế tấn công **Authorization Code Interception** trên ứng dụng di động (Mobile App) và cách nó vượt qua bảo mật nếu không có PKCE.
 
 ```mermaid
-flowchart TD
-    A[Hacker Trộm Lệnh Cũ Chặn MITM Cáp Mạng Wifi Quán Cafe Cắt Rò] --> B[Gõ Cửa API Đập Lệnh Mạch Rút Data Khách Lụa Cũ Lệch Băng]
+sequenceDiagram
+    participant User as Người dùng (Resource Owner)
+    participant MaliciousApp as App Độc hại (Hacker)
+    participant LegitApp as App Hợp pháp (Client)
+    participant OS as Hệ điều hành (Mobile OS)
+    participant Keycloak as Authorization Server
+
+    LegitApp->>Keycloak: 1. Request Authorization (redirect_uri=myapp://callback)
+    Keycloak-->>User: 2. Hiển thị form Login
+    User->>Keycloak: 3. Nhập Username/Password hợp lệ
+    Keycloak->>OS: 4. Redirect về myapp://callback?code=123XYZ
     
-    B --> C{Threat Lọc 1: Lỗ Hổng Không Dùng Cáp TLS HTTPS Mở Dây Chữ Tĩnh OIDC?}
-    C -- Dùng HTTP Trơn Không Đáy Mã Hóa --> D[Hacker Sniff Packet Nhìn Rõ Token Nguyên Bản Base64 Chữ Lụa Base64 Cắt Cáp]
-    C -- Dùng HTTPS Bọc Thép AES-256 --> E[Packet Truyền Trên Dây Biến Thành Chuỗi Nhựa Mã Hóa Rác Hacker Không Thể Bẻ Lệnh Mạch Giải Mã!]
+    Note over OS: OS bị Hacker can thiệp (Custom URI Scheme Hijacking)
+    OS->>MaliciousApp: 5. OS gửi `code=123XYZ` cho App Độc hại thay vì App Hợp pháp
     
-    D --> F[Máy Chủ Backend Đọc Lệnh Token Đúng Yêu Cầu Chữ Ký Nhả Giao API Dịch Tiền Rút Lụa Lỗ Lủng Bọt Toàn Bộ Hệ Thống!]
-    
-    E --> G[Máy Server Chờ Đích Giải Mã HTTP Chống MITM Tuyệt Mật An Toàn Chóp Chống Replay Rác Oanh Mạch Rỗng]
+    MaliciousApp->>Keycloak: 6. Gọi Token Endpoint với `code=123XYZ`
+    Keycloak-->>MaliciousApp: 7. Cấp Access Token!
+    Note over MaliciousApp: Hacker đã chiếm quyền tài khoản!
 ```
+
+**Bản chất:** Vì Mobile App không thể giữ bí mật (không có Client Secret), bất kỳ ai lấy được `Code` đều có thể đổi lấy `Token`. 
+**Giải pháp:** Sử dụng PKCE (Proof Key for Code Exchange). Khi dùng PKCE, App hợp pháp sinh ra một `code_verifier` ngẫu nhiên. Khi Hacker lấy được Code, hắn không có `code_verifier` nên Keycloak sẽ từ chối đổi Token.
 
 ---
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc (Chặn Đứng SSRF Bằng Mạch Lọc Định Tuyến Nội Bộ Rỗng Khung Của Keycloak Lãnh Chúa)**
-> **Tội Ác Thiết Kế Giao Thức Khám Phá Rỗng (SSRF Rác Lưới OIDC Bơm Mạch Cắt Oanh):** Ở Các Luồng Đòi Chọt API Về Máy Chủ Bên Ngoài (Như Identity Brokering Bắt Link OIDC Của Google/Facebook Chạm Token OIDC Đáy Oanh). Bạn Tự Do Cho Phép Cấu Hình URL Do Người Dùng Nhập Tùy Ý Oanh Bọc Thép Json Trút Lụa Code Cấu Trúc Khung Rỗng API Lệch Băng Tần.
-> **Hậu Quả:** Kẻ Thù Nhập Link URL API Nội Bộ Trút Lụa (Ví Dụ: `http://localhost:1337/admin/delete-db`). Keycloak Cầm Token Và Bắn Request Của Nó Bằng Lệnh Chóp Trực Tiếp Từ Lõi Server OIDC Đập Xuyên Vành Đai Firewall Đâm Chết Con DB Nội Bộ Nhanh Cấp Tốc Dưới Dòng Code API Dữ (Server-Side Request Forgery Lỗi Đục Đáy Server Rỗng Khung Cấu Tĩnh Mạch Chóp Kéo).
-> **Biện Pháp Sống Còn Lớp Trọng Lực Thép OIDC Nhựa Bọc Cắt Chữ Kẽ API Mạch Lưới Cũ Khóa:** Luôn Cấu Hình Cờ Tính Năng Filter Khóa Địa Chỉ IP Rỗng Đáy Internal Của Proxy Giao Gọn Nginx Trước Khi Đưa Lệnh Cũ Gọi Tới Mạch Dưới Của Core Bức Cắt Khung Máy Chủ OIDC. Tuyệt Đối Cấu Lệnh Oanh Rác Bị Cấm Bay Trọn Từng Dòng Mạch Không Phun Dữ Lụa Code Kéo Rác Lõi DB Chặn Xuyên Ảo Vingroup!
+> **Bắt buộc sử dụng PKCE cho MỌI loại Client**
+> Mặc dù ban đầu PKCE chỉ dành cho Public Clients (Mobile, SPA), hiện tại các tiêu chuẩn bảo mật tối tân (BCP) yêu cầu áp dụng PKCE cho cả Confidential Clients. Điều này chặn đứng hoàn toàn việc tấn công tiêm mã (Code Injection) do đánh cắp Code từ server logs.
+
+> [!CAUTION]
+> **Không sử dụng Luồng ngầm định (Implicit Grant)**
+> Implicit Grant trả thẳng Access Token về URL (URI Fragment `#access_token=...`), khiến Token hiển thị ngay trên History của trình duyệt và dễ bị các mã độc JavaScript (XSS) đọc được. Tuyệt đối vô hiệu hóa luồng này và chuyển sang `Authorization Code + PKCE`.
+
+> [!WARNING]
+> **Phòng chống CSRF bằng `state` parameter**
+> Luôn luôn sinh ra một mã `state` ngẫu nhiên và mã hóa nó kèm theo session cục bộ trước khi chuyển hướng người dùng đến Keycloak. Khi Keycloak trả về, Client phải xác minh `state` khớp để đảm bảo luồng ủy quyền này do chính người dùng chủ động khởi xướng.
 
 ---
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cấu Hình Tĩnh Oanh Khung Dịch Lụa TLS HTTPS Và HSTS Chống MITM Ở Tầng Nginx:
-1. Bạn KHÔNG BAO GIỜ Chạy Cổng Mở Của Keycloak Production Ở Cảng 80 HTTP Tĩnh Trượt Bọt. Vì Access Token JWT Đưa Xuống Sẽ Trôi Nổi Cắt Lụa Nhìn Thấy Mắt Thường.
-2. Bạn Setup 1 Thằng Reverse Proxy Tên Là **Nginx** Chặn Ngay Ở Lớp Ngoài Vành Đai Bọc Thép OIDC.
-3. Kéo Chứng Chỉ Khóa Mã Hóa SSL (Let's Encrypt Cấp Đỉnh Dòng Mạch). Bật Cảng `443`.
-4. Viết Code Nginx Gắn Lệnh Cứng Bảo Vệ CSRF/XSS Oanh Cáp Trọng Lõi Tự Trị:
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name sso.congty.com;
-    
-    # Ép Bắt Buộc Dùng HTTPS Ở Cấu Hình Client Lệnh
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    
-    # Chống XSS Framing ClickJacking Chóp Khung Oanh Dữ Lụa Cắt Mạch
-    add_header X-Frame-Options SAMEORIGIN;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header X-Content-Type-Options nosniff;
-    
-    location / {
-        proxy_pass http://keycloak-backend:8080;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-    }
-}
-```
-5. Nhờ Bọc Nginx Khóa Rương Chóp Này, Mọi Cuộc Tấn Công Truy Cập Rút Kéo Token Mạng Bọt Của Cà Phê Wifi Bị Chặt Đứt Chữ Nghĩa Cũ Ở Lỗ Đục Rò Bằng HSTS Tự Hủy Lệnh Mã Mù Lòa!
+Để giảm thiểu rủi ro theo Threat Model, dưới đây là cách cấu hình Keycloak Client cho ứng dụng Front-end an toàn nhất:
+
+1. **Vô hiệu hóa Implicit Flow:**
+   - Trong Admin Console -> `Clients` -> Chọn client của bạn.
+   - Tại phần `Capability config`, **Tắt (OFF)** nút gạt `Implicit flow`.
+   - Đảm bảo `Standard flow` (Authorization Code) đang BẬT.
+
+2. **Bắt buộc áp dụng PKCE (Phòng chống Code Interception):**
+   - Chuyển sang tab `Advanced`.
+   - Tìm mục `Advanced Settings` -> `Proof Key for Code Exchange Code Challenge Method`.
+   - Đổi giá trị thành `S256` (Tuyệt đối không dùng `plain` hoặc để trống).
+
+3. **Ngăn chặn Clickjacking (X-Frame-Options):**
+   - Keycloak mặc định bảo vệ trang đăng nhập bằng cách chặn nhúng trang (embedding).
+   - Kiểm tra tab `Realm Settings` -> `Security Defenses` -> `X-Frame-Options` phải được đặt là `SAMEORIGIN` hoặc `DENY`.
 
 ---
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
-**1. Trong Luồng Đăng Nhập Của OIDC, Có Một Kiểu Tấn Công Lệnh Tên Là 'Token Substitution Attack' (Đánh Tráo Token). Cậu Hãy Giải Thích Nó Hoạt Động Ra Sao Và Cờ Bảo Mật Nào Của Access Token Giúp Cản Phá Nó Giao Dịch Rỗng Rút Tiền API Chóp Khung Kẽ Bọt Cắt Mạch?**
-- **Senior:** Dạ thưa sếp, Đây là Cuộc Tấn Công Vào Sự Ngu Ngốc Của Resource Server Cũ (Microservice Chống Cự Kém Của API OIDC Mạch Rỗng Lệnh Tĩnh).
-  - **Kẻ trộm Lệnh:** Nó Cố Tình Đăng Nhập Một App Dịch Vụ Bình Thường Bằng Acc Thường Và Bốc Lấy 1 Cục Access Token Hợp Lệ Của App Thường Đó (Ví Dụ App Đọc Sách).
-  - Nó Đem Cái Access Token Đang Sống Đó Trượt Nhanh Gửi Bắn Request Vô Thằng API Chuyển Tiền Của App Ngân Hàng Kéo Lụa Oanh Mạch Rút OIDC.
-  - API Của Ngân Hàng Không Có Mã Cấu Trúc Khung Rỗng Kiểm Lệnh Đáy. Bọc JWT Ném Vô Băm Chữ Ký RSA Vẫn Pass (Do Cùng Chữ Ký Keycloak Khớp Nhịp Đáy Mạng Kéo). API Tưởng Token Đúng Trả Data Tiền Rút Báo Thành Công Cắt Khóa Tĩnh Oanh!
-  - **Tấm Khiên Chặn Khóa Cờ:** Đó là Phải Chặn Cứng Cờ Khóa **`Audience (aud)`** Và Cờ Nhãn Khớp Lệnh **`Client ID (azp)`**. App Ngân Hàng API Lõi Bắt Buộc Phải Dò Cặp Claims Đó, Đòi Token Phải Có Đích Đến `aud` Bằng Lệnh Oanh Rỗng Của Chóp Cấu Trúc Bụng DB Mạch Tên Là 'App Bank' Trọn Từng Dòng, Nhắm Sai Audience Cút Lỗi 403 Đứt Trắng Mã Giao Lệnh!
+### Lộ lọt Client Secret trên Public Repository (GitHub)
+- **Sự cố:** Lập trình viên vô tình commit mã nguồn có chứa `client_secret` của một Confidential Client lên GitHub. Bot quét mã độc lấy được Secret và sử dụng nó để gọi API của Keycloak giả mạo Client.
+- **Cách xử lý:** 
+  1. Ngay lập tức đăng nhập Keycloak -> `Clients` -> `Credentials`.
+  2. Bấm nút **Regenerate Secret** để hủy Secret cũ.
+  3. Cấu hình lại ứng dụng.
+  4. Xem xét chuyển sang sử dụng mô hình xác thực mạnh hơn bằng Khóa công khai (Signed JWT / Client Assertion) thay vì dùng chuỗi Secret tĩnh.
 
 ---
 
-## 6. Tài liệu tham khảo (References)
-- **RFC 6819:** OAuth 2.0 Threat Model and Security Considerations.
-- **OWASP:** Top 10 API Security Risks.
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Phân biệt rủi ro bảo mật giữa Access Token và Authorization Code.**
+   - *Junior:* Access Token giống như chìa khóa nhà, có thể mở cửa ngay lập tức. Authorization Code chỉ là giấy hẹn, phải đổi lấy chìa khóa.
+   - *Senior:* Access Token mang tính Bearer (ai cầm cũng dùng được), rủi ro cao nếu lộ qua mạng. Authorization Code an toàn hơn vì nó dùng một lần (One-time use) và yêu cầu phải có Client Secret hoặc PKCE Verifier mới đổi được Token. Do đó Code có thể truyền qua Front-channel (Trình duyệt), còn Token phải lấy qua Back-channel (Server-to-Server).
+
+2. **Tham số `state` bảo vệ ứng dụng khỏi cuộc tấn công nào?**
+   - *Junior:* Chống lại CSRF (Cross-Site Request Forgery).
+   - *Senior:* Nó chống Login CSRF. Nếu không có `state`, hacker có thể đăng nhập tài khoản của hacker trên máy của hắn, lấy cái link redirect trả về mã Code, lừa nạn nhân click vào link đó. Nạn nhân sẽ bị tự động login vào tài khoản của hacker. Khi nạn nhân nhập thông tin thẻ tín dụng, hacker sẽ thấy được dữ liệu đó trong tài khoản của hắn.
+
+3. **Làm sao để Hacker có thể đánh cắp được Code trên Mobile? OS có phân quyền mà?**
+   - *Senior:* Trên các hệ điều hành cũ hoặc cấu hình lỏng lẻo, nhiều ứng dụng có thể cùng đăng ký lắng nghe một Custom URL Scheme (ví dụ `myapp://`). Nếu hacker cài một app độc hại và đăng ký chung scheme đó, hệ điều hành có thể bật nhầm app độc hại thay vì app hợp pháp, dẫn đến `Authorization Code Interception`. Tính năng App Links (Android) và Universal Links (iOS) ra đời để vá lỗ hổng này.
+
+4. **Tại sao PKCE lại giải quyết được vấn đề mất Code?**
+   - *Senior:* PKCE chia bí mật làm hai nửa theo thời gian thực. Lúc khởi tạo request, client sinh `verifier` (giữ bí mật) và gửi bản băm (hash) `challenge` lên server. Khi đổi Token, hacker có `Code` nhưng không có `verifier` (vì verifier nằm ở local memory của app hợp pháp). Mã băm không khớp, server từ chối cấp Token.
+
+5. **Theo RFC 6819, Phishing (Tấn công lừa đảo) nhắm vào OAuth diễn ra như thế nào?**
+   - *Senior:* Hacker dựng một trang web giống hệt trang đăng nhập của Keycloak nhưng khác tên miền (ví dụ: `auth-exampe.com` thay vì `auth-example.com`). Khi người dùng tin tưởng nhập Username/Password, hacker sẽ đánh cắp chúng, sau đó nó đóng vai trò là một client, dùng chính thông tin đó gọi luồng `Resource Owner Password Credentials Grant` (Direct Access Grants) để lấy Token từ Keycloak thật. Đây là lý do kiến trúc bảo mật hiện đại cấm tiệt Direct Access Grants.
+
+---
+
+## 7. Tài liệu tham khảo (References)
+
+- [RFC 6819 - OAuth 2.0 Threat Model and Security Considerations](https://datatracker.ietf.org/doc/html/rfc6819)
+- [OAuth 2.0 Security Best Current Practice](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics)
+- [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)

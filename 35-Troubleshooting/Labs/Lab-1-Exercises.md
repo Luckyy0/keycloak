@@ -1,45 +1,80 @@
-# Lab 1: Thoát Khỏi Địa Ngục Báo Đỏ (The Escape Room)
-
 > [!NOTE]
-> **Category:** Practical/Lab (Thực hành)
-> **Goal:** Luyện tập cảm giác bắt bug thực tế. Trong môi trường này, chúng ta sẽ tạo ra một App Login. Ban đầu, mọi thứ CỐ TÌNH bị phá hoại cấu hình. Chạy lên sẽ thấy toàn lỗi. Bạn sẽ đi theo hướng dẫn để vá từng lổ hổng một (Fix Error) cho đến khi nút Login màu Xanh rực rỡ tỏa sáng.
+> **Category:** Practical/Lab  
+> **Goal:** Mô phỏng các sự cố phổ biến của Keycloak trên môi trường thực tế và áp dụng các kỹ thuật đọc log, chuẩn đoán để khôi phục hệ thống.
 
-## 1. Yêu cầu (Prerequisites)
-- Docker Compose.
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## 2. Các bước thực hiện (Step-by-step)
+Hệ thống Keycloak của công ty bạn đột nhiên nhận được hàng loạt báo cáo lỗi từ người dùng. Bạn được cấp quyền truy cập vào máy chủ (thông qua Docker). Các lỗi được báo cáo bao gồm:
+1. Người dùng không thể đăng nhập, trang web liên tục báo lỗi "Invalid Client" hoặc "Invalid Redirect URI".
+2. Hệ thống bất ngờ bị treo cứng hoàn toàn, không thể vào được giao diện Admin Console, nghi ngờ lỗi tràn bộ nhớ (OOM).
 
-### Bước 1: Khởi Động Đống Đổ Nát
-Dùng file `docker-compose.yml` ở thư mục `code/`. Gõ:
-```bash
-docker-compose up -d
+Nhiệm vụ của bạn là vào vai một System Administrator, sử dụng các công cụ dòng lệnh để tìm nguyên nhân và khắc phục.
+
+## 2. Chuẩn bị Môi trường (Prerequisites)
+
+- Một máy ảo hoặc máy local có cài đặt **Docker** và **Docker Compose**.
+- Tải file docker-compose giả lập lỗi do giảng viên cung cấp (nếu có), hoặc tự tạo một file `docker-compose.yml` cố tình cấu hình sai:
+  - Cấu hình `-Xmx` quá nhỏ (ví dụ 128m).
+  - Không thiết lập biến `KC_PROXY`.
+
+*Tạo nhanh file `docker-compose.yml` có lỗi:*
+```yaml
+version: '3.8'
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    command: start-dev
+    environment:
+      - KC_DB=dev-file
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      # Cố tình set bộ nhớ cực thấp để tạo lỗi OOM
+      - JAVA_OPTS_APPEND=-Xms64m -Xmx128m 
+    ports:
+      - "8080:8080"
 ```
-Chạy xong, máy có Cục Keycloak `8080`.
-Tạo một Realm tên là `Lab-Troubleshoot`.
-Tạo Client tên `my-bug-client` (Loại OIDC, Bật Access Type là Confidential -> Đòi Client Secret).
 
-### Bước 2: Thưởng Thức Bệnh Lạc Đường `redirect_uri mismatch`
-- Mở một Tab ẩn danh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Dán Đoạn Code sau lên thanh URL (Cố tình gọi OIDC Flow Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy):
-  `http://localhost:8080/realms/Lab-Troubleshoot/protocol/openid-connect/auth?client_id=my-bug-client&response_type=code&redirect_uri=http://dia-chi-ma-toi-thich.com/callback`
-- **Kết Quả:** Bị Trả Về Màn Hình Trắng Có Chữ Đỏ Tổ Chảng "Invalid parameter: redirect_uri".
-- **Hành Động Fix Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:** Quay về Admin Console -> Clients -> `my-bug-client` -> Mở ô Valid Redirect URIs -> Gõ vào ĐÚNG Y CHANG cái Dòng Địa Chỉ `http://dia-chi-ma-toi-thich.com/callback` -> Lưu Lại Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-- Ra Tab ẩn danh Refresh Lại -> Màn hình đăng nhập Tuyệt Đẹp Đã Hiện Ra Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Đăng Nhập Xong Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Trình Duyệt Bị Đẩy Về Link Kèm Theo Cái Tham Số Nhỏ Xíu `?code=123-abc...` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Hãy Copy Nhanh Cái Dòng Đó Vào Notepad Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-### Bước 3: Thưởng Thức Bệnh Trộm Cắp Mạo Danh `invalid_client`
-- Bật cURL bằng dòng lệnh. Cầm Cái Code Vừa Xin Được Gửi Lên Đòi Đổi Thành Token Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh:
-```bash
-curl -X POST http://localhost:8080/realms/Lab-Troubleshoot/protocol/openid-connect/token \
-  -d "grant_type=authorization_code" \
-  -d "code=CÁI_MÃ_CODE_VỪA_COPY_BƯỚC_2" \
-  -d "redirect_uri=http://dia-chi-ma-toi-thich.com/callback" \
-  -d "client_id=my-bug-client" \
-  -d "client_secret=TÔI_CỐ_TÌNH_GÕ_SAI_MẬT_KHẨU"
-```
-- **Kết Quả Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp:** Json trả về 401 `{"error":"invalid_client"}` Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
-- **Hành Động Fix Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:** Chạy Vào Admin Console -> Vào Lại Client Chữ `Credentials`. Copy Đúng Cái Mật Khẩu Siêu Cứng Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Xong Chạy Lệnh cURL.
+### Bước 1: Kích hoạt hệ thống lỗi
 
-### Bước 4: Thưởng Thức Bệnh Bánh Mì Đã Thiu `invalid_grant`
-- Ở Bước 3 Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, BẠN CHẮC CHẮN SẼ BỊ BÁO JSON TRẢ VỀ: `{"error":"invalid_grant"}` Cho Dù Đã Nhập Đúng `client_secret` Oanh Khung Dịch Lụa Mạch Lệnh! 
-- **Giải Thích Hiện Tượng Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:** Do Ở Bước 2 Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Cái Mã `code` Đổi Ra Để Chờ Bạn Lấy Nó Chạy Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, NÓ CHỈ SỐNG CÓ 1 PHÚT Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bạn Ngồi Đọc Kỹ Hướng Dẫn Tới Đây Đã Quá Trễ Rồi Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. Bánh Mì Nó Thiu! Thằng Server Trả Về Báo Quá Hạn Cấp Phép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
-- **Hành Động Fix Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp:** Quay Trở Lại Bước 2. Bấm Chạy Lại Link. Lấy Lại Thằng Dãy CODE MỚI Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần! Rồi Quay Trực Tiếp Lại Lệnh Curl Nhập Vào Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! 
-- **BÙM!** Bạn Nhận Về Cuộn Json Dài Hàng Ngàn Chữ Bọc Cái TOKEN Quý Giá Trong Tay Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Bạn Đã Trở Thành Dev Cứng Cựa Khắc Phục Lỗi Chuyên Nghiệp Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+1. Mở Terminal, đi đến thư mục chứa file `docker-compose.yml`.
+2. Chạy lệnh: `docker-compose up -d`.
+3. Đợi vài phút để Keycloak khởi động (hoặc sụp đổ).
+
+### Bước 2: Điều tra lỗi OutOfMemoryError (OOM)
+
+1. Mở trình duyệt và truy cập `http://localhost:8080`. Bạn sẽ thấy trang tải vô tận hoặc báo `Connection Refused`.
+2. Truy xuất Log của Container bằng lệnh:
+   ```bash
+   docker logs --tail 200 keycloak
+   ```
+3. **Tìm kiếm bằng chứng:** Hãy tìm trong log các đoạn có chữ `ERROR` hoặc `Exception`. Bạn sẽ nhanh chóng bắt gặp dòng `java.lang.OutOfMemoryError: Java heap space`.
+4. **Khắc phục:** Mở file `docker-compose.yml`, chỉnh lại thông số `JAVA_OPTS_APPEND`:
+   ```yaml
+   - JAVA_OPTS_APPEND=-Xms512m -Xmx1024m
+   ```
+5. Chạy lại `docker-compose up -d` để update vùng nhớ. Sau vài phút, giao diện Admin sẽ lên bình thường.
+
+### Bước 3: Điều tra lỗi "Invalid redirect uri"
+
+1. Truy cập Admin Console, tạo một Realm `test-realm` và một Client `test-client`.
+2. Cố tình để trống mục `Valid Redirect URIs`.
+3. Mở tab mới, cố gắng giả lập một request đăng nhập bằng cách nhập trực tiếp URL (thay `<IP>` bằng localhost):
+   `http://localhost:8080/realms/test-realm/protocol/openid-connect/auth?client_id=test-client&response_type=code&redirect_uri=http://app.local/callback`
+4. Giao diện Keycloak sẽ hiển thị cảnh báo "Invalid parameter: redirect_uri".
+5. **Điều tra:** Vào Keycloak Admin Console -> Realm Settings -> Bật tính năng **Events** (Save Events: ON).
+6. F5 lại trang lỗi kia một lần nữa.
+7. Vào mục **Events** trên Admin Console, bạn sẽ thấy một bản ghi lỗi có type `LOGIN_ERROR` và Error là `invalid_redirect_uri`.
+8. **Khắc phục:** Vào cấu hình của Client `test-client`, thêm `http://app.local/callback` vào mục Valid Redirect URIs. Quay lại reload trang lỗi, giao diện Form Login sẽ hiển thị thành công.
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+### 4.1. Nghiệm thu
+- **Tiêu chí 1:** Container chạy ổn định trên 15 phút không bị khởi động lại tự động do OOM. Sử dụng lệnh `docker stats` để xác nhận bộ nhớ đang ở mức ~600MB - 800MB.
+- **Tiêu chí 2:** Tab giả lập request login hiển thị được form đăng nhập Username/Password, trên thanh địa chỉ có chứa `state` và `client_id` hợp lệ.
+
+### 4.2. Khắc phục sự cố (Troubleshooting)
+- **Nếu Docker không start được sau khi sửa:** Có thể cú pháp YAML bị lỗi (thụt lề sai khoảng trắng). Hãy kiểm tra file bằng các công cụ YAML validator.
+- **Vẫn lỗi "Invalid redirect uri":** Hãy chắc chắn bạn không gõ dư dấu slash (`/`) ở cuối URL. Keycloak đối chiếu chuỗi URL theo dạng "Exact match" (khớp chính xác). Nếu config là `http://app.local/callback` mà gửi `http://app.local/callback/` thì vẫn là lỗi.
+- **Không thấy log Event:** Hãy chắc chắn bạn bật lưu Event cho ĐÚNG Realm (trong trường hợp này là `test-realm`), việc bật Event ở `master` realm sẽ không thu thập được log của `test-realm`.

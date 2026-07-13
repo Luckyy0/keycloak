@@ -1,64 +1,69 @@
-# Lab 1: Thay Áo Vương Quốc và Phép Tái Sinh
-
 > [!NOTE]
-> Bài Lab này sẽ biến bạn thành một Nghệ Nhân Theme OIDC. Chúng ta sẽ thay đổi Giao diện trang Đăng Nhập cùi bắp mặc định của Keycloak bằng logo tự chế, sau đó Export Vương Quốc ra File Json để dọn nhà.
+> **Category:** Practical/Lab
+> **Goal:** Làm quen với việc khởi tạo, cấu hình cơ bản và quản lý các luồng thiết lập cho một Realm độc lập trong Keycloak.
 
-## Chuẩn bị
-- Máy có Docker và Docker-Compose.
+## 1. Kịch bản Thực hành (Lab Scenario)
+Công ty của bạn có hai bộ phận riêng biệt: "Nhân sự (HR)" và "Kinh doanh (Sales)". Việc sử dụng chung một tập người dùng (Users) và chính sách (Policies) trên `master` realm sẽ gây rủi ro bảo mật và khó khăn trong việc quản lý phân quyền độc lập.
+Trong bài Lab này, bạn sẽ tạo một Realm hoàn toàn mới mang tên `Company-HR`. Trong Realm này, bạn sẽ cấu hình các chính sách đăng nhập riêng, cấu hình chủ đề (Theme) và thiết lập tài khoản User cơ bản để sẵn sàng cho các ứng dụng nội bộ của khối Nhân sự.
 
-## Bước 1: Ráp Khung Áo Giáp Theme
+## 2. Chuẩn bị Môi trường (Prerequisites)
+- Đã cài đặt và khởi chạy Keycloak (ví dụ thông qua Docker hoặc Standalone).
+- Một trình duyệt web (Chrome/Firefox).
+- Có thông tin đăng nhập vào `master` realm qua Keycloak Admin Console (mặc định là `admin`/`admin`).
 
-1. Đi vào thư mục `05-Realms/code`. 
-2. Khám phá cấu trúc Theme chúng ta chuẩn bị đưa vào Keycloak:
-   - `themes/vingroup-theme/login/theme.properties`: Nơi khai báo Cấu hình Kế thừa (Base on Keycloak theme).
-   - `themes/vingroup-theme/login/resources/css/custom.css`: Nơi bạn phá vỡ giao diện CSS.
-3. Mở file `docker-compose.yml`. Quan sát Volume Mount:
-   `- ./themes/vingroup-theme:/opt/keycloak/themes/vingroup-theme:ro`
-   Việc Mount này chính là Quyền Năng "Sửa Cấu Trúc Khung Nhựa Cháy Sóng" Code Front-end không cần Build Lại!
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-## Bước 2: Bật Cụm Động Cơ Kéo Khách Nhựa
+### Bước 3.1: Tạo mới một Realm
+1. Mở trình duyệt và truy cập vào Keycloak Admin Console: `http://localhost:8080/admin/` (hoặc URL tương ứng của bạn).
+2. Đăng nhập bằng tài khoản Administrator.
+3. Ở menu thả xuống phía trên cùng bên trái (thường đang hiển thị `master`), click chuột và chọn nút **Create Realm**.
+4. Điền vào mục **Realm name**: `Company-HR`.
+   *(Lưu ý: Tên Realm có phân biệt chữ hoa chữ thường. Không nên sử dụng khoảng trắng trong tên Realm).*
+5. Nhấn nút **Create**. Giao diện sẽ tự động chuyển sang môi trường quản lý của Realm `Company-HR`.
 
-1. Khởi động OIDC bằng lệnh Thép Tĩnh Nền:
-```bash
-docker-compose up -d
-```
-2. Đăng Nhập Chỉnh Sửa Tại Admin Console: `http://localhost:8080/admin` (admin/admin).
-3. Tạo 1 Lãnh Thổ Realm Mới: `Vingroup`.
+### Bước 3.2: Cấu hình chính sách đăng nhập (Login Settings)
+1. Trong Admin Console của Realm `Company-HR`, tìm đến menu **Realm Settings** ở thanh bên trái.
+2. Chọn tab **Login**.
+3. Cấu hình các tuỳ chọn sau để nâng cao trải nghiệm và bảo mật cho nội bộ công ty:
+   - **User registration**: Bật thành **ON**. (Cho phép nhân viên mới tự tạo tài khoản).
+   - **Forgot password**: Bật thành **ON**. (Cho phép nhân viên tự khôi phục mật khẩu).
+   - **Remember me**: Bật thành **ON**.
+4. Nhấn **Save** ở cuối trang.
 
-## Bước 3: Khoác Áo Theme Cho Khung Rỗng Login
+### Bước 3.3: Tinh chỉnh Theme cơ bản
+1. Vẫn ở trong phần **Realm Settings**, chuyển sang tab **Themes**.
+2. Tại mục **Login theme**, chọn `keycloak` (hoặc theme tuỳ biến nếu đã deploy).
+3. Tại mục **Account theme**, chọn `keycloak`.
+4. Nhấn **Save**.
 
-1. Vẫn Trong Realm `Vingroup`, Bấm Mở Menu `Realm Settings` -> Tab `Themes`.
-2. Ở Dòng `Login Theme`, Bạn Kéo Chuột Xổ Xuống, Chắc Chắn Sẽ Thấy Tên Lệnh Gắn `vingroup-theme` Của Cậu Dev Vừa Áp Kéo Trọng RAM. (Nếu không thấy tức là Volume Mount Docker đang lỗi đường dẫn hoặc quên Restart).
-3. Bấm Lệnh Chặn `Save`.
-4. Mở Tab Trình Duyệt Riêng Tư, Trút Thử Đường API Login Form Rỗng OIDC Dọc Mũi: `http://localhost:8080/realms/Vingroup/account`. 
-5. BÙM! Logo Đỏ Chót Của Keycloak Đã Biến Mất, Trang Web Có Nền Thay Màu Đẹp Lành Rỗng Nhựa Do Mã CSS Của Bạn Lọc Lệnh Kéo Cắt.
+### Bước 3.4: Tạo Người dùng (User) trong Realm mới
+1. Đi tới menu **Users** ở thanh bên trái (thuộc khối Manage).
+2. Nhấn nút **Add user**.
+3. Cấu hình thông tin cơ bản:
+   - **Username**: `hr-manager`
+   - **Email**: `manager@hr.company.com`
+   - **First Name**: `Alice`
+   - **Last Name**: `Smith`
+   - **Email Verified**: **ON** (Bỏ qua bước xác thực email để thuận tiện thực hành).
+4. Nhấn **Create** (hoặc Save tuỳ phiên bản).
+5. Chuyển sang tab **Credentials** của user `hr-manager` vừa tạo.
+6. Nhấn **Set password**. Nhập mật khẩu (ví dụ: `password123`) và tắt tuỳ chọn **Temporary** thành **OFF**. Nhấn **Save**.
 
-## Bước 4: Sao Lưu Rút Củi Đáy Vương Quốc Ra JSON Nóng
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-1. Ta Vừa Có Theme Đỉnh Và Realm Đẹp. Trút API Để Nhét Lưu Dữ Ra Ổ Cứng Máy Laptop Kẽ Gãy Cụt.
-2. Ép Tắt Nút Docker Để Vào Chế Độ Rút Export An Toàn Không Mạch Kẽ Đứt Ngầm Oanh RAM Đáy:
-```bash
-docker stop kc_theme_server
-```
-3. Khai Báo Phóng Lệnh Docker Đáy Bọc Run Container Export Rỗng (Mount Thư Mục Máy Laptop Vô Thùng Lấy Text):
-```bash
-docker run --rm \
-  -v ./export:/opt/keycloak/data/export \
-  -v ./themes/vingroup-theme:/opt/keycloak/themes/vingroup-theme \
-  -e KC_DB_URL=jdbc:postgresql://postgres_db_theme:5432/keycloak \
-  -e KC_DB_USERNAME=keycloak \
-  -e KC_DB_PASSWORD=password \
-  --network code_theme-network \
-  quay.io/keycloak/keycloak:24.0.1 \
-  export --dir /opt/keycloak/data/export --users skip
-```
-*(Nếu Lỗi Mạch Kéo Database DNS Docker Phẳng, Có Thể Trút Nhanh Export Qua Giao Diện Admin Của Cụm Cháy Lúc Sống Khung Đỉnh Tĩnh OIDC Bọc)*
+### 4.1. Nghiệm thu kết quả
+1. **Kiểm tra màn hình Account Console**:
+   Mở một tab ẩn danh (Incognito window) và truy cập URL của Account Console dành riêng cho Realm `Company-HR`:
+   `http://localhost:8080/realms/Company-HR/account/`
+2. **Kiểm tra tuỳ chọn Login**:
+   Ở trang đăng nhập, bạn sẽ thấy các tính năng vừa bật xuất hiện:
+   - Nút `Register` để đăng ký tài khoản.
+   - Nút `Forgot password?` để khôi phục.
+   - Checkbox `Remember me`.
+3. **Đăng nhập thử**:
+   Sử dụng tài khoản `hr-manager` (với mật khẩu `password123`) để đăng nhập. Nếu đăng nhập thành công và truy cập vào giao diện quản lý tài khoản cá nhân (Account Console), bài Lab đã hoàn thành xuất sắc.
 
-## Bước 5: Dọn Chiến Trường
-Bạn Tự Dọn Lệnh Kéo Dọc Mũi Rỗng Kẽ:
-```bash
-docker-compose down -v
-```
-
-> [!TIP]
-> Chỉnh Theme Trực Tiếp Volume Này Giúp Làm Tốc Độ Code Web Lên Đỉnh Nhanh Nút API Phẳng Khung Chặn Bọc Không Tốn Mấy Cú Nhấp Chuột Đít Mạch Kép! Hãy Sử Dụng CSS Inspect F12 Chrome Tìm Mã Lệnh Chữ Rỗng Đi Kéo Đít Thằng RedHat Để Đè Class Xé Áp Nhựa Sóng Nút 8080 Kéo Ra Nhất Lõi!
+### 4.2. Khắc phục sự cố (Troubleshooting)
+- **Lỗi "Invalid username or password"**: Kiểm tra lại việc cấu hình mật khẩu ở tab Credentials. Hãy chắc chắn bạn đã đặt **Temporary** thành OFF, nếu là ON thì Keycloak sẽ bắt buộc người dùng đổi mật khẩu trong lần đăng nhập đầu tiên.
+- **Không tìm thấy URL của Realm**: Ghi nhớ cấu trúc URL cho Account Console: `/realms/{realm-name}/account/`. Nếu gõ sai tên Realm (nhớ phân biệt chữ hoa chữ thường), Keycloak sẽ trả về lỗi 404 Not Found.
+- **Lỗi liên quan đến SSL/HTTPS**: Nếu Keycloak của bạn đang cấu hình yêu cầu HTTPS (SSL Required = external), việc truy cập qua `http://localhost` ở môi trường ngoài có thể gặp lỗi. Bạn cần tắt tính năng Require SSL trong cấu hình Realm nếu chỉ dùng HTTP, hoặc cấu hình SSL hợp lệ.

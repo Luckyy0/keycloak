@@ -1,77 +1,120 @@
-# Lesson 8: Điểm Nổ (Execution)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Nếu Flow (Luồng) là sa bàn chiến thuật, Sub-flow là các sư đoàn, thì **Execution (Thực thi)** chính là từng anh lính cầm súng nổ súng trên chiến trường. Mỗi Execution là một mảnh logic code nhỏ, được giao một nhiệm vụ duy nhất (ví dụ: vẽ form password, gửi email, kiểm tra IP). Cùng tìm hiểu xem kho vũ khí Execution của Keycloak có những gì.
+> **Goal:** Định nghĩa và giải phẫu thành phần Authentication Execution, giải thích vai trò của nó như là các viên gạch xây dựng (building blocks) tạo nên cấu trúc đồ thị của mọi luồng xác thực trong Keycloak.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Execution Là Gì?
-Execution Là Đơn Vị Cấu Thành Nhỏ Nhất Trong Bộ Động Cơ Authentication Flow Của Keycloak.
-- Thực Chất, Mỗi Execution Thường Tương Ứng Với Một Class Java Trực Tiếp Code Theo Chuẩn Của **SPI (Service Provider Interfaces)** Nằm Đằng Sau Lõi Máy Chủ.
-- Nhiệm Vụ Của Nó Rất Cụ Thể: Ví Dụ Cái Thì Chặn Bắt Password Và Đem Băm Nó Ra Muối, Cái Thì Chuyên Phát Hiện Phân Tích Xem Mã 6 Số OTP Được Nhập Vào Từ Bàn Phím Có Khớp Thời Gian TOTP Hash Với Đồng Hồ Của Server Không.
+Trong mô hình kiến trúc của Keycloak Authentication, một Luồng (Flow) không có sẵn logic riêng biệt. Luồng chỉ là một danh sách hoặc một vùng chứa (container). Logic thực thi thực sự nằm ở **Authentication Executions (Các bước thực thi)**. 
 
-### 1.2. Các Execution Nổi Bật Được Cung Cấp Sẵn Dưới Kho Báu Mặc Định
-Bên Trong Admin Console Keycloak, Bạn Được Hãng Cung Cấp Tặng Rất Nhiều Đạn Dược Dùng Chung:
-1. **Username Password Form:** Hiển Thị Và Xác Thực Thông Tin Điền Vào Cặp Username + Pass Trực Diện. 
-2. **WebAuthn Passwordless Authenticator:** Giao Thức Màn Hình Chạm Khóa Vân Tay Mở Tương Lai FIDO Không Cần Mật Khẩu (Bypass Password Form Cực Kỳ Sướng).
-3. **Cookie:** Bí Thuật Để Bypass Session SSO Ngầm Mà Không Vẽ Đòi Form Mới Đăng Nhập Lại Từ Form Tương Tác 1, Nó Cho Qua Tự Động Rất Kính Rút Trắng Bọt Nhanh Khách Trải Nghiệm Mượt.
-4. **Deny Access:** Một Khối Tàn Độc Chuyên Để Kết Hợp Dùng Vào Conditional Flow. Nếu Bạn Phát Hiện Thấy Bọn Hacker Truy Cập Vào Từ Địa Chỉ Nước Ngoài Bằng Cảnh Sát "Condition-IP-Geo" Nhả Cờ True Báo Nguy Hiểm Độc Hại. Cái Khối "Deny Access" Chứa Cục Đất Sét Nổ Tung Tự Động Sẽ Ngắt Rò Điện Chặn HTTP Reject Văng Mặt Lỗi 403 Forbidden Từ Chối Phục Vụ Ngay Lập Tức Bóp Cổ Luồng Dòng OIDC Cắt Truy Cập Triệt Để!
+Có thể coi một **Execution** như một hàm chức năng độc lập (Function) thực thi một hành động xác định (Authenticator, Form Action, hoặc Condition). Khi Keycloak đánh giá (evaluate) một Authentication Flow, thực chất nó đang duyệt qua danh sách các Execution này từ trên xuống dưới.
 
----
+Mỗi Execution đại diện cho một liên kết (binding) giữa Luồng (Flow) và một **Authenticator Factory**. 
+Ví dụ: 
+- Bạn có một mã nguồn Java tên là `UsernamePasswordFormAuthenticator`.
+- Khi bạn đưa module này vào Browser Flow, bản ghi (record) cấu hình gắn kết module đó với vị trí số 1 của luồng được gọi là một **Execution**.
+
+Một Execution mang trong mình ba thuộc tính cấu hình trọng yếu:
+1. **Requirement (Toán tử mức độ)**: Quyết định tính bắt buộc hay tùy chọn (`REQUIRED`, `ALTERNATIVE`, `DISABLED`, `CONDITIONAL`).
+2. **Priority/Order (Thứ tự ưu tiên)**: Chỉ định vị trí thực hiện trong danh sách luồng.
+3. **Configuration (Cấu hình riêng)**: Một số Execution cho phép gắn thêm các biến tham số tùy chỉnh phụ thuộc (ví dụ thiết lập độ khó của reCAPTCHA, tên của Cookie cần kiểm tra).
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Bắn Dòng Cục Json Qua Một Đoạn Execution Java Tự Cấu Tạo Của Keycloak Lõi Hashing OTP Cắt Rò Rỉ:
+Khi Auth Engine chạy, nó duy trì một trạng thái trạng thái chuyển tiếp (State Machine). Nó giao tiếp với từng Execution bằng cách gọi hàm `authenticate(context)`.
 
 ```mermaid
-flowchart TD
-    A[Mặt Phẳng Sub-Flow Nhả Cửa] --> B[Dòng Cáp Kết Nối Truyền Thẳng Vào Cục Execution Của Lõi SPI Cục: 'OTP Form' Thực Thi]
-    B --> C{Xử Lý Nhiệm Vụ Được Giao Mã Code Java Backend OTP Validate Rời Rạc Chống Tràn Token}
+sequenceDiagram
+    participant Engine as Keycloak Flow Engine
+    participant Exec1 as Execution 1 (Cookie)
+    participant Exec2 as Execution 2 (Password)
+    participant Exec3 as Execution 3 (OTP)
+
+    Engine->>Engine: Resolve Authentication Flow
     
-    C -- Mã Cũ Đã Quá Trễ Nhịp Lệch TOTP --> D[Trả Mã Về Mặt Cho Sub-Flow Vỏ Lệnh Trạng Thái Của Lõi: Cờ False Failure Bắn Rớt Bọc Nhựa Nhanh Form Rác]
-    D --> E[Sub-Flow Phân Rã Chặt Đứt Phiên Render Form Chửi Đỏ Chót Wrong Màn Hình Hủy Diệt Luồng Không Token]
+    rect rgb(230, 240, 255)
+        note right of Engine: Duyệt qua Execution 1
+        Engine->>Exec1: Invoke authenticate()
+        Exec1-->>Engine: SUCCESS
+    end
     
-    C -- Mã Vừa Khít Đồng Hồ Hệ Thống Code Trùng Khớp Kính --> F[Trả Mã Về Đáy Mặt Flow Vỏ Lệnh Trạng Thái Của Lõi: Cờ True Success Mở Khóa Đáy Form Thép]
-    F --> G[Sub-Flow Mỉm Cười Đẩy Khách Sang Vòng Bọc Execution Nằm Phẳng Liền Dưới Cục Vừa Xong Trải Lụa Rỗng Bypass Hoặc End Nhả Token Rút Dòng Khách Sạch Test Đáy Network]
+    rect rgb(230, 255, 230)
+        note right of Engine: Execution 1 thành công. Flow kết thúc sớm (Bypass)
+        Engine->>Engine: Issue Token & Session
+    end
+    
+    note over Engine: Nếu Execution 1 thất bại (ATTEMPTED), duyệt tiếp...
+    
+    rect rgb(255, 240, 230)
+        note right of Engine: Duyệt qua Execution 2
+        Engine->>Exec2: Invoke authenticate()
+        Exec2-->>Engine: CHALLENGE (Render Form)
+        Engine-->>Browser: Show Password Page
+        Browser->>Engine: Submit Pwd Data
+        Engine->>Exec2: Invoke action()
+        Exec2-->>Engine: SUCCESS
+    end
+    
+    rect rgb(255, 230, 240)
+        note right of Engine: Duyệt qua Execution 3
+        Engine->>Exec3: Invoke authenticate()
+        Exec3-->>Engine: FAILURE
+        Engine-->>Browser: Error Page / Block Session
+    end
 ```
 
----
+**Các Trạng thái trả về cấp thấp của Execution (AuthOutcome):**
+- `SUCCESS`: Execution hoàn thành nhiệm vụ xuất sắc. Engine chuyển sang Execution kế tiếp.
+- `CHALLENGE`: Execution cần dữ liệu đầu vào. Engine đình chỉ luồng, trả về HTTP Response (HTML, JSON) cho người dùng.
+- `ATTEMPTED`: Execution không thể thành công (vd: Cookie không tồn tại) nhưng không gây lỗi. Engine bỏ qua và đi tiếp. Thường dùng cho các Execution `ALTERNATIVE`.
+- `FAILURE`: Execution gặp lỗi nghiêm trọng (vd: Nhập sai mật khẩu quá số lần). Engine ngắt luồng ngay lập tức.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc (Luôn Xếp Execution Theo Logic Nhận Diện Từ Mềm Đến Cứng Nhất Mạch Nhựa Kéo Lưới Bảo Mật Tránh Lộ Trải Nghiệm UI Rác Không Cần)**
-> **Tội Ác Thiết Kế Nhét Cục Bừa Bãi Dễ Ăn Gậy Logic Bot Nhựa Đánh Sập Lệnh Database Bề Mặt Khách OIDC:** Dev Có Xu Hướng Vứt Mọi Khối Nhặt Được Vô Theo Sở Thích Mắt Nhìn, VD Bỏ Khối "OTP Form" Nhảy Nằm Chồm Hổm Trên Thượng Tầng Nhất Trước Luôn Cả Cái Khối Chứa Form "Username Password".
-> **Hậu Quả:** Khách Vừa Load Trang Form Lệnh Chưa Kịp Nhìn Rõ Vỏ Login Đã Thấy Web Yêu Cầu Nhập Mỗi Mã Số 6 OTP Trong Mù Lòa! Vấn Đề Là Máy Keycloak Chưa Có Username Pass Mạch Đáy Value Form Render Sao Đào Ở Đâu Ra Cái Seed Đáy Secret Của OTP Để Đi So Mã Căn Cứ Code UUID Của User Tương Thích Lúc Giải Mã Rỗng Database Bức Cắt? Lỗi 500 Văng Ngược! Hoặc Chạy Thua Bot Bơm Lệnh Rác Đè Chặn Kéo Trút OOM Token Đáy Network Do Nó Không Dò Tên Hợp Lệ Của Dân Dùng DB Tương Lai Đáy Cụt Form Cũ Trước Đỉnh Code.
-> **Biện Pháp Sống Còn Nhét Vào Trục Trọng Lực Ống Json Đáy Luồng:** Các Khối Execution Luôn Setup Đi Vào Database Với Chặn Filter Top-Down Lọc Bot Chống Khách Giả: 
-> Cấp 1 (Chuyên Khai Thác Danh Tính ID Cookie Form, Mật Khẩu Dân Chạm).
-> Cấp 2 (Check MFA Điều Kiện Rẽ Khối Quét Xác Thực Ngoại Tuyến: Email Link/ OTP Form Nhựa).
-> Cấp Cứu Mạch Nhựa Cuối Chót Chặn Lõi API Thép OIDC Cuối Nhất (Cấp Này Rất Sạch Test Mạng Lỗ Trống Của Máy Bơm Nhả Token Access Tự Trị Nhanh Rút Trải Lụa Tĩnh Cho App Gọi Mở Cửa Phun Dữ Liệu Báo API Khách Dùng Chóp!).
+> [!CAUTION]
+> **Biến đổi trạng thái chia sẻ (Shared State Mutation)**: Các Execution trong cùng một luồng giao tiếp với nhau bằng cách sử dụng `AuthenticationSessionModel` (thông qua `context.getAuthenticationSession().setAuthNote()`). Nếu viết Custom Execution, cẩn thận không ghi đè (overwrite) các key quan trọng của các Built-in Execution của Keycloak.
 
----
+> [!IMPORTANT]
+> **Thứ tự Execution ảnh hưởng lớn đến bảo mật**: Nếu bạn đặt Execution `Conditional OTP` trước `Username Password`, luồng sẽ đánh giá lỗi vì OTP yêu cầu phải biết User là ai để kiểm tra điều kiện MFA, nhưng do Username chưa được nhập nên thông tin User chưa tồn tại trong Session Context.
+
+- **Quản lý biến cấu hình (Configuration Modularity)**: Mỗi Execution Instance có thể có bộ config (AuthenticatorConfigModel) độc lập. Nếu bạn có 2 luồng đều dùng `OTP Form`, bạn có thể cấu hình Execution bên này yêu cầu 6 số, bên kia yêu cầu 8 số. Cấu hình này lưu trong CSDL gắn liền với ID của Execution.
+- **Dọn dẹp Execution cũ**: Khi cấu trúc luồng của tổ chức thay đổi, các Execution bị đánh dấu `DISABLED` vẫn tồn tại trong cơ sở dữ liệu. Về lâu dài, chúng tạo ra rác và làm chậm quá trình query cấu trúc luồng. Hãy xóa chúng bằng UI nếu không bao giờ cần lại.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Hệ Thống Execution Tàn Bạo Chống Trẻ Trâu Login Fake Dùng "Deny Access":
-1. Bạn Duplicate 1 Flow Mới Hoàn Toàn Tên `My-Security-Firewall-Browser`. 
-2. Chèn 1 Sub-flow Ngay Dưới Dòng Form Bắt Username Password Bằng Nút Bấm Quen Thuộc Chỉnh Sang Hệ Cờ Lệnh: `Conditional`.
-3. Bỏ Vô Trọng Ruột Sub-Flow Đó Cái Khối Kiểm Duyệt: Thêm Cục **`Condition - User Role`** Kẹp Gắn Lệnh Type Là `Required`. (Chỉnh Set Bắt Cứng Role Trạng Thái Lệnh `banned_user`).
-4. Thêm Trực Tiếp Cục Dòng Nổ Execution Bom Tên Gắn **`Deny Access`** Bọc Chặn Đỉnh Vô Trọng Lõi Nhánh Đáy Subflow Đang Có Sẵn Của Nó Gắn Type Lệnh `Required`. 
-5. Lúc Này Khách Kéo Bị Dev Cấu Hình Gắn Chạy Role Banned-User (Nhóm Đã Bị Cấm Bay Sân Chơi). Bất Kể Hắn Đăng Nhập Mật Khẩu Đúng Bao Nhiêu Lần Quét Lệnh Thép Database Keycloak Chạy Thấy Pass Đúng Mạch Json Nó Sẽ Đi Tiếp Chạm Ngay Bom Mạch Oanh Giao Tĩnh Khống API Lỗ Đục Rò Sub-Flow. Vừa Chạm Subflow Phân Dòng Dò Chui Vào Phát Hiện Điều Kiện Khớp Cờ Căn Cứ Mạng Cắt Thép Database Gắn Với Khối Thực Thi "Deny Access". 
-6. Bùmmm! Một Quả Lỗi "You do not have access Rút Lệnh Đỏ Chót Cấm Cửa Mù Lòa Cho Khách Hàng Tương Thích" Bắn Trả Về Khung Nhanh Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Rút Lụa Token Đáy Không Nhả Cáp Token Rác Của App, Bóp Ngạt Lệnh API Giao Dịch Chống Sập Trái Trải Nghiệm Mạch Lưới Lệch Băng Tần! 
+Ví dụ việc thay đổi thứ tự và thiết lập một Execution cấu hình cụ thể thông qua Keycloak API.
 
----
+**Cấu hình bằng giao diện Admin Console:**
+1. Di chuyển Execution: Trong cấu trúc luồng, sử dụng biểu tượng Mũi tên Lên/Xuống hoặc kéo thả để đổi Priority của Execution.
+2. Thêm tham số: Nhấn biểu tượng Bánh răng cạnh `Cookie Authenticator` (trong một luồng copy). Bạn có thể thay đổi thuộc tính `Cookie name` từ mặc định (`KEYCLOAK_IDENTITY`) sang một tên khác, tạo ra một Execution Instance độc nhất.
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+**Cấu hình bằng kcadm.sh (CLI):**
+Lấy ID của các executions trong một luồng cụ thể:
+```bash
+/opt/keycloak/bin/kcadm.sh get authentication/flows/my-browser-flow/executions -r myrealm
+```
+Output JSON trả về bản chất cấu trúc của các Executions (gồm `id`, `authenticator`, `requirement`, `priority`).
 
-**1. Sếp Giao Yêu Cầu Code Mới Bắt Chặn Giao Dịch Đáng Ngờ Dành Cho App Banking OIDC Rỗng Của Oanh Khách Login Keycloak. Nếu Sếp Cần Cậu Thiết Kế 1 Execution Mới Hoàn Toàn Chạy Bằng Lệnh Code Java Custom Nằm Lòi Ra Tại Console Bảng Admin Tự Trị Thay Vì Phải Khổ Sở Gắn Chặn Lưới Bot Ngoài Nginx. Cậu Triển Khai Thế Nào?**
-- **Senior:** Rất Dễ Dàng Mà An Toàn Nhờ Engine SPI OIDC Mở Mạng Lỗ Trống Của Lãnh Chúa! Em Code Một Cái Maven Project Rời Nằm Tại Local Ngôn Ngữ Cứng Java Thép. Em Kế Thừa Một Lớp Framework Mở Nhựa Cấp Nhanh Có Tên Java Class Dùng Nhanh Rút Là `Authenticator` Và Một Class Mồi Trộn Form Đáy `AuthenticatorFactory` Thừa Kế Từ Căn Cứ Lõi Source Keycloak.
-Trong Class Java Đó Đáy Method Mạch Sóng Code Có Tên Tương Thích Default: `authenticate(AuthenticationFlowContext context)`, Em Sẽ Viết Đoạn If Else Bắt Lệnh Gọi API Gọi Nhanh Dịch Vụ Core Bank Ở Nhánh Rìa Rất Sạch Bơm Đáy Lên Check Quả Mạch Token Đáy Risk Kéo Có Dịch Tễ Lạ Bọc. Nếu Bank Báo Trả IP Này Có Scam Hacker Rút Gắn Code Rút Thép Nằm Phẳng. Em Ném Response Fail Dưới Lệnh `context.failure(AuthenticationFlowError.INVALID_CREDENTIALS)` Sạch Chóp Code Dữ Mạch!
-Build File Ra Jar Đáy Tĩnh Oanh Khách Gắn Lệnh Và Nhét Bỏ Thẳng Nó Vô Trong Folder Trọng `/providers/` Của Docker Keycloak Khi Chạy Lên Kéo Cáp Reload Máy Chủ Thép. 
-Là Em Đã Có Một Cục Đáy Execution Thần Thánh Có Tên Mang Lệnh Mạch Giao Khung API "Custom Banking Firewall Bức Cắt Khung" Sẵn Sàng Được Chọn Nhặt Lên Nhét Bọc Oanh Cáp Mạch Form Bằng Dropdown Select Giao Diện Nhanh Lệnh Khống Console Đáy Mượt Mà Test Rỗng Chóp Của Admin Vingroup!
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
----
+- **Execution nằm ngoài Context**: Một Authenticator thiết kế cho "Identity Brokering" (vd: `Create User If Unique`) dựa vào dữ liệu của external IdP (Federated Identity context). Nếu quản trị viên cấu hình sai, gắn trực tiếp Execution này vào "Browser Flow", nó sẽ văng lỗi `NullPointerException` vì `BrokeredIdentityContext` không tồn tại trong Browser Flow.
+- **Race Condition trên Cache Session**: Nếu có hai thao tác Submit Form gửi về liên tục từ trình duyệt cho cùng một Execution (người dùng double click nút Login), Execution có thể ghi nhận 2 lần gọi hàm `action()`. Keycloak ngăn chặn bằng cơ chế kiểm tra tính nhất quán dựa trên mã `execution_id` đính kèm trong các hidden fields HTML.
+- **Update Bug từ Bản sao lưu cũ**: Khi Import luồng (Flow) từ môi trường Staging sang Prod, các Execution IDs bị thay đổi hoàn toàn do Keycloak sinh lại UUID. Nếu Custom Code của bạn hardcode (gắn cứng) ID của Execution để cấu hình gì đó, mã nguồn sẽ hỏng hoàn toàn. Chỉ thao tác dựa trên tên `Alias` hoặc `Authenticator ID`.
 
-## 6. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Developer Guide - Authenticator SPI.
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior**: Authentication Execution trong Keycloak đóng vai trò gì?
+   - *Đáp án*: Execution là các bước thực thi độc lập (như kiểm tra mật khẩu, lấy OTP, tạo user mới) được lắp ráp vào bên trong một Authentication Flow để tạo ra một luồng xử lý hoàn chỉnh theo thứ tự.
+2. **Junior**: Các trạng thái Requirement phổ biến nhất của một Execution là gì?
+   - *Đáp án*: Có 4 trạng thái: REQUIRED (Bắt buộc), ALTERNATIVE (Tùy chọn nhánh), CONDITIONAL (Luồng điều kiện) và DISABLED (Vô hiệu hóa).
+3. **Senior**: Tại sao Keycloak lại tách rời khái niệm `Authenticator Factory` (code SPI) và `Execution` (cấu hình DB) thay vì gộp chung làm một?
+   - *Đáp án*: Tách rời giúp hỗ trợ tính Tái sử dụng (Reusability) cực lớn. Bạn có thể sử dụng cùng một mã `Cookie Authenticator Factory` để tạo ra hàng chục `Cookie Executions` ở các luồng khác nhau. Mỗi Execution lại có một bộ tham số Config lưu trong DB độc lập với nhau (ví dụ tên cookie khác nhau, thời gian chờ khác nhau).
+4. **Senior**: Khi phương thức `authenticate()` của Execution gọi lệnh `context.challenge(form)`, điều gì xảy ra ở cấp độ Engine?
+   - *Đáp án*: Engine hiểu trạng thái AuthOutcome là CHALLENGE. Nó đình chỉ toàn bộ tiến trình duyệt cây Flow State, ngắt HTTP flow bằng cách đóng gói cái "form" đó thành một HTTP Response và gửi lại cho Browser. Nó lưu trạng thái của luồng vào Authentication Session kèm theo Execution ID hiện tại để chờ user submit lại.
+5. **Senior**: Execution loại `Condition` hoạt động như thế nào so với `Authenticator` thông thường?
+   - *Đáp án*: Execution Condition (Condition Authenticator) chuyên trả về kết quả True/False thông qua các phương thức `success()` hoặc `attempted()`. Nó không bao giờ trả về `challenge()`. Logic của nó dùng để điều khiển các execution `CONDITIONAL` đi theo sau cùng cấp độ.
+
+## 7. Tài liệu tham khảo (References)
+
+- Keycloak Server Administration Guide: Authentication Flows and Executions
+- Keycloak Server Developer Guide: Writing Custom Authenticators
+- State Machine Patterns for Identity Management

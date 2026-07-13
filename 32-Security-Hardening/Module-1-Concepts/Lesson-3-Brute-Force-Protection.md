@@ -1,77 +1,100 @@
-# Lesson 3: Kẻ Hủy Diệt Dò Mật Khẩu (Brute-Force Protection)
-
 > [!NOTE]
-> **Category:** Theory & Practical (Lý thuyết & Thực hành)
-> **Goal:** Học cách kích hoạt hệ thống tự vệ tích hợp sẵn trong Lõi của Keycloak. Tự động Nhận Diện và Khóa Khóa Họng (Lock Out) Tạm Thời những tài khoản hoặc Tụi Khách Lạ đang cố tình gõ sai mật khẩu liên tục. Hiểu Thuật toán Tăng Thời Gian Phạt (Wait Increment).
+> **Category:** Theory / Security Hardening
+> **Goal:** Hiểu sâu về cơ chế phòng chống tấn công dò mật khẩu (Brute Force Protection) tích hợp sẵn trong Keycloak, cách thức cấu hình tham số an toàn, và nguyên lý hoạt động cấp thấp của hệ thống để bảo vệ tài khoản người dùng khỏi các cuộc tấn công đoán mật khẩu hoặc nhồi nhét thông tin (Credential Stuffing).
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. 10,000 Mật Khẩu Một Phút Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-Giả sử bạn có 1 Khách hàng tên là `nguyenvana`. Hacker dò được Tên Tài Khoản, Nhưng nó đéo biết mật khẩu.
-Thế là Hacker lấy một Cuốn Từ Điển Chứa 1 Triệu Mật Khẩu Thông Dụng Nhất Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. Viết một Dòng Lệnh Gọi API Ném Liên Tục 1 Triệu Cú POST Nhắm Vào Tên Đăng Nhập Của Khách.
-Nginx Bên Ngoài Chỉ Chặn DDoS Quá Tải Cứ Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Nếu Thằng Hacker Khôn Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Nó Cài Rate Thấp Dưới Ngưỡng Nginx (Ví Dụ 1 Giây Chỉ Phóng Lên 1 Lệnh). Cụ Nginx Chắc Chắn Bỏ Qua Vì Coi Đó Là Lưu Lượng Hợp Lệ Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! 
-Nhưng Cuối Cùng Sau Vài Ngày (Hoặc Vài Giờ Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa), Sẽ Có 1 Cú Lệnh Rơi Trúng Mật Khẩu Thật (Bởi Vì Hầu Hết Khách Đặt Pass Là "123456" Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa)! Kẻ Thù Tràn Vào Cướp Sạch Dữ Liệu!
+Tấn công dò mật khẩu (Brute Force Attack) là việc kẻ tấn công sử dụng phần mềm tự động để thử hàng loạt các kết hợp tên đăng nhập và mật khẩu cho đến khi tìm được một cặp hợp lệ. Một biến thể phổ biến và nguy hiểm hơn là **Nhồi nhét thông tin xác thực (Credential Stuffing)**, trong đó tin tặc sử dụng danh sách các cặp email/mật khẩu bị rò rỉ từ các hệ thống khác để thử nghiệm trên hệ thống Keycloak của bạn.
 
-### 1.2. Mở Lồng Sắt Chống Dò (Brute Force Settings)
-Đó Là Lúc Bạn Phải Mở Giao Diện Admin Của Keycloak Lên Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Vào `Realm Settings` -> `Security Defenses` -> Bật Tab `Brute Force Detection`.
-Các Tham Số Tuyệt Kỹ Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:
-1. **Max Login Failures (Ngưỡng Giới Hạn Sống Còn):** Ví Dụ Đặt Là 5. Nếu Bất Kỳ Ai Gõ Sai Pass Tới Lần Thứ 6 Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Keycloak Lập Tức Dừng Xử Lý (Kể Cả Khách Mới Gõ Trúng Mật Khẩu Vào Lần 6 Thì Vẫn Chặn Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề). Khách Đó Bị Nhốt Vào Lồng Báo Chữ Đỏ Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
-2. **Wait Increment (Đòn Phạt Giết Lần Thời Gian Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề):** Thường Là 1 Phút Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Nghĩa Là Nhập Sai 5 Lần Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Bị Treo Tài Khoản 1 Phút Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Sau 1 Phút Hệ Thống Thả Cửa. Nếu Thằng Kia Cố Nhập Sai Nữa Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Thời Gian Phạt Sẽ NHÂN ĐÔI Lên 2 Phút Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. Nhập Sai Nữa Phạt 4 Phút Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! 
-> Tính năng này đánh nát trái tim của đám dùng Tool Dò. Bọn nó Dò được 5 mật khẩu đầu tiên, 5 mật khẩu tiếp theo phải chờ 15 tiếng đồng hồ mới Dò được Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần! 
-
----
+Hệ thống Quản lý Định danh (Identity Provider) là mục tiêu hàng đầu của loại tấn công này. Keycloak cung cấp một cơ chế bảo vệ nội bộ mạnh mẽ có tên là **Brute Force Detection**. Tính năng này có thể tự động giám sát các lần đăng nhập thất bại. Nếu số lần thất bại vượt quá một ngưỡng (Threshold) được định trước, hệ thống sẽ đưa ra quyết định:
+- **Khóa tạm thời (Temporary Lockout):** Ngăn chặn tài khoản đăng nhập trong một khoảng thời gian nhất định (tăng dần thời gian chờ sau mỗi lần thử sai tiếp theo).
+- **Khóa vĩnh viễn (Permanent Lockout):** Khóa hẳn tài khoản cho đến khi quản trị viên (Admin) vào mở khóa thủ công.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Của Thợ Săn Rập Bẫy:
+Khi một yêu cầu đăng nhập được gửi tới, Keycloak sẽ theo dõi trạng thái xác thực bằng cách ghi lại số lần thử thất bại vào bộ nhớ đệm phân tán (Infinispan Cache) tên là `loginFailures`. 
 
 ```mermaid
 sequenceDiagram
-    participant WebUser as Hacker (Botnet Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)
-    participant KC as Cụm Keycloak (Lõi Oanh Khung Dịch Lụa Mạch Lệnh)
-    participant Mem as Infinispan Cache (Bộ Nhớ Nháp Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh)
+    participant Attacker as Kẻ tấn công
+    participant KC as Keycloak (Authentication Flow)
+    participant Cache as Infinispan Cache (loginFailures)
+    participant DB as Database (User Entity)
+
+    Attacker->>KC: POST /login (Username: user1, Pass: 1234)
+    note over KC: Kiểm tra Mật khẩu sai
+    KC->>Cache: Tăng số lần thử sai (Failed Attempts + 1)
     
-    WebUser->>KC: Bắn Lệnh POST Login Sai Pass Mật Lần 1 Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp
-    KC->>KC: "Sai Pass Nhé Con!"
-    KC->>Mem: (Bắn Tin Nhắn Nhanh Vô Bảng Tạm Memory Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy): "Lưu Bảng Đen: IP Của Chó Này & Thằng User A Này Vừa Đánh Sai 1 Lần". Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
+    Cache-->>KC: Trả về trạng thái: Số lần = 5
+    note over KC: Kiểm tra: Số lần = Max Login Failures?
     
-    WebUser->>KC: Bắn Liên Thanh Sai Lần 5 Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
-    KC->>Mem: Update Bảng Đen Lên SỐ 5 Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề! Vượt Ngưỡng Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+    alt Đạt giới hạn Max Login Failures
+        KC->>Cache: Cập nhật thời điểm khóa (Lockout Time)
+        KC->>DB: (Tùy chọn) Cập nhật trạng thái khóa User
+        KC-->>Attacker: 401 Unauthorized (Invalid username or password)
+    else Chưa đạt giới hạn
+        KC-->>Attacker: 401 Unauthorized (Invalid username or password)
+    end
     
-    WebUser->>KC: Khôn Hơn, Bắn Thử Pass Dò Trúng 100% Của Khách Hàng Ở Lần Thứ 6 Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-    KC->>Mem: Trước Khi Đụng Vô DB Kiểm Tra Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, Hỏi Bảng Đen Trước. CÓ TÊN THẰNG NÀY Ở NGƯỠNG PHẠT 5 LẦN ĐANG TRONG MỨC CHỜ 1 PHÚT Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-    KC->>KC: KHOAN, DỪNG LẠI! Dù Mật Khẩu Lần 6 Chữ Có Trúng Đi Nữa Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Tao Vẫn Lệnh Khóa Họng Cấm Xác Thực Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề! 
-    KC->>WebUser: Trả Về Màn Hình Lỗi Đỏ Chóe: "Tài Khoản Tạm Thời Khóa Do Đăng Nhập Quá Số Lần Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Hãy Thử Lại Sau Vài Phút Hoặc Liên Hệ Quản Trị" Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
+    Attacker->>KC: POST /login (Username: user1, Pass: đúng)
+    note over KC: Kiểm tra Mật khẩu đúng
+    KC->>Cache: Truy vấn trạng thái Lockout
+    alt Hiện tại < Thời gian mở khóa
+        KC-->>Attacker: 401 Unauthorized (Account is temporarily disabled)
+    else Hết thời gian phạt
+        KC->>Cache: Xóa bộ đếm thất bại (Reset Failures)
+        KC-->>Attacker: 200 OK (Đăng nhập thành công)
+    end
 ```
 
----
+**Cơ chế cấp thấp:**
+- **Infinispan Cache:** Keycloak không ghi trực tiếp mọi lần thất bại xuống Database (RDMS) để tránh sập Database khi bị tấn công Brute Force với cường độ cao. Mọi bộ đếm (counters) và thời gian khóa được quản lý chủ yếu trong bộ nhớ (Infinispan).
+- **Exponential Backoff:** Thuật toán tính toán thời gian khóa thường dựa trên cơ chế cấp số nhân. Ví dụ, lần khóa đầu tiên là 1 phút, lần tiếp theo là 2 phút, rồi 4 phút, 8 phút. Cơ chế này vắt kiệt thời gian của kẻ tấn công bằng các công cụ tự động.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Kẻ Thù Trút Oán Giận Chặn Cửa Căn Hộ)**
-> **Tội Ác Cấu Hình Chặn Dựa Trên Tên User Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:** Trong Hệ Thống Brute-Force Của Keycloak Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Có 2 Nút (Option): 
-> - 1 Là: Chặn Phạt (Lock) Dựa Theo Dòng IP Gửi Tới.
-> - 2 Là: Chặn Phạt Trực Tiếp Vào Tài Khoản Người Dùng Đó Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng.
-> Rất Nhiều Dev Cứ Đề Nguyên Mặc Định (Thường Là Chặn Tài Khoản User Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy). 
-> **Hậu Quả Chết Lạc Lối (Denial of Service Kiểu Trả Thù Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa):** 
-> Giả Sử Thằng Hacker Căm Thù Ông Giám Đốc Công Ty (Tài Khoản Là `boss`). Nó Chẳng Thèm Lấy Pass Của Ổng Làm Gì Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. Cứ Canh Đúng Tầm Sáng Sớm Ổng Vào Mạng Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp, Thằng Hacker Ở Nhà Viết 1 Con Bot Tự Động Gõ Lệnh Bắn Lên Cổng Keycloak: `User = boss, Pass = 1`. 
-> Keycloak Mở Tab Báo Động, Thấy Thằng `boss` Đăng Nhập Sai Quá Ngưỡng Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. Lập Tức Dính Trừng Phạt Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. BỊ KHÓA 10 TIẾNG Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-> Lúc Đó, Ở Văn Phòng Oanh Khung Dịch Lụa Mạch Lệnh, Ông Giám Đốc Lấy Máy Tính Công Ty Gõ Tên Mình Pass Chuẩn 100% Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Vẫn Nhận Một Thông Báo Tuyệt Vọng Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa: "Tài Khoản Đang Bị Khóa"! 
-> Đây Chính Là Đòn DOS Hoàn Hảo Để Phá Hoại Hoạt Động Của Một Cá Nhân Quan Trọng Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
-> **Biện Pháp Sống Còn Nhắm Trúng Địch Thủ Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh:**
-> Chuyển Quy Tắc Bắt Cọp Ở Bụng Brute-Force Của Keycloak Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Chọn Hình Thức Phạt `Failure Factor = IP Address` (Thay Vì Chỉ Lấy Username Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh). Nghĩa Là Thằng Đang Đâm Sai Liên Tục Ở Nhà Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Thì CÁI CỤC IP CỦA NHÀ NÓ Sẽ Bị Keycloak Đưa Vào Sổ Đen Khóa Lại (Không Ai Từ Máy Của Nó Vào Đăng Nhập Được Nữa Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). NHƯNG VỚI CÙNG TÊN TÀI KHOẢN ĐÓ Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Ông Giám Đốc Mở Trình Duyệt Bằng Cục IP Của Mạng Công Ty Thì Vẫn Được Keycloak Đón Tiếp Vui Vẽ Như Chưa Từng Có Cuộc Chi Ly Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề!
+- **Tránh thông báo quá chi tiết:** Theo chuẩn bảo mật OWASP, khi một tài khoản bị khóa, giao diện người dùng vẫn chỉ nên hiển thị thông báo chung chung "Tên đăng nhập hoặc mật khẩu không hợp lệ" thay vì "Tài khoản của bạn đã bị khóa". Điều này ngăn kẻ tấn công (và những kẻ theo dõi mạng) biết được trạng thái thực của tài khoản (Tránh User Enumeration).
+- **Cấu hình X-Forwarded-For chuẩn xác:** Cơ chế phát hiện Brute Force của Keycloak phụ thuộc một phần vào địa chỉ IP của Client. Nếu hệ thống mạng (Reverse Proxy, Load Balancer) không được cấu hình để truyền đúng header IP thực (X-Forwarded-For), Keycloak sẽ nhìn thấy toàn bộ lượng truy cập đến từ 1 IP của Proxy. Khi đó, nó có thể khóa oan toàn bộ người dùng trong hệ thống (False Positive).
+- **Sử dụng Temporary Lockout thay vì Permanent Lockout:** Trừ những trường hợp bảo mật cực kỳ khắt khe, bạn nên dùng khóa tạm thời. Khóa vĩnh viễn rất dễ trở thành công cụ để tấn công Từ chối dịch vụ tầng ứng dụng (Application DDoS) — kẻ tấn công cố tình nhập sai mật khẩu của hàng loạt tài khoản nhân viên để khiến họ bị khóa vĩnh viễn, làm sập toàn bộ luồng công việc của công ty.
 
----
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+Bạn có thể cấu hình Brute Force Protection trên giao diện Admin Console: `Realm Settings` -> `Security Defenses` -> Tab `Brute Force Detection`.
 
-**1. Em Thấy Keycloak Nó Lưu Lịch Sử Gõ Sai Pass Của Khách (Brute-force Cache Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) Vào Trong Bộ Nhớ Infinispan Cache Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Vậy Nếu Công Ty Em Bị Thằng Hacker Phát Động Một Cú Tấn Công Siêu Lớn Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Nó Thuê Cả 1 Triệu Cái Điện Thoại Tự Động Rải Rác Cắp Cầu Đồng Loạt Đăng Nhập Cùng 1 Lúc (DDoS Phân Tán Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa). Keycloak Cố Gắng Ghi Lại Mọi Dòng IP Của 1 Triệu Cái Máy Kia Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. Điều Gì Sẽ Xảy Ra Với Cây RAM Của Keycloak Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề? Có Mẹo Nào Cứu Được Không Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh?**
-- **Senior:** Dạ Câu Này Sẽ Giết Chết Đám Server Mạng Trong Đêm Tối Nếu Không Có Lời Tư Vấn Từ Đầu Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp!
-  - **Sự Sụp Đổ Của Dải RAM Nội Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:** Cục Login Failures Của Keycloak Chứa Các Mã Vết Sai Ở Trong RAM Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. Khi 1 Triệu Cái IP Tấn Công Oanh Khung Dịch Lụa Mạch Lệnh, Nó Cố Ghi Lại Vết Tích Thành 1 Triệu Dòng Log Vào RAM Của Trái Tim Infinispan Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Bộ Nhớ RAM Của Lõi Máy Chủ (Ví Dụ Chỉ Có 2GB Heap Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy) Sẽ Phình Lên Vỡ Chéo (OutOfMemory Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề). Toàn Bộ Các Đứa Sống (Keycloak Node Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) Bị Crash Sập Tuyệt Đối Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Đỉnh Điểm Của Thảm Họa DDoS!
-  - **Kỹ Thuật Cứu Chữa Đỉnh Cao Của Kiến Trúc Đám Mây Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:** Không Bao Giờ Trông Chờ Vào Máy Bơm Nước Chống Lũ. Mình Phải Dùng Bộ Cache Giới Hạn Cứng (Eviction Strategy Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)! Bọn Em Sẽ Can Thiệp Vào Cấu Hình Infinispan Của Lõi Keycloak (File XML). Em Quy Định Rằng: Cây Cache `loginFailures` Mức Nhớ Max Tối Đa Chỉ Được Phép Lưu 10,000 Thằng Cuối Cùng Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần! Thằng Lạ Thứ 10,001 Tới Bắn Phá Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Thì Cái Khúc Tội Ác Của Đứa Số 1 Xóa Đít Để Nhét Thằng Mới Vào (LRU - Least Recently Used Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh). Bằng Cách Dựng Tường Cứng Này Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Máy Tính Sẽ KHÔNG BAO GIỜ SẬP RAM Dù Bão 10 Triệu Thằng Kéo Tới Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Tha Nhả Một Ít Thằng Dò Trúng Cửa Giữa (Tỉ Lệ Vô Cùng Nhỏ) Còn Hơn Sập Cả Ngân Hàng Cho Hacker Xem Sếp Ạ Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! (Ngoài Ra, Em Vẫn Phải Báo Đội DevOps Bật AWS WAF Tới Giới Hạn Rate Limit Ở Vòng Vây Tường Lửa Ngay Từ Vành Đai Ngoại Ô Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề)!
+Cấu hình mẫu tối ưu cho doanh nghiệp:
+- **Enabled:** `ON`
+- **Failure Factor (Max Login Failures):** `5` (Số lần thử sai tối đa).
+- **Wait Increment:** `1 Minute` (Thời gian khóa ban đầu).
+- **Max Wait:** `15 Minutes` (Thời gian khóa tối đa để không khóa người dùng quá lâu, gây phiền hà).
+- **Failure Window:** `1 Hour` (Hệ thống sẽ cộng dồn các lần lỗi trong vòng 1 giờ; nếu vượt quá sẽ bị khóa).
+- **Clear failures after success:** `ON` (Xóa bộ đếm nếu đăng nhập thành công).
 
----
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Administration Guide - Threat modeling - Brute Force.
+- **Vấn đề NAT ở mạng Doanh nghiệp:** Toàn bộ nhân viên trong một tòa nhà văn phòng có thể sử dụng chung một dải IP tĩnh ngoài mạng (Public IP) ra Internet. Nếu Keycloak cấu hình chặn tính theo IP quá khắt khe, khi một nhân viên gõ sai mật khẩu nhiều lần, hệ thống có thể chặn cả văn phòng đăng nhập (Lỗi False Positive do chung IP). 
+  - **Cách xử lý:** Cấu hình chủ yếu dựa trên `Username` kết hợp thay vì chỉ IP, và sử dụng Whitelist IP cho các văn phòng nội bộ ở cấp độ WAF.
+- **Cuộc tấn công "Low and Slow" (Chậm và Thấp):** Kẻ tấn công chỉ thử 1 hoặc 2 mật khẩu mỗi ngày để qua mặt hệ thống đếm thời gian (Failure Window).
+  - **Cách xử lý:** Hệ thống Brute Force nội bộ không đủ sức giải quyết. Bắt buộc phải tích hợp các giải pháp phân tích hành vi người dùng (UEBA - User and Entity Behavior Analytics) bên thứ ba, hoặc bật tính năng cảnh báo qua email về các lần đăng nhập bất thường.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **(Junior)** Tính năng Brute Force Detection trong Keycloak dùng để làm gì?
+   - *Đáp án:* Dùng để phát hiện và ngăn chặn người dùng hoặc hacker liên tục nhập sai mật khẩu bằng cách khóa tài khoản tạm thời hoặc vĩnh viễn.
+
+2. **(Junior)** Làm thế nào để mở khóa một tài khoản bị khóa do Brute Force trong Keycloak?
+   - *Đáp án:* Nếu là khóa tạm thời, chỉ cần đợi hết thời gian (Wait Increment). Quản trị viên cũng có thể mở khóa thủ công thông qua Admin Console ở mục `Users` -> Chọn người dùng -> `Credentials` -> Xóa trạng thái tạm khóa.
+
+3. **(Senior)** Nếu bị tấn công Brute Force ở quy mô lớn (hàng triệu requests), liệu bật Brute Force Detection của Keycloak có cứu được hệ thống không?
+   - *Đáp án:* Không. Brute Force Detection của Keycloak xử lý tại lớp Application, tiêu tốn tài nguyên (CPU/Memory/Infinispan) cho mỗi request. Để chống lại cường độ cao, cần phải chặn ở mức WAF/Load Balancer/Rate Limiter trước khi request đến Keycloak.
+
+4. **(Senior)** Tại sao sau khi cấu hình Nginx đứng trước Keycloak, tính năng Brute Force Protection đột nhiên khóa tất cả mọi người dùng khi chỉ có một người gõ sai mật khẩu?
+   - *Đáp án:* Do Keycloak không nhận được IP thực của Client mà chỉ nhận IP của Nginx Proxy. Cần cấu hình chuyển tiếp IP bằng các Header (`X-Forwarded-For`), đồng thời cấu hình Keycloak chạy ở chế độ Proxy (`--proxy-headers=x-forwarded` trong Quarkus).
+
+5. **(Senior)** Giải thích cơ chế lưu trữ các bộ đếm (counters) của Brute Force trong hệ thống Keycloak phân tán (Cluster).
+   - *Đáp án:* Keycloak sử dụng bộ đệm phân tán Infinispan (cache `loginFailures`) để chia sẻ các lần đăng nhập thất bại giữa các node trong cluster. Điều này đảm bảo tính nhất quán (Consistency) và tốc độ (Low Latency) mà không gây quá tải CSDL (Database) ghi (writes) liên tục.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak Threat Mitigation Guide - Brute Force Attacks](https://www.keycloak.org/docs/latest/server_admin/#_brute_force_attacks)
+- [OWASP Credential Stuffing Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Credential_Stuffing_Prevention_Cheat_Sheet.html)
+- [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)

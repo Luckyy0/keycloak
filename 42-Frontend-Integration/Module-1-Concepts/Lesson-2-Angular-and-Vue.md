@@ -1,38 +1,162 @@
-# Lesson 2: Chiến Tuyến Angular & Vue.js
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Học cách tích hợp OIDC Client cho hai đại gia còn lại trong làng Frontend: Angular (Dành cho Doanh Nghiệp) và Vue.js (Nhỏ gọn, mạnh mẽ).
+> **Goal:** Nắm bắt kỹ thuật tích hợp Keycloak vào các framework Frontend như Angular và Vue.js. Hiểu sâu cách sử dụng HttpInterceptor và Navigation Guards để quản lý luồng bảo mật.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Cỗ Tăng Trọng Angular (angular-oauth2-oidc) Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-Angular là một Framework khổng lồ Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, thường được các Ngân hàng hoặc Tập đoàn lớn sử dụng Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Cấu trúc của Angular chuộng việc bơm phụ thuộc (Dependency Injection) và luồng xử lý dữ liệu liên tục (RxJS) Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề.
-**Thư viện Vua:** `angular-oauth2-oidc` (Của Manfred Steyer - Chuyên gia bảo mật khét tiếng).
-- Cấu Hình Khởi Động Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp: Bạn cung cấp Cục Config mang `issuer-uri` của Keycloak vào file khởi động Module của Angular Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-- Thư Viện Này Cung Cấp Sẵn Tính Năng Tự Động Kẹp Bearer Token Vào Mọi Đơn Gọi Của HTTPClient Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh (Interceptor). Bạn Không Phải Tốn Mồ Hôi Sôi Nước Mắt Đi Viết Lệnh Bóc Token Nhét Header Nữa Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Cứ Cầm Dịch Vụ Mạng Của Angular Bắn API Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Nó Tự Ốp Cái Token Khóa Vạn Năng Theo Kèm Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
-- Guard Chặn Đường Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa: Bạn Viết 1 Cái AuthGuard Cắm Ngay Đầu Khai Báo Routing Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Trình Duyệt Nào Mà Chưa Có JWT Của Oauth2 Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Bấm Vào URL Sẽ Bị Guard Đá Ngược Bay Lên Bệ Phóng Đăng Nhập Của Keycloak Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
+Cũng giống như React, **Angular** và **Vue.js** khi đóng vai trò là ứng dụng Single Page Application (SPA), đều cần dựa trên tiêu chuẩn OAuth 2.0 PKCE để xác thực. Tuy nhiên, cách kiến trúc cấu trúc mã nguồn để bảo vệ Route và tiêm (inject) Token vào các cuộc gọi API lại mang tính đặc thù cao đối với từng Framework.
 
-### 1.2. Mũi Trực Thăng Vue.js Oanh Khung Dịch Lụa Mạch Lệnh
-Vue Cực Kỳ Nhẹ Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Nên Nó Không Cần Bất Kỳ Một Framework Thư Viện Cồng Kềnh Nào Khác Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề.
-Dân Vue Thích Sử Dụng Chính Bộ Thư Viện Nguyên Gốc Javascript Của Chủ Tịch Keycloak Ban Phát: `keycloak-js`.
-- Gọi Trực Tiếp Cấu Hình Ở Ngay File `main.js` Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-- Trước Khi Hàm Gắn (Mount) Lên Màn Hình Chạy Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Khởi Chạy Lệnh `keycloak.init({ onLoad: 'check-sso' })` Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-- Vuốt Nhẹ Một Cái Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, Bạn Gắn Luôn Cục Thể Hiện Keycloak Này Vào Tính Năng `provide / inject` Của Vue 3 Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. 
-- Mọi Component Con Cháu Bên Dưới Chỉ Cần Hàm `inject('keycloak')` Là Có Trọn Quyền Thao Túng Sinh Tử: Kéo Lệnh Đăng Xuất Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Rút Tên Khách Hàng Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Hoặc Lôi Thẳng Cái `keycloak.token` Nhét Vào Axios Gửi Đi Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
+**1. Vue.js (Navigation Guards):**
+Vue cung cấp cơ chế mạnh mẽ là `vue-router`. Trong đó, tính năng Navigation Guards (`router.beforeEach`) cho phép chúng ta can thiệp vào quá trình chuyển trang ngay trước khi Component được render. Tại đây, ứng dụng sẽ kiểm tra xem người dùng có phiên làm việc với Keycloak hay không. Nếu không, luồng chuyển trang bị chặn và kích hoạt hàm `keycloak.login()`.
 
----
+**2. Angular (HttpInterceptor và Route Guards):**
+Angular là một framework có tính nguyên khối cao, hỗ trợ Dependency Injection mạnh mẽ:
+- **AuthGuard (`CanActivate`)**: Tương tự như Navigation Guards của Vue, chặn việc truy cập vào các đường dẫn (routes) trái phép dựa trên trạng thái của Keycloak.
+- **HttpInterceptor**: Thành phần trung gian nằm giữa HttpClient của Angular và môi trường mạng. Interceptor sẽ tự động đánh chặn mọi request gửi đi, kiểm tra sự sống của token, tự động gọi hàm `updateToken()` (nếu token sắp hết hạn), và chèn (attach) `Authorization: Bearer <token>` vào Header.
 
-## 2. Câu hỏi Phỏng vấn (Interview Questions)
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-**1. Trong Angular Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Em Dùng Thư Viện `angular-oauth2-oidc` Oanh Khung Dịch Lụa Mạch Lệnh. Khi Thằng Khách Vừa Đăng Nhập Về Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Trình Duyệt Bị Xóa Trắng URL Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Trả Về Lại Trang Chủ `localhost:4200` Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Nhưng Ngay Lúc Đó Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Nó Vẫn Báo Là Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: User Của Mày ChưA Login Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Phải Tầm 1 Giây Sau Giao Diện Nó Mới Giật Giật Đổi Trạng Thái Thành Đăng Nhập Thành Công Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Lỗi Bất Đồng Bộ Dở Khóc Dở Cười Này Em Vá Bằng Cách Nào Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa?**
-- **Senior:** Dạ Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Quả Bất Đồng Bộ (Asynchronous Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy) Này Rất Đau Đầu Trong Angular Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! 
-  - Khúc Bạn Khách Từ Keycloak Bay Về Cổng `localhost:4200` Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp, Trên Thanh Địa Chỉ Trình Duyệt Nó Chứa Đầy Một Cái Đuôi Dài Thằng Lằng Là `?code=XYZ...` Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-  - Angular Vừa Khởi Động Lên Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Thằng Router Đã Vội Vã Render Giao Diện Xong Hết Rồi Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Lúc Này Thằng Dịch Vụ Oauth2 Mới Lò Dò Gọi Mạng Backend Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh: Dùng Cục Code `XYZ` Đó Bắn Ngược Về Đổi Lấy Cục JWT Nhét Vào LocalStorage Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Khoảng Cách Lệch Pha Nhau Đúng 1 Khoảnh Khắc Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Dẫn Tới Giao Diện Thấy Thiếu Đồ Nên Báo Lỗi Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề!
-  - Để Khắc Phục Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Trong Chỗ Code Khởi Tạo (App Initializer Hoặc Ngay Chỗ Khai Báo AppComponent Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề), Em Phải Chặn Luồng Của Hệ Thống Lại Bằng Hàm Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh `this.oauthService.loadDiscoveryDocumentAndLogin()` Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Luệ Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần.
-  - Quan Trọng Hơn Cả Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Hàm Đó Trả Về Một Cái Lời Hứa `Promise` Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bọn Em Chỉ Bật Cờ Cờ Kéo Cờ Khai Trương (ví dụ Cờ Biến `isAppReady = true`) **SAU KHI** Lời Hứa Promise Kia Báo Hoàn Tất `then()` Oanh Khung Dịch Lụa Mạch Lệnh! Nhờ Vậy Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Cái Khung Website HTML Bằng Router Sẽ Bị Giam Ngược Giữ Chân Lại Màn Hình Loading Tới Chừng Nào Cái Cục JWT Đổ Bộ Xong Xôi Vào Ngăn Kéo Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Mọi Thứ Mới Bật Sáng Lên! User Mở Mắt Ra Là Thấy Chữ Welcome Ngay Tức Khắc Mà Không Bị Chớp Màn Hình Giật Cục Sếp Nhé Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
+Luồng kiểm soát tự động chèn Access Token và tự động làm mới Token (Auto-refresh) hoạt động liên tục trong vòng đời của Angular/Vue App.
 
----
+```mermaid
+sequenceDiagram
+    participant Component as UI Component (Vue/Angular)
+    participant Interceptor as HTTP Interceptor (Axios/Angular HttpClient)
+    participant Keycloak as Keycloak Adapter (keycloak-js)
+    participant API as Resource Server (Backend API)
 
-## 5. Tài liệu tham khảo (References)
-- **manfredsteyer:** angular-oauth2-oidc GitHub.
+    Component->>Interceptor: 1. Request Data (e.g., GET /users)
+    
+    rect rgb(240, 248, 255)
+        note right of Interceptor: Token Validation Phase
+        Interceptor->>Keycloak: 2. Check Token Validity (updateToken(30))
+        alt Token Valid
+            Keycloak-->>Interceptor: 3a. Token is valid (No refresh)
+        else Token Expired or Expiring < 30s
+            Keycloak->>Keycloak: 3b. Silent HTTP Refresh Request to Identity Provider
+            Keycloak-->>Interceptor: 4. Return new Access Token
+        end
+    end
+    
+    Interceptor->>Interceptor: 5. Clone Request & Attach "Authorization: Bearer Token"
+    Interceptor->>API: 6. Send Protected Request
+    API-->>Interceptor: 7. HTTP 200 / HTTP 401
+    Interceptor-->>Component: 8. Return Data or Trigger Logout on 401
+```
+
+**Cơ chế cấp thấp (Low-level Mechanisms):**
+- Hàm `keycloak.updateToken(minValidity)` là trái tim của quá trình này. Nếu độ phân giải của Token còn ít hơn `minValidity` (ví dụ 30 giây), Keycloak Adapter sẽ tự động lấy Refresh Token hiện tại gọi lên Token Endpoint (`grant_type=refresh_token`) để xin một Token mới tinh trong nền (background) mà không yêu cầu user nhập lại thông tin.
+- Quá trình này trả về một `Promise`. HTTP Interceptor sẽ tạm dừng (pause) request đang thực hiện để chờ Promise của Keycloak resolve.
+
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
+
+> [!WARNING]
+> Đừng chèn Token vào mọi Request. Nếu ứng dụng của bạn gọi tới các API bên thứ 3 bên ngoài hệ sinh thái của bạn (như Google Maps API, Weather API), Interceptor có thể vô tình làm rò rỉ JWT nội bộ. Hãy kiểm tra (filter) domain trước khi chèn Header.
+
+> [!IMPORTANT]
+> Phải xử lý triệt để việc Logout. Khi nhận được lỗi HTTP 401 (Unauthorized) từ API - mặc dù đã cố update token, ứng dụng bắt buộc phải kích hoạt `keycloak.logout()` để xóa trạng thái và dọn dẹp môi trường.
+
+**Thực hành tốt nhất:**
+1. **Async Initialization**: Keycloak Initialization (`keycloak.init()`) là một tác vụ bất đồng bộ. Ở Angular, hãy sử dụng `APP_INITIALIZER` để chặn không cho Angular bootstrap trước khi Keycloak tải xong trạng thái. Tương tự trong Vue, phải đặt logic `app.mount()` vào trong block `.then()` của Keycloak init.
+2. **Race Conditions**: Xử lý tình trạng nhiều requests gọi cùng lúc khi token vừa hết hạn (tránh việc trigger 10 lần refresh token liên tiếp). Adapter `keycloak-js` bản mới đã xử lý tốt việc khóa tiến trình (lock), nhưng bạn cũng nên lưu ý khi thiết kế Interceptor.
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+
+### Cấu hình HttpInterceptor trong Angular
+
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent } from '@angular/common/http';
+import { Observable, from, throwError } from 'rxjs';
+import { mergeMap, catchError } from 'rxjs/operators';
+import { KeycloakService } from 'keycloak-angular';
+
+@Injectable()
+export class KeycloakBearerInterceptor implements HttpInterceptor {
+  constructor(private keycloak: KeycloakService) {}
+
+  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    // Chỉ chèn token vào các API nội bộ
+    if (!req.url.includes('/api/')) return next.handle(req);
+
+    // Xử lý bất đồng bộ lấy token mới nhất
+    return from(this.keycloak.getToken()).pipe(
+      mergeMap(token => {
+        if (token) {
+          req = req.clone({
+            setHeaders: { Authorization: `Bearer ${token}` }
+          });
+        }
+        return next.handle(req);
+      }),
+      catchError(error => {
+        // Token không thể làm mới (hết hạn refresh token, session closed)
+        this.keycloak.login();
+        return throwError(() => error);
+      })
+    );
+  }
+}
+```
+
+### Cấu hình Navigation Guard trong Vue Router
+
+```javascript
+import { createRouter, createWebHistory } from 'vue-router';
+import { keycloak } from '../keycloak'; // Đã khởi tạo sẵn
+
+const routes = [
+  { path: '/', component: Home },
+  { path: '/admin', component: Admin, meta: { requiresAuth: true, roles: ['admin'] } }
+];
+
+const router = createRouter({ history: createWebHistory(), routes });
+
+router.beforeEach((to, from, next) => {
+  if (to.meta.requiresAuth) {
+    if (keycloak.authenticated) {
+      // Check Role (RBAC)
+      if (to.meta.roles && !to.meta.roles.some(r => keycloak.hasRealmRole(r))) {
+        next('/unauthorized'); // Không có quyền
+      } else {
+        next(); // Hợp lệ
+      }
+    } else {
+      // Yêu cầu đăng nhập, lưu lại đường dẫn gốc để quay về sau khi login
+      keycloak.login({ redirectUri: window.location.origin + to.path });
+    }
+  } else {
+    next();
+  }
+});
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+1. **Race condition khi Refresh Token và tải trang**:
+   - *Sự cố*: Nếu trang SPA có 10 Component gọi 10 API cùng lúc khi tải. Nếu Token lúc đó sắp hết hạn, cả 10 request kích hoạt 10 lần `updateToken()`.
+   - *Khắc phục*: Thư viện `keycloak-js` bản thân nó cung cấp một Promise cache nội bộ để gộp chung yêu cầu cấp mới. Tuy nhiên nếu bạn tự viết Axios Interceptor ở Vue, cần tạo ra một biến cờ (flag `isRefreshing`) và một Queue lưu tạm các request đang bị Pending chờ Token refresh xong.
+
+2. **Lỗi Mạng (Network Failure) trong lúc Refresh**:
+   - *Sự cố*: Mạng chập chờn khiến cho thao tác Refresh token trả về timeout. Interceptor sẽ tưởng là Session expired và văng người dùng ra trang đăng nhập một cách oan uổng.
+   - *Khắc phục*: Thêm cơ chế Retry (Thử lại) 1-2 lần ở mức HTTP Error code cho Refresh Request trước khi ép buộc Logout.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior:** Ở Angular, tại sao lại dùng HttpInterceptor thay vì copy/paste Header vào từng request HTTP?
+   - *Đáp án:* HttpInterceptor hoạt động giống như một middleware. Giúp tập trung mã logic xác thực (DRY - Don't Repeat Yourself), đảm bảo không bỏ sót việc chèn token vào bất kỳ yêu cầu nào và tự động xử lý lỗi 401 ở một nơi duy nhất.
+2. **Junior:** Navigation Guard trong Vue chạy trước hay sau khi Component được mount lên DOM?
+   - *Đáp án:* Chạy trước khi chuyển tuyến (route transition). Điều này đảm bảo Component nhạy cảm không hề được khởi tạo hoặc gọi dữ liệu trước khi User được xác minh, tăng cường tính bảo mật.
+3. **Senior:** `APP_INITIALIZER` trong Angular kết hợp với Keycloak giải quyết vấn đề cấu trúc nào trong vòng đời ứng dụng?
+   - *Đáp án:* Việc init Keycloak là một quá trình tốn thời gian do có thể phải chuyển hướng trình duyệt hoặc gọi API check-sso. `APP_INITIALIZER` sẽ giữ toàn bộ tiến trình render UI của Angular ở trạng thái "treo chờ" cho đến khi trạng thái Authentication hoàn toàn rõ ràng, chống lại hiện tượng giao diện chớp tắt (flickering).
+4. **Senior:** Nếu token hết hạn và Refresh token cũng hết hạn (Session Idle Timeout), ứng dụng SPA của bạn sẽ phản ứng như thế nào nếu đang treo ở màn hình Dashboard?
+   - *Đáp án:* Khi ứng dụng thử gọi API hoặc thử chạy silent refresh ẩn qua `updateToken()`, Keycloak sẽ báo lỗi (Reject promise do invalid refresh token). Ứng dụng phải bắt được lỗi này (qua event `onAuthLogout` hoặc catch của updateToken) và điều hướng (redirect) người dùng về màn hình Keycloak Login lại.
+5. **Senior:** Trong cấu hình Keycloak, nếu bật "Implicit Flow" thay cho "Authorization Code Flow" cho Angular SPA thì có an toàn không?
+   - *Đáp án:* KHÔNG an toàn. Implicit Flow trả trực tiếp Token lên Fragment URL của trình duyệt (`#access_token=...`), khiến nó rất dễ bị lộ (qua browser history, referer headers, XSS). Chuẩn mới OAuth 2.1 loại bỏ hoàn toàn Implicit Flow và yêu cầu SPA dùng Auth Code with PKCE.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Angular HTTP Interceptors Documentation](https://angular.io/guide/http#intercepting-requests-and-responses)
+- [Vue Router Navigation Guards](https://router.vuejs.org/guide/advanced/navigation-guards.html)
+- [OAuth 2.0 Security Best Current Practice (BCP)](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics)
+- [Keycloak Angular (Third-party library for Angular Integration)](https://www.npmjs.com/package/keycloak-angular)

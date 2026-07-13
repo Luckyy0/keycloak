@@ -36,13 +36,21 @@
 - **Tham chiếu Bắt buộc:** Bắt buộc phải có phần `References` trích dẫn các tài liệu chính thống.
 
 ## 7. Mandatory File Structure / Cấu trúc Tệp Bắt buộc
-- Every lesson file MUST strictly follow this scientific and logical sequence of sections (based on the Lesson 1 template):
-- Mọi tệp bài học BẮT BUỘC phải tuân thủ nghiêm ngặt trình tự các phần mang tính khoa học và logic sau đây (dựa trên cấu trúc chuẩn của Lesson 1):
-  - **Meta Block**: Khối GitHub Alert `> [!NOTE]` chứa `Category` và `Goal` (Mục tiêu bài học).
-  - **1. Lý thuyết chuyên sâu (Detailed Theory)**: Giải thích bản chất, cấu trúc, và vấn đề cốt lõi mà công nghệ này giải quyết.
-  - **2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)**: Bắt buộc sử dụng Mermaid diagrams và giải thích step-by-step.
-  - **3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)**: Các tiêu chuẩn Enterprise, cảnh báo bảo mật (`> [!WARNING]`, `> [!IMPORTANT]`).
-  - **4. Cấu hình minh họa thực tế (Configuration Examples)**: Các đoạn code snippet, cấu hình (Nginx, Spring Boot, Keycloak, v.v.).
-  - **5. Trường hợp ngoại lệ (Edge Cases)**: Phân tích các lỗi hệ thống, sự cố mạng, lệch thời gian và cách khắc phục.
-  - **6. Câu hỏi Phỏng vấn (Interview Questions)**: Ít nhất 5 câu hỏi có phân loại đáp án rõ ràng giữa Junior và Senior.
-  - **7. Tài liệu tham khảo (References)**: Các liên kết chuẩn xác đến RFCs, Official Docs.
+Mọi tệp bài học BẮT BUỘC phải tuân thủ nghiêm ngặt trình tự các phần mang tính khoa học và logic tùy theo loại bài học:
+
+### 7.1. Cấu trúc cho Tệp Lý thuyết (Theory / Concept Files)
+- **Meta Block**: Khối GitHub Alert `> [!NOTE]` chứa `Category` và `Goal` (Mục tiêu bài học).
+- **1. Lý thuyết chuyên sâu (Detailed Theory)**: Giải thích bản chất, cấu trúc, và vấn đề cốt lõi mà công nghệ này giải quyết.
+- **2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)**: Bắt buộc sử dụng Mermaid diagrams và giải thích step-by-step.
+- **3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)**: Các tiêu chuẩn Enterprise, cảnh báo bảo mật (`> [!WARNING]`, `> [!IMPORTANT]`).
+- **4. Cấu hình minh họa thực tế (Configuration Examples)**: Các đoạn code snippet, cấu hình (Nginx, Spring Boot, Keycloak, v.v.).
+- **5. Trường hợp ngoại lệ (Edge Cases)**: Phân tích các lỗi hệ thống, sự cố mạng, lệch thời gian và cách khắc phục.
+- **6. Câu hỏi Phỏng vấn (Interview Questions)**: Ít nhất 5 câu hỏi có phân loại đáp án rõ ràng giữa Junior và Senior.
+- **7. Tài liệu tham khảo (References)**: Các liên kết chuẩn xác đến RFCs, Official Docs.
+
+### 7.2. Cấu trúc cho Tệp Thực hành (Lab Exercises)
+- **Meta Block**: Khối GitHub Alert `> [!NOTE]` chứa `Category` (Practical/Lab) và `Goal` (Mục tiêu bài Lab).
+- **1. Kịch bản Thực hành (Lab Scenario)**: Giới thiệu bài toán thực tế cần giải quyết.
+- **2. Chuẩn bị Môi trường (Prerequisites)**: Các công cụ, Docker images, hoặc mã nguồn cần chuẩn bị trước.
+- **3. Các bước Thực hiện (Step-by-Step Instructions)**: Hướng dẫn chi tiết từng dòng lệnh, từng cú click chuột để hoàn thành bài Lab.
+- **4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)**: Các cách kiểm tra xem Lab đã thành công chưa, và các lỗi thường gặp trong lúc làm Lab.

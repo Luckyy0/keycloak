@@ -1,114 +1,115 @@
-# Lesson 5: Cỗ Máy Ảo JS (Script Mapper & Cứu Cánh Cuối Cùng)
-
 > [!NOTE]
-> **Category:** Theory & Practice (Lý thuyết & Thực hành)
-> **Goal:** Sẽ có những lúc yêu cầu của Frontend cực kỳ "quái thai". Ví dụ: "Nếu thuộc tính `tuoi_tac` > 18 VÀ khách có nhóm `Vip`, hãy in ra biến JSON `can_drink=true`". Các Mapper Built-in chỉ có khả năng Bơm thẳng chứ KHÔNG THỂ CHỨA LOGIC if-else phức tạp. Chào mừng bạn đến với **Script Mapper** - Nơi bạn nhúng trực tiếp mã Javascript vào động cơ Token của Java.
+> **Category:** Theory (Lý thuyết)
+> **Goal:** Tìm hiểu cơ chế hoạt động, lợi ích, rủi ro bảo mật và cách cấu hình Script Mapper trong Keycloak để tùy biến động Token Claims.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Bản Chất Động Cơ JavaScript Rhino Trong Ruột Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers Java
-Để Thực Thi Được Logic Lọc Oanh Liệt Dập Database Thủng Căng Của Thượng Đế Rút Khung Gắn Nóng Tự Trị Oanh Khách Vô Form Đáy Bọc Khống Gãy Khung Tốc Độ Khác Nữa Kẽ Đáy. Keycloak Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Tích Hợp Một Động Cơ Phiên Dịch Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy JS Nổi Tiếng Của Mozilla Là Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng Rhino (Nashorn/GraalVM JS Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Rút Khung Trống Mạng Lệnh Thép Rất Kính Ở Bản Mới Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh). 
-- Khi Bạn Bật Chức Năng Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới! Script Mapper Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng. Keycloak Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới Cung Cấp Một Giao Diện Bảng Code Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh Ngay Trên Admin Console Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies. 
-- Trong Bảng Javascript Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Đó, Cỗ Máy OIDC Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Của Keycloak Truyền Sẵn Cho Bạn Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng 1 Đống Các Biến Của Môi Trường Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh Khi List Array Bắn Khung Cắt Mạch (Mô Hình Context Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC). Bạn Lấy Các Biến JS Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh Đó Viết Logic If-Else Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh.
-- Bất Kỳ Giá Trị Nào Đáy Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Được Code `return` Ở Cuối Đoạn Script Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép, Sẽ Lập Tức Bức Cắt Khung Lệnh Bị Đóng Khuôn Ép Kiểu Oanh Khách Nhanh Sóng Và Bắn Vào Payload JSON Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng Của Access Token Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng!
+Trong Keycloak, **Script Mapper** là một công cụ cực kỳ mạnh mẽ nằm trong hệ sinh thái Protocol Mappers. Trong khi các Mapper thông thường (như Role Mapper, User Attribute Mapper) chỉ có thể thực hiện ánh xạ tĩnh (đọc từ database và đưa vào Token), thì Script Mapper cho phép thực thi một đoạn mã **JavaScript** ngay trong thời gian chạy (runtime) khi Keycloak đang tạo Token (Token Issuance).
 
-### 1.2. Kho Vũ Khí Context Biến Số (Binding Variables Rút Cắn Lại Nén Căng Mạch Phình To Rút Gắn Mã Nhân Lên Mượt Khung)
-Trong Cửa Sổ Viết JS Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ. Các Biến Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế! Đã Được Bơm Sẵn (Không Cần `var` Khai Báo Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token Báo Lệnh Nhựa Kép Trộn Cục Role Client Này) Bao Gồm Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!:
-- **`user`:** Đại Diện Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Cho Thượng Đế Đang Đăng Nhập Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy. Có Thể Gọi Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Lệnh Thép Chặn Dội Khách `user.getEmail()` Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng Hoặc Lấy Cột Nhựa Khung `user.getFirstAttribute('sdt')`.
-- **`realm`:** Đối Tượng Đại Diện Lệnh Thép Chặn Dội Khách OIDC Cho Lãnh Thổ Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default.
-- **`token`:** Chính Là Cục Payload Rút Khung Trống Mạng Lệnh Thép Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Sắp Chạy Ra Khỏi Máy In Khung Thép Bọc OIDC Phẳng Rỗng Khúc. Bạn Có Thể Can Thiệp Gọi Hàm Đáy Database Kéo Bơm Đáy Lên Rìa Lúc Giao Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung `token.setOtherClaims("luong", 1000)` Trút Kéo Ngầm Lập Tức Bức Cắt Khung Lệnh.
-- **`userSession`:** Trút Bão Mạng Sạch Bot Khung Rác Mạng Trễ Đọc Text Rỗng Khung Đáy Không Đứt Rẽ Lệnh Thép Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Đọc Được IP Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Khách Đang Đứng Rút Khung Trống Mạng Lệnh Thép Rất Kính, Browser Khách Đang Xài Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới.
+**Tại sao tính năng này tồn tại?**
+Trong các hệ thống doanh nghiệp (Enterprise Systems) phức tạp, việc cấp quyền không chỉ dựa trên danh sách tĩnh các Roles hay Attributes. Giá trị của một Claim có thể cần được tính toán dựa trên logic động:
+- Kết hợp nhiều User Attributes lại với nhau.
+- Tính toán cấp độ rủi ro dựa trên IP, thiết bị đăng nhập, thời gian trong ngày.
+- Định dạng lại dữ liệu cũ sang chuẩn mới để tương thích với các Legacy Clients.
 
----
+Script Mapper giải quyết vấn đề này bằng cách cung cấp một môi trường thực thi kịch bản. Nó đọc dữ liệu từ `user`, `realm`, `clientSession` hiện tại, xử lý qua JavaScript, và trả về một giá trị để nhúng vào Token (JWT/SAML).
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Bắn Dòng Cục Json Qua Động Cơ Javascript Máy Ảo Đáy Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung:
+Khi sử dụng Script Mapper, Keycloak phải khởi tạo một Scripting Engine để chạy JavaScript bên trong JVM (Java Virtual Machine).
 
 ```mermaid
-graph TD
-    subgraph "Cách Token Engine Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Phiên Dịch Mã Javascript Của Bạn Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!"
-        Khach[Khách Login Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế!]
-        
-        KC_Engine[JWT Token Engine Rút Gắn Mã Nhân Bọc Nhựa Bằng Cắt Kẽ Đội Oanh Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi]
-        
-        JSEngine[Nashorn/GraalVM JS Interpreter Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default]
-        
-        JSScript{Code Của Bạn Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép:<br/>if user.age > 18 return 'YES'}
-        
-        Khach-->KC_Engine
-        KC_Engine-->|Chuẩn Bị Các Biến Lọc Oanh Liệt Dập Database Thủng Căng user, token, realm| JSEngine
-        
-        JSEngine-->|Bơm Biến Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Thường Các Máy Chủ Được Đặt Đằng Sau Nginx Load Balancer Khung Cắt Mạch Đáy Role Nhựa Vào Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng| JSScript
-        JSScript-->|Chạy Logic JS Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo| JSEngine
-        JSEngine-->|Trả Về String Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung 'YES' Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép| KC_Engine
-        
-        KC_Engine-->|Bơm Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh! Chữ 'YES' Vào Cấu Trúc JSON Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng!| JWT[JWT Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID]
-        
-        Note over JWT: "can_drink": "YES"<br/>Nhờ Động Cơ JS Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Này Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies, Bạn Code Được Mọi Logic Trên Đời Oanh Khách Nhanh Sóng Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Không Giới Hạn Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token!
-    end
+sequenceDiagram
+    participant K as Keycloak Token Issuance Phase
+    participant SE as Script Engine (Nashorn/GraalVM)
+    participant T as Token Claim
+
+    K->>K: Lấy thông tin UserModel, ClientSessionModel
+    K->>SE: Đẩy Context (user, token, realm) vào môi trường JS
+    SE->>SE: Compile & Execute JavaScript code
+    Note right of SE: Lấy user.getFirstAttribute('company')<br>Kết hợp với timestamp hiện tại
+    SE-->>K: Trả về kết quả (chuỗi, mảng, số, hoặc boolean)
+    K->>K: Validate kiểu dữ liệu trả về
+    K->>T: Ghi giá trị vào Token Claim theo cấu hình `Claim JSON Type`
 ```
 
----
+**Cơ chế thực thi:**
+- Trong các phiên bản cũ (trước JDK 15), Keycloak sử dụng **Nashorn Engine**.
+- Trong các phiên bản Keycloak mới chạy trên JDK mới, Scripting Engine phụ thuộc vào cấu hình của JDK, có thể chuyển sang sử dụng **GraalVM JavaScript**.
+- Việc thực thi mã được chạy dưới chế độ **Sandbox** để giới hạn việc gọi các API hệ thống (I/O, Network) thông qua Java Reflection, nhằm ngăn chặn các lỗ hổng bảo mật. Tuy nhiên, việc thực thi mã nguồn ngoài luôn là một quy trình nặng tốn chi phí CPU.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!IMPORTANT]
-> **Tuyệt Đỉnh Tối Ưu Tẩy Khách Mạng Bọc Chống Lộ Script Và Tê Liệt Hệ Thống Đáy Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Của Phương Pháp Khung Cắt Mạch (Luật Cấm Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh Chạy Vòng Lặp Vô Hạn Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính Trong Script Mapper Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế!)**
-> **Tội Ác Thiết Kế OIDC Khung Rác API Phẳng Rỗng Sập Core JS:** Thằng Backend Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Viết Một Đoạn Mã JS Vào Máy Bơm Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng. Trong Đoạn Mã Oanh Liệt Dập Database Thủng Căng, Cậu Lọc Quét Toàn Bộ Hàng Ngàn Nhóm (Group Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!) Của Khách Bằng Dòng Lệnh `for` Cũ Rích Oanh Khách Nhanh Sóng Lỗ Trống Mạng. Vì Một Lỗi Code `i` Không Tăng Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh, Script Rơi Vào Khung Mã Json Kéo Rỗng Vòng Lặp Vô Hạn (Infinite Loop Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!).
-> Hậu Quả Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép Lệnh API Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers Rút Gắn Mã Nhân Bọc Nhựa Bằng Cắt Kẽ Đội Oanh Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi: Máy Ảo JS Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh (GraalVM Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Rút Khung Trống Mạng Lệnh Thép Rất Kính) Là Đồng Bộ Trong OIDC Engine Trút Bão Mạng Sạch Bot Khung Rác Mạng Trễ Đọc Text Rỗng Khung Đáy Không Đứt Rẽ Lệnh Thép Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!. Khi Đoạn Code Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh Treo Ở Vòng Lặp Rút Cắn Lại Nén Căng Mạch Phình To Rút Gắn Mã Nhân Lên Mượt Khung, Toàn Bộ API Login Của Cụm K8S OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh Khi List Array Bắn Khung Cắt Mạch Bị Chặn Đứng Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default Ngay Lập Tức (Deadlock Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng). Server Tê Liệt Hoàn Toàn Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers!
-> **Biện Pháp Sống Còn Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng!:** Các Đoạn Code Trong JS Mapper Rút Khung Trống Mạng Lệnh Thép Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép BẮT BUỘC Phải Viết Theo Kiểu Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ `O(1)` Hoặc Tối Đa Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy `O(n)` Nhưng Tuyệt Đối Giới Hạn Độ Dài Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Lệnh Thép Chặn Dội Khách. LUÔN LUÔN Bắt Lỗi Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo `try-catch` Bên Trong Kịch Bản Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Của Keycloak Khung Code Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!, Và Return Một Giá Trị An Toàn Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh (VD: `"Unknown"`) Nếu Lỗi Xảy Ra. Không Bao Giờ Cho Phép Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Máy Ảo JS Văng Exception Đứt Khúc Cáp Chữ OIDC Rỗng Backend Bọc Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế! Ngược Ra Hệ Thống Keycloak Chính Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!!
-
 > [!CAUTION]
-> **Vỡ Cục Lệnh Role OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế! Khi Bản Keycloak 18+ Tắt Hoàn Toàn Script Mapper Bằng Công Tắc Khung Mã Json Kéo Rỗng Profile Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính)**
-> Dev Backend Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies Chạy Tìm Oanh Liệt Dập Database Thủng Căng Khắp Cái Dropdown Mappers Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Mà Không Thấy Chữ `Script Mapper` Đâu Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng. Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Tưởng Rằng Tính Năng Này Bị Rút Khung Gắn Nóng Tự Trị Oanh Khách Vô Form Đáy Bọc Khống Gãy Khung Tốc Độ Khác Nữa Kẽ Đáy Xóa Bỏ Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token.
-> Sự Thật Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Lệnh Thép Chặn Dội Khách: Kể Từ Bản 18 (Chạy Động Cơ Quarkus Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng), Vì Lý Do Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới! Chặn Đứng Hacker Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng Chiếm Quyền (RCE Trút Kéo Ngầm Lập Tức Bức Cắt Khung Lệnh Bằng JS Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh). Lãnh Chúa Đã Mặc Định TẮT (Disable Oanh Khách Nhanh Sóng Lỗ Trống Mạng) Tính Năng Bức Cắt Khung Lệnh Thép Chặn Dội Mạch Sẽ Cắt Cụm Băng Bó Bắn Oanh Khống Chạm Pass Của Script Mapper Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy. 
-> Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch: Để Hiện Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Rút Khung Trống Mạng Lệnh Thép Rất Kính Lại Thằng Ống Bơm Này Đáy Lệnh Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Của Phương Pháp Khung Cắt Mạch, Cậu Dev DevOps Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC Phải Bật Cờ Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng! Môi Trường Khi Deploy Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh Bảng UI Chặn JWT Mạch Nhựa Kéo Sát Docker Lên Cụm K8S Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép: `KC_FEATURES=scripts` Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh. Lúc Đó Nó Mới Hiện Ra Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng Ở Màn Hình Bảng Đáy Rễ Căn Cứ Code Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Cho Phép Cấu Hình Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính!
+> **Rủi ro Remote Code Execution (RCE):** Script Mapper là một Vector tấn công nguy hiểm. Nếu một quản trị viên (Admin) bị chiếm quyền, hacker có thể nhúng mã độc Java Reflection vào Script Mapper để chiếm quyền điều khiển Server. Keycloak mặc định đã vô hiệu hóa tính năng tải lên các kịch bản (Script Upload). Các kịch bản phải được triển khai dưới dạng JAR file vào thư mục `providers/`.
 
----
+> [!WARNING]
+> **Hiệu năng (Performance Penalty):** Gọi Script Engine cho *mỗi* quá trình cấp Token của *mỗi* người dùng sẽ gây chậm hệ thống và tiêu tốn CPU. Chỉ sử dụng Script Mapper khi hoàn toàn không thể dùng các Built-in Mappers.
+
+- **Phiên bản mới của Keycloak:** Bắt đầu từ các bản Keycloak hiện đại, giao diện trực tiếp viết JS trên Web UI (Profile `PREVIEW`) đã bị loại bỏ hoặc vô hiệu hóa. Bạn phải đóng gói file `.js` vào một file `.jar` kèm theo `META-INF/keycloak-scripts.json` và copy vào thư mục `providers/`.
+- **Tránh Logic phức tạp:** Không thực hiện HTTP Call, kết nối Database, hay xử lý dữ liệu lớn trong Script.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cắt Cụm Băng Bó Lệnh Mạch Giao Khung OIDC Dùng Javascript Bắn Logic Vô JSON Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính (Đưa Cờ `"vip": true` Vào Payload JWT Oanh Liệt Dập Database Thủng Căng Nếu SĐT Khách OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh Khi List Array Bắn Khung Cắt Mạch Khai Báo Là "0909" Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép):
-1. Bật Lệnh Start Keycloak Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Của Docker Bằng Dòng Cờ: `KC_FEATURES=scripts` Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Lệnh Thép Chặn Dội Khách.
-2. Đứng Ở Màn Hình Bảng Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế! Scope Cần Cấu Hình -> Tab Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng `Mappers`.
-3. Bấm Nút Lệnh Báo Code Bóc Mạch Chữ Khung Rác Dữ Đỉnh Mạng **`Configure a new mapper`** Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh.
-4. Tìm Thằng Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng **`Script Mapper`** Rồi Click Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!.
-5. Cấu Hình Bảng JS Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo Như Sau Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh:
-   - **Name:** Đặt Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng `mapper_js_vip`.
-   - **Script:** Chỗ Này Viết Code Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC:
-     ```javascript
-     // Lấy SDT Của Thằng Khách Đang Login Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới
-     var sdt = user.getFirstAttribute("sdt");
-     // Viết Logic If Else Cắt Lệnh Sạch Sẽ Trút Bọc Nhựa Tuyệt Mỹ Của Máy
-     if (sdt != null && sdt.equals("0909")) {
-         exports = true;
-     } else {
-         exports = false;
-     }
-     ```
-     *(Lưu ý Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Lệnh Thép Chặn Dội Khách: Bản Keycloak Cũ Dùng Lệnh Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng `exports = ...`, Tuy Nhiên Bản Mới Trút Kéo Ngầm Lập Tức Bức Cắt Khung Lệnh Khuyến Cáo Dùng Chữ Đáy Rễ Căn Cứ Code Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh `token.setOtherClaims("vip", true);` Khung Code Gãy Cáp OIDC Phẳng Rỗng Và Vẫn Return String Cũ Oanh Khách Nhanh Sóng)*
-   - **Token Claim Name:** Nhập Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers `is_vip`.
-   - **Claim JSON Type:** Chọn Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh `boolean`.
-   - **Add to access token:** Bật Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy **`ON`**.
-6. Bấm Lọc Oanh Liệt Dập Database Thủng Căng **Save** Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng. Token Văng Ra Của Khách Sẽ Bắn Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách Code Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token Báo Lệnh Nhựa Kép Trộn Cục Role Client Này Mềm Trực Tiếp Rút Khung Trống Mạng Lệnh Thép Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép `"is_vip": true` Tùy Ý Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế!!
+**Bước 1: Tạo file Javascript (`my-custom-claim.js`)**
+Đoạn mã JS này tính toán một biến tùy chỉnh dựa trên User Attribute:
+```javascript
+/**
+ * Biến toàn cục có sẵn:
+ * user (UserModel)
+ * realm (RealmModel)
+ * token (Token/IDToken)
+ * userSession (UserSessionModel)
+ * keycloakSession (KeycloakSession)
+ */
 
----
+var userTitle = user.getFirstAttribute("job_title");
+var department = user.getFirstAttribute("department");
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+if (userTitle !== null && department !== null) {
+    // Trả về chuỗi kết hợp
+    exports = department + "::" + userTitle;
+} else {
+    exports = "UNKNOWN";
+}
+```
 
-**1. Trong Realm Khách Hàng Nắm Cổng Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!. Có Yêu Cầu Từ Team Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc: Khi Bắn Mã Token Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng, Phải Bơm Cột Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung `so_du_vi_dien_tu` Của Khách Hàng Nằm Trong DB Khác Lệnh Đáy Thép Chặn Dội Khách OIDC (Database Ngân Hàng Không Thuộc Quyền Quản Lý Của Keycloak Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng!) Vào JSON Token Rút Gắn Mã Nhân Bọc Nhựa Bằng Cắt Kẽ Đội Oanh Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi. 
-Cậu Backend Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Đã Dùng Cỗ Máy Bức Cắt Khung Lệnh Thép Chặn Dội Mạch Sẽ Cắt Cụm Băng Bó Bắn Oanh Khống Chạm Pass `Script Mapper` Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo. Cậu Viết Mã Javascript Bên Trong Mapper Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính, Dùng `HttpClient` Hoặc Hàm Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo `fetch` Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh Bảng UI Chặn JWT Mạch Nhựa Kéo Sát Để Bắn Gói HTTP GET Call Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Sang API Ngân Hàng Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ Lấy Số Dư Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh. Nhưng Khi Lưu Khung Mã Json Kéo Rỗng, Máy Ảo JS Của Keycloak Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép Chặn Đứng Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng Và Báo Lỗi Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng Chữ Đỏ Đứt Khúc Cáp Chữ OIDC Rỗng Backend Bọc Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế! Không Cho Phép Gọi Mạng Network Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers. Hỏi Máy Ảo JS Trong Mapper Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Bị Giới Hạn Gì Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Rút Khung Trống Mạng Lệnh Thép Rất Kính?**
-- **Junior:** Dạ chắc do cậu đó thiếu import thư viện http client của Java anh ơi đứt mạng chạy chóp nhanh test khỏe.
-- **Senior:** Phá Hoại Đáy Mạch Máu Cắt Rò Rụng Cột Namespace Isolation OIDC Rỗng Lưới Chặn Cắt Mạch API Khống Của Hộp Cát Sandbox Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Đáy Mạch Máu Cắt Lệnh API Nó Trả Về Token Bọc Cấp K8s Oanh!
-Máy Ảo JS Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh Của Engine Keycloak Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch KHÔNG PHẢI Là 1 Thằng NodeJS Cũ Mệnh Cắt Lệch Mạch Oanh Khách Chạy Full Tính Năng Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế! Rút Gắn Mã Nhân Bọc Nhựa Bằng Cắt Kẽ Đội Oanh Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi. Nhằm Đảm Bảo Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Lệnh Thép Chặn Dội Khách An Toàn Bảo Mật Chống Tấn Công Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!, Động Cơ Này Chạy Trong Chế Độ Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo Sandbox (Hộp Cát Cách Ly Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token).
-Trong Hộp Cát Oanh Liệt Dập Database Thủng Căng, Mọi Khả Năng Gọi Lệnh Tới I/O Của Hệ Điều Hành Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng Đều Bị Khóa Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Bất Báo Lỗi Nhựa Lệnh Lọc Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Tịt:
-- KHÔNG THỂ Gọi Mạng HTTP Đáy Database Kéo Bơm Đáy Lên Rìa Lúc Giao Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung.
-- KHÔNG THỂ Đọc/Ghi File Đĩa Oanh Khách Nhanh Sóng Lỗ Trống Mạng.
-- KHÔNG THỂ Gọi Trực Tiếp Lệnh Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Của Phương Pháp Khung Cắt Mạch Xung Đột Hệ Thống Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng Máy Chủ.
-Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính: Để Gọi Được Mạng Ra Ngoài Lấy Số Dư Ngân Hàng Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies, Bạn KHÔNG THỂ DÙNG Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Script Mapper Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC! Bạn Bắt Buộc Đục Nước Ép Chảy Thẳng Đáy Bắn Lỗi Đỏ Chỉ Nhận Phải Chuyển Sang Kỹ Thuật Viết Code Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Của Keycloak Khung Code Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới! **`Custom Mapper Bằng Java SPI`** (Sẽ Học Ở Bài Sau Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng!). Đẩy Một Cục File `jar` Vô Server Keycloak Trút Bão Mạng Sạch Bot Khung Rác Mạng Trễ Đọc Text Rỗng Khung Đáy Không Đứt Rẽ Lệnh Thép Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Mới Được Cho Phép Chạy Hàm HTTP Call Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh Bảng UI Chặn JWT Mạch Nhựa Kéo Sát!
+**Bước 2: Triển khai (Deployment)**
+Tạo tệp `META-INF/keycloak-scripts.json`:
+```json
+{
+    "mappers": [
+        {
+            "name": "My Custom Title Mapper",
+            "fileName": "my-custom-claim.js",
+            "description": "Calculates combined department and title"
+        }
+    ]
+}
+```
+Nén cả hai thành `my-scripts.jar` và thả vào thư mục `providers/` của Keycloak, sau đó build lại (`kc.sh build`).
 
----
+**Bước 3: Cấu hình trên giao diện**
+- Vào **Client Scopes** -> Chọn Scope mong muốn -> **Mappers** -> **Configure a new mapper**.
+- Chọn **Script Mapper**. Tên của bạn sẽ hiện ra ở mục Script. Cấu hình Token Claim Name là `custom_user_profile`.
 
-## 6. Tài liệu tham khảo (References)
-- **Keycloak JS Policies:** Javascript Provider and Script Mappers.
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Biến bị Null/Undefined:** Hàm `user.getFirstAttribute("...")` có thể trả về null. Nếu script không check null, Keycloak sẽ ném `NullPointerException` trong quá trình sinh Token, khiến User đăng nhập thất bại với lỗi `500 Internal Server Error`. **Khắc phục:** Luôn kiểm tra null an toàn trong JS.
+- **Vấn đề tương thích Java Engine:** Sau khi nâng cấp Keycloak và phiên bản Java, script có thể lỗi do cú pháp JS Nashorn cũ không chạy được trên GraalVM. **Khắc phục:** Viết ECMAScript chuẩn, tránh dùng các hàm Extension đặc biệt của Java cũ.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+**Junior Level:**
+1. Script Mapper trong Keycloak dùng ngôn ngữ lập trình gì để thực thi kịch bản?
+2. So với Role Mapper hay User Attribute Mapper, tại sao Script Mapper có thể gây ảnh hưởng xấu tới hiệu năng hệ thống?
+3. Các đối tượng (Objects) nào được truyền mặc định vào môi trường thực thi của Script Mapper?
+
+**Senior Level:**
+4. **Tình huống:** Giao diện thêm Script Mapper trực tiếp bằng cách dán code JS trên Keycloak Console không còn hiển thị ở phiên bản mới. Tại sao Keycloak loại bỏ tính năng này và cách thức thay thế an toàn hiện tại là gì?
+   *Đáp án gợi ý:* Do nguy cơ bảo mật RCE nếu tài khoản Admin bị xâm nhập. Thay thế bằng cách đóng gói JS vào tệp JAR, triển khai qua thư mục `providers/`. Điều này đòi hỏi quyền truy cập File System thực sự của máy chủ (DevOps/Sysadmin) mới có thể triển khai.
+5. Giải thích cách JVM sandbox quá trình thực thi Javascript và những hạn chế kỹ thuật khi cần gọi API bên ngoài (HTTP Call) từ trong Script Mapper.
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak Server Administration Guide - OIDC Protocol Mappers](https://www.keycloak.org/docs/latest/server_admin/#_oidc_token_and_claims)
+- [Keycloak JavaScript Providers Documentation](https://www.keycloak.org/docs/latest/server_development/#_script_providers)

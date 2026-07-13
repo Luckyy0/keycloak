@@ -1,52 +1,112 @@
-# Lesson 2: Các Rào Cản HTTP Khét Tiếng (401, 403, CORS, CSRF)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Định bệnh và xử lý dứt điểm 4 mã lỗi web cơ bản gây ức chế nhất cho Lập Trình Viên Frontend.
+> **Category:** Troubleshooting  
+> **Goal:** Phân tích, chuẩn đoán và xử lý các lỗi HTTP Status Codes (4xx, 5xx) thường gặp khi vận hành Keycloak độc lập hoặc phía sau các Reverse Proxy / Load Balancer.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### Bệnh 1: `401 Unauthorized` (Vô Danh Tiểu Tốt)
-- **Triệu chứng:** Frontend gọi vào Backend API (`/api/users`). Backend táng thẳng cái lỗi 401 đỏ loét trên Console trình duyệt.
-- **Căn nguyên:** 
-  1. Frontend quên đính kèm thẻ bài (Header: `Authorization: Bearer <token>`).
-  2. Frontend gửi token nhưng Token bị GÕ SAI (Lỡ xóa 1 chữ ở đầu).
-  3. Token ĐÃ HẾT HẠN (Expired).
-  4. Backend cấu hình sai Chìa Khóa Bí Mật (Public Key) nên giải mã chữ ký không được, phán Token Giả Mạo!
-- **Cách Chữa:** Copy cái Token đó ném lên trang `jwt.io`. Nhìn xem mốc thời gian `exp` (Expire) đã qua chưa. Kiểm tra Header Request xem có chữ `Bearer ` không (Cực nhiều Dev quên dấu cách sau chữ Bearer).
+Trong một kiến trúc mạng hiện đại, Keycloak hiếm khi được mở trực tiếp ra mạng Internet. Thay vào đó, nó thường đứng sau một Reverse Proxy (như Nginx, Apache) hoặc một Ingress Controller (trong Kubernetes). 
 
-### Bệnh 2: `403 Forbidden` (Biết Tên Nhưng Cấm Cửa)
-- **Triệu chứng:** Frontend ném Token lên, Backend KHÔNG báo 401 nữa. Nghĩa là Backend nhận ra "À, mày là user Nguyễn Văn A". Nhưng sau đó lại báo `403 Forbidden`.
-- **Căn nguyên:** Thiếu Quyền (Roles/Permissions).
-  1. Cái API của Backend được gắn Cờ Bảo Vệ: `@RolesAllowed("admin")`.
-  2. Bạn Login bằng tài khoản "Nguyen Van A", nhưng bạn chưa được gán Role "admin" trên Keycloak.
-  3. Hoặc bạn Gán Role rồi, nhưng Role đó Gắn Ở Cấp Client, mà Backend lại Check Ở Cấp Realm (Hoặc ngược lại).
-- **Cách Chữa:** Mang cái Token ném lên `jwt.io`. Nhìn thẳng vào cái cục Payload `realm_access` hoặc `resource_access`. Mắt thấy tai nghe xem cái Role "admin" nó có Nằm Ở Đó Không. Nếu Không Có -> Về Keycloak gắn Role lại.
+Khi có sự cố kết nối, các phản hồi lỗi HTTP 4xx hoặc 5xx có thể được tạo ra bởi **chính Keycloak**, hoặc bởi **Reverse Proxy**, hoặc bởi **bức tường lửa (WAF/Firewall)**. Việc xác định thành phần nào trong chuỗi mạng sinh ra lỗi là kỹ năng sinh tồn tối quan trọng của kỹ sư vận hành.
 
-### Bệnh 3: Trùm Cuối Khó Chịu: `CORS Blocked`
-- **Triệu chứng:** Màn hình trắng bóc. Bấm F12 lên Console thấy dòng chữ máu me bạo lực: 
-  *`Access to fetch at 'https://auth.com/...' from origin 'http://localhost:3000' has been blocked by CORS policy`*
-- **Căn nguyên:** Trình duyệt là Kẻ Cảnh Sát Nghiệp Vụ. Nó thấy App của bạn chạy ở tên miền `localhost:3000`, tự nhiên bắn yêu cầu AJAX sang tên miền người khác `auth.com`. Trình duyệt sẽ Mặc Định Chặn Lại vì sợ bạn cướp Token Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề.
-  Trừ khi... Thằng `auth.com` (Keycloak) PHẢI BAO DUNG Tuyên Bố Rằng: "Tôi cho phép thằng localhost:3000 này gọi tôi Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!" (Gửi kèm Header `Access-Control-Allow-Origin: http://localhost:3000`).
-- **Cách Chữa Ở Keycloak:** 
-  1. Vào Keycloak -> Chọn Client đang dùng.
-  2. Kéo xuống phần **Web Origins**. 
-  3. Bạn phải Điền CHÍNH XÁC Địa Chỉ Của Frontend Vào (Ví dụ: `http://localhost:3000`). 
-  4. TUYỆT ĐỐI CẤM Ghi dấu `*` ở môi trường Production vì Hacker sẽ cướp được dữ liệu.
+Phân loại mã lỗi tiêu chuẩn:
+- **HTTP 400, 401, 403, 404:** Thường liên quan đến phía Client gửi yêu cầu sai, thiếu quyền, hoặc cấu hình sai ở cấp độ Proxy/Keycloak.
+- **HTTP 500, 502, 503, 504:** Lỗi cấp độ Server. Dịch vụ sụp đổ, quá tải, quá thời gian (Timeout), hoặc giao tiếp giữa Proxy và Keycloak bị gián đoạn.
 
-### Bệnh 4: `CSRF Token Mismatch` (Thằng Kế Bên Ném Đá Giấu Tay)
-- **Triệu chứng:** Khi dùng Cookie Session, gửi form Submit lên Backend. Bị báo 403 CSRF.
-- **Căn nguyên:** Backend (Ví dụ Spring Security) có bật Khiên Chống Tấn Công Xuyên Trang (CSRF Protection Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Khi Khiên Bật, Bất Kỳ Cái POST Request Nào Không Kèm Theo Dãy Mã Xác Nhận Động (CSRF Token Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh) Sẽ Bị Ném Ra Cửa!
-- **Cách Chữa:** Frontend phải móc cái CSRF Token (Thường nằm ở Cookie tên `XSRF-TOKEN` Hoặc thẻ `<meta>` trong HTML Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) -> Đính nó vào Header `X-XSRF-TOKEN` Ở Mỗi Cuốc Đẩy Gọi API POST! 
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
----
+Để minh họa nguyên nhân phát sinh HTTP Errors, hãy xem xét luồng giao tiếp tiêu chuẩn:
 
-## 2. Câu hỏi Phỏng vấn (Interview Questions)
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant WAF as Firewall (WAF)
+    participant Proxy as Reverse Proxy (Nginx)
+    participant Keycloak
+    
+    Browser->>WAF: 1. Request (HTTPS)
+    alt Blocked by WAF
+        WAF-->>Browser: HTTP 403 (Access Denied / Forbidden)
+    end
+    WAF->>Proxy: 2. Forward Request
+    
+    Proxy->>Proxy: 3. Kiểm tra TLS & Routing
+    alt Không thấy backend
+        Proxy-->>Browser: HTTP 502 (Bad Gateway)
+    end
+    
+    Proxy->>Keycloak: 4. Forward to Internal IP
+    alt Keycloak bận quá lâu
+        Proxy-->>Browser: HTTP 504 (Gateway Timeout)
+    end
+    
+    Keycloak->>Keycloak: 5. Xử lý logic
+    alt Lỗi Null Pointer trong code Keycloak
+        Keycloak-->>Proxy: HTTP 500 (Internal Server Error)
+    end
+    
+    Keycloak-->>Proxy: 6. Response
+    Proxy-->>Browser: 7. Response
+```
 
-**1. Em Gặp Một Bug Cực Kỳ Dị Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy: Cả Đám Frontend Ở Công Ty Xài API Bằng Token Bình Thường, Không Bị Lỗi `CORS Blocked` Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Nhưng Hôm Nay Cái Token Bị Hết Hạn. Nó Đẩy Gói Tin Chết Lên Server Backend Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. Backend Báo Trả Về Lỗi Xử Lý `401 Unauthorized` Oanh Khung Dịch Lụa Mạch Lệnh! VÀ NGAY KHI CÁI LỖI ĐÓ ĐƯỢC BẮN RA THÌ TRÌNH DUYỆT CỦA KHÁCH LẠI BÁO LÀ BỊ CHẶN BỞI CORS POLICY Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Có Phải Frontend Xử Lý Sai Ở Đâu Không Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng?**
-- **Senior:** Dạ Thưa Sếp Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Đây Là Một Cái Bẫy "Vòng Lặp CORS - Spring Security" Kinh Điển Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Mà Cứ 10 Dev Dính Thì Cả 10 Ngồi Khóc Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-  - Lỗi Không Thuộc Về Cấu Hình Frontend Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Vấn Đề Nằm Ở Thứ Tự Của Dây Chuyền Băng Chuyền Xử Lý (Filter Chain Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) Trong Backend Của Spring Boot Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-  - Bình Thường Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Cái Chốt Gác Kiểm Tra CORS Nằm Ở Cửa Vòng Ngoài Cùng Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề. Gói Tin Đi Qua Chốt CORS, Nó Chống Ấn Dấu Đóng Mộc Đỏ (Header Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh `Access-Control-Allow-Origin: *`) Rồi Đẩy Đi Qua Lớp Kiểm Tra Mật Khẩu (Security Filter Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy).
-  - Nhưng Ở Một Số Phiên Bản Spring Boot Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Cục Security Xác Thực Lại Đứng Ở VÒNG NGOÀI! Khi Gói Tin Có Chứa Token Hết Hạn Phóng Tới Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Cục Security Nó Táng Thẳng Mặt Bằng Cú Lỗi Exception 401 Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. LỖI NÀY LÀM CHUỖI FILTER BỊ NỔ TUNG NGAY LẬP TỨC! Nó Trả Về Thẳng Cho Trình Duyệt Mà CHƯA HỀ ĐI XUYÊN QUA ĐƯỢC CHỐT CORS ĐỂ XIN CON DẤU MỘC ĐỎ (Header Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp CORS).
-  - Trình Duyệt Nhận Về 1 Response Cộc Lốc (Mã 401 Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) MÀ KHÔNG HỀ CÓ CÁI HEADER GIAO KÈO CORS TRONG ĐÓ. Trình Duyệt Liền Bật Chế Độ Cảnh Sát Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: "Đã Trả Dữ Liệu Mà Không Có Chữ Ký Của Đồn Trưởng! Chặn Ngay CORS Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!". Thế Là Cái Lỗi Thực Sự (401 Expired Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) Bị Màn Đêm Dối Trá CORS Che Phủ Hoàn Toàn Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh! 
-  - ĐỂ SỬA LỖI Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: Trong File Spring Security Config Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Bọn Em Phải Khai Báo Ép Chặt Cái Filter CORS Lên Đầu Dòng Cao Nhất Bằng Lệnh `http.cors()` Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Đảm Bảo Bất Chấp Lỗi 401 Xảy Ra Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Trả Về Cửa Khách Cũ Phải Cộp Con Dấu Xanh CORS Lên Đã Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
+**Cơ chế cấp thấp:**
+Reverse Proxy duy trì các "bể" kết nối (connection pools) với backend. HTTP 502 xảy ra khi Socket TCP đến Keycloak bị từ chối kết nối (Connection Refused). HTTP 504 xảy ra khi kết nối TCP thành công, nhưng Keycloak không gửi lại dữ liệu trước khi bộ đếm thời gian (Proxy Timeout) đếm ngược về không.
+
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
+
+> [!IMPORTANT]
+> Lỗi kinh điển khi đặt Keycloak sau Proxy là thiết lập Header sai lệch, khiến Keycloak nhận diện sai Protocol (HTTP thay vì HTTPS), dẫn đến lỗi vô tận "Mixed Content" và vòng lặp chuyển hướng. Bắt buộc phải cấu hình biến môi trường `KC_PROXY=edge` (hoặc `reencrypt`).
+
+- **Ghi log header X-Forwarded-For:** Đảm bảo Proxy luôn gắn IP thật của Client vào header trước khi đẩy cho Keycloak để phục vụ Auditing và Brute-Force protection.
+- **Tùy biến trang lỗi (Custom Error Pages):** Ẩn các trang hiển thị lỗi mặc định của Nginx/Tomcat chứa phiên bản phần mềm. Những thông tin này giúp tin tặc tìm lỗ hổng 1-day/0-day nhanh chóng.
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+
+### Chuẩn đoán qua danh sách lỗi:
+
+**1. HTTP 502 Bad Gateway**
+- **Chuẩn đoán:** Nginx/Proxy không thể kết nối tới port của Keycloak (thường là 8080). Keycloak có thể đã sập (OOM), chưa khởi động xong, hoặc cấu hình IP backend trong Proxy bị sai.
+- **Xử lý:** Kiểm tra trạng thái tiến trình `systemctl status keycloak` hoặc docker container. Đảm bảo cổng đang được lắng nghe: `netstat -tulpn | grep 8080`.
+
+**2. HTTP 504 Gateway Timeout**
+- **Chuẩn đoán:** Nginx gửi request thành công nhưng Keycloak kẹt quá lâu không trả lời. Thường do truy vấn Database bị block, hoặc tải CPU lên 100%.
+- **Xử lý:** Tăng thông số `proxy_read_timeout` trên Nginx nếu tác vụ nặng. Kiểm tra Deadlock trên Database hoặc thread dumps trên JVM.
+
+**3. HTTP 403 Forbidden**
+- **Chuẩn đoán:** Nếu lỗi trả về từ Nginx (hoặc WAF): Địa chỉ IP đã bị ban, quy tắc mod_security chặn các ký tự lạ. Nếu lỗi trả về từ Keycloak: Tài khoản không có quyền, hoặc thiếu thiết lập Header `X-Forwarded-Proto`.
+- **Xử lý:** Kiểm tra Access Log của Nginx xem ai trả lời. Bổ sung các header sau trên Proxy:
+  ```nginx
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_set_header X-Forwarded-Host $host;
+  ```
+
+**4. HTTP 400 Bad Request (Header Too Large)**
+- **Chuẩn đoán:** Session Cookie hoặc token phình to khiến tổng dung lượng HTTP Header vượt qua giới hạn của máy chủ Proxy.
+- **Xử lý:** Tăng `large_client_header_buffers` trong cấu hình Nginx. Tối ưu hóa số lượng Role/Group của người dùng trong Keycloak để giảm kích cỡ Cookie/Token.
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **HTTP 431 Request Header Fields Too Large:** Tương tự 400 nhưng cụ thể hơn ở cấp độ framework. Spring Boot proxy hoặc Keycloak Quarkus sẽ trả về lỗi này trực tiếp. Cần chỉnh sửa thuộc tính máy chủ trong quarkus properties.
+- **Lỗi hiển thị HTTPS nhưng redirect HTTP:** Nếu bạn vào HTTPS, nhưng khi Keycloak redirect đăng nhập lại về HTTP, đó là lỗi 100% do thiếu `KC_PROXY` cấu hình, khiến Keycloak tin rằng nó đang phục vụ giao thức HTTP nội bộ.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+**Câu 1 (Junior):** Phân biệt ý nghĩa gốc của lỗi HTTP 502 và HTTP 504?
+*Đáp án:* 502 là Proxy không kết nối được với Server (Server sập/sai mạng). 504 là kết nối được, nhưng Server phản hồi quá lâu vượt quá Timeout.
+
+**Câu 2 (Junior):** Nếu nhận lỗi HTTP 404 Not Found ngay khi truy cập trang chính của Keycloak, bạn nghĩ đến điều gì đầu tiên?
+*Đáp án:* Truy cập sai URL (ví dụ: Keycloak 17+ bỏ tiền tố `/auth` nên `/auth/realms/master` bị 404, chỉ còn `/realms/master`), hoặc cấu hình Ingress/Proxy route bị sai đường dẫn.
+
+**Câu 3 (Senior):** Làm thế nào để biết một lỗi HTTP là do Nginx sinh ra hay do bản thân mã nguồn của Keycloak sinh ra?
+*Đáp án:* Nginx có định dạng trang lỗi chuẩn có ghi rõ chữ "nginx" nếu chưa custom. Cách tốt nhất là xem xét HTTP Response Header: trường `Server` trả về là gì, hoặc kiểm tra song song `access.log` của nginx và server log của keycloak xem có khớp request ID không.
+
+**Câu 4 (Senior):** Tác dụng của Header `X-Forwarded-Proto` là gì trong cấu trúc ủy quyền OAuth2 phía sau Reverse Proxy?
+*Đáp án:* Nó nói cho Keycloak biết giao thức đầu cuối phía người dùng là HTTPS hay HTTP. Keycloak cần thông tin này để tự sinh ra chính xác các URL đính kèm trong các response như Issuer URI, Redirect Location, v.v.
+
+**Câu 5 (Senior):** Nếu bạn gặp HTTP 500 xuất hiện cục bộ (chỉ 1 vài user bị) trong Keycloak, bạn tiếp cận vấn đề thế nào?
+*Đáp án:* HTTP 500 là lỗi Logic / Lỗi hệ thống mã nguồn. Ngay lập tức khoanh vùng thời gian xảy ra lỗi, và trích xuất file log của Keycloak (`server.log` hoặc console docker). Tìm cụm từ `ERROR` kèm theo Stacktrace của Java (NullPointerException, SQLException...) để biết hàm nào chết.
+
+## 7. Tài liệu tham khảo (References)
+- [RFC 9110: HTTP Semantics](https://datatracker.ietf.org/doc/html/rfc9110)
+- [Keycloak Guide - Using a reverse proxy](https://www.keycloak.org/server/reverseproxy)
+- [Nginx Reverse Proxy Documentation](https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/)

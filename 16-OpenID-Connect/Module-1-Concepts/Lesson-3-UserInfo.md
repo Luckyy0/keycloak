@@ -1,88 +1,113 @@
-# Lesson 3: Cánh Cửa Bí Mật (UserInfo Endpoint)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Bạn đang cầm Access Token. Bạn muốn lấy Avatar, Ngày sinh, Tên họ của User để hiển thị lên Góc màn hình App, nhưng cái Cục Token nó lại không chứa những thông tin đó (Vì Token chỉ nhét ID ngắn cho nhẹ). Làm sao đây? Lôi Access Token đó đập thẳng vào cổng **UserInfo Endpoint**.
+> **Goal:** Khám phá chi tiết về UserInfo Endpoint trong OpenID Connect, phương pháp sử dụng Access Token để yêu cầu thông tin người dùng, và các thực hành tốt nhất khi triển khai.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. UserInfo Endpoint Là Gì?
-Đây là một Cánh Cổng (Endpoint) cực kỳ đặc biệt của OpenID Connect chuẩn (RFC 5322).
-- Keycloak luôn mở cổng này ở địa chỉ: `/protocol/openid-connect/userinfo`.
-- Nó Không dùng để Login, cũng Không dùng để xin Token. MỤC ĐÍCH DUY NHẤT của nó là trả về toàn bộ Hồ Sơ (Profile Claims) Của Khách Hàng!
-- **Đầu vào:** Bạn gửi lên nó một lệnh HTTP GET mang theo cái `Access_Token` ở thanh Header.
-- **Đầu ra:** Nó nhả về cục JSON Khổng Lồ Khối chứa Tên, Họ, Email, Số điện thoại, Ảnh Đại Diện (Avatar URL) của ĐÚNG CÁI THẰNG đang cầm Token đó.
+UserInfo Endpoint là một Protected Resource API do OpenID Provider (Keycloak) cung cấp theo chuẩn OpenID Connect (OIDC). Nhiệm vụ của endpoint này là trả về các thông tin cá nhân bổ sung (Claims) của người dùng hiện tại (Authenticated User).
 
-### 1.2. Tại Sao Cần Phân Tách UserInfo? (Lý Do Bơm Nhẹ Nhàng Bọt OIDC)
-Nếu Keycloak Nhét HẾT TOÀN BỘ Sở thích, Avatar, Nhóm, Danh sách Role của User vào Bụng cái Access Token, Cái JWT Access Token Này Sẽ Bị Phình To Căng Trướng Ra Cỡ 4-8 Kilobytes (KB).
-- Điều này LÀ THẢM HỌA MẠNG MẠCH ĐÁY! Cứ mỗi Request gửi đập API Của bạn, nó cõng theo 8KB rác dữ liệu ở cái Header. Hệ thống Proxy Nginx Đứt Gãy Vì Vượt Hạn Mức Tải Trọng Size Bọc Lệnh Cắt Khung.
-- **Đỉnh Cao Kiến Trúc OIDC Lõi Mạch:**
-  - Lệnh Keycloak Bọc Access Token CHỈ CHỨA NHỮNG THÔNG TIN CĂN BẢN (ID User, ID Client) ĐỂ API PHÂN QUYỀN.
-  - Khi App Frontend Khởi Động Lên Cần Vẽ UI Giao Diện Khách Đẹp, Nó Cầm Cái Access Token Gọn Nhẹ Này Lôi Đầu Tới Đập Cái Endpoint `/userinfo` Ngầm 1 Lần Đáy Lõi Lúc Khởi Động Load App! 
-  - Đập Xong Trả Profile Data Về Bọt Cắt Khung Mạch JSON Lụa, Cất Giấu Data Vô RAM Frontend Render State Lụa Không Hao Tốn Payload Trôi Mạng Ở Các Request API Nối Dài Giao Dịch!
-
----
+### TẠI SAO cần có UserInfo Endpoint?
+Mặc dù thông tin người dùng đã được đính kèm vào trong **ID Token**, tuy nhiên có một giới hạn rất lớn về không gian lưu trữ:
+1. **Kích thước Token:** Nếu nhồi nhét tất cả thông tin (ảnh đại diện, địa chỉ, quyền hạn, nhóm) vào ID Token, dung lượng Token sẽ quá lớn, làm tăng đáng kể dung lượng HTTP Header mỗi khi Client gửi request, ảnh hưởng đến băng thông và hiệu năng.
+2. **Quyền riêng tư (Privacy):** ID Token thường được gửi công khai tới trình duyệt và có thể lưu ở Frontend (LocalStorage, Cookies). Chứa quá nhiều PII (Personally Identifiable Information) trong Token có rủi ro bị lộ thông tin.
+3. **Tính tức thời (Freshness):** ID Token tĩnh trong suốt thời hạn sống của nó. Khi profile người dùng cập nhật trên Keycloak, ID Token cũ không tự cập nhật. UserInfo Endpoint cung cấp cách để Client truy vấn thông tin người dùng mới nhất tại thời điểm gọi API.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Đánh Gãy Giới Hạn Size Token Nhờ Bóc Tách Khung UserInfo Trượt Nhựa:
+Quá trình truy vấn thông tin từ UserInfo Endpoint yêu cầu Client phải có một Access Token hợp lệ (chứa scope `openid`).
 
 ```mermaid
 sequenceDiagram
-    participant App as ReactJS Frontend
-    participant KC as Keycloak (IdP)
-    participant API as Cổng Backend Spring Boot (RS)
-
-    Note over App, KC: User Vừa Login Xong, Nhận Về Access Token [AT] Khá Nhẹ.
+    participant C as OIDC Client (Relying Party)
+    participant K as Keycloak (UserInfo Endpoint)
     
-    App->>KC: 1. Đập Lệnh Chóp Ẩn: GET /userinfo <br/> Header: Authorization: Bearer [AT]
+    Note over C: Client đã có Access Token từ phiên xác thực
     
-    KC-->>KC: 2. Máy Chủ Lọc Giải Mã Token, Lấy ID Thằng Sub (User ID). Quét Mạch Database Rút Đáy Rương Full Data!
+    C->>K: HTTP GET /realms/{realm}/protocol/openid-connect/userinfo
+    Note right of C: Authorization: Bearer <Access_Token>
     
-    KC-->>App: 3. Phun Cục JSON Trọng Lực API Dữ Lụa: <br/> { "sub": "123", "name": "A", "email": "a@x.com", "picture": "url.jpg", "phone": "098" }
+    K->>K: Validate Access Token (Signature, Expiration, Active)
+    K->>K: Check scopes granted (e.g., profile, email)
+    K->>K: Load User data from Database
     
-    App->>App: 4. Vẽ Lên Màn Hình Web: Ảnh Avatar Khách, Và Tên "Xin Chào Khách Mạch Oanh Giao Dịch".
-    
-    Note over App, API: Còn Chuyện Đập Data Order Mạch Oanh Rút Lụa...
-    App->>API: 5. Gửi GET /api/orders Kèm Cái Token [AT] Nhẹ Gọn Khung Cũ Kéo API Rất Tốc Độ Lướt Mạng Bọt Cắt Kẽ!
+    K-->>C: HTTP 200 OK
+    Note left of K: Content-Type: application/json
+    Note left of K: {"sub": "...", "email": "...", "name": "..."}
 ```
 
----
+### Chi tiết kỹ thuật:
+- **Xác thực API:** Endpoint `/userinfo` luôn yêu cầu một Access Token hợp lệ làm phương thức xác thực (Bearer Token).
+- **Liên kết Scopes và Claims:** Lượng thông tin trả về phụ thuộc chặt chẽ vào các **Scopes** mà Client đã xin quyền ban đầu và được người dùng đồng ý. Ví dụ:
+  - Scope `profile` sẽ yêu cầu trả về các claims: `name`, `family_name`, `given_name`, `picture`.
+  - Scope `email` sẽ yêu cầu trả về: `email`, `email_verified`.
+- **Định dạng trả về:** Mặc định là JSON. Tuy nhiên, nếu được cấu hình (thông qua Client Metadata `userinfo_signed_response_alg`), Keycloak có thể trả về một JWT chứa các thông tin này (được ký bằng private key của OP) để tăng cường bảo mật.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Trải Nghiệm Mạng (Cấu Hình Thu Gọn Bớt Mapper Vào JWT Bọc Mù Lòa Oanh Khung)**
-> **Tội Ác Thiết Kế Giao Thức Mạch Rỗng Báo CSRF Rác:** Bạn Học Bài Này Nhưng Không Dám Áp Dụng. Ở Mục **Client Scopes** Của Keycloak, Chỗ Mấy Cái Lệnh Đẩy Thuộc Tính Data Lên (Mappers). Bạn Set Cho Tất Cả Các Mappers Đều Bật Cái Cờ **`Add to access token` = ON**.
-> **Hậu Quả:** Cái Access Token của bạn thành Một Bãi Rác 10KB Bọt Cắt Trắng Đứt Rỗng Lệnh Chóp Rút. Nginx Báo Lỗi `431 Request Header Fields Too Large` Trải Lụa API Đứng Khựng Bất Lực Chặn Trắng Đáy Đục Lỗ Rò Oanh Cáp.
-> **Biện Pháp Sống Còn Lớp Trọng Lực Thép OIDC Nhựa Bọc:** Bắt Buộc: Vào Các Lệnh Mappers Bơm Avatar, SDT, Sở Thích. BẠN TẮT CÔNG TẮC `Add to access token` OFF Xuống. NHƯNG BẠN CHỈ BẬT DUY NHẤT MỘT CÁI CỜ: **`Add to userinfo` = ON**!
-> Nhờ Lệnh Thiết Lập Thép Mạch Lụa Này, Access Token Biến Về Vóc Dáng Lực Sĩ 6 Múi Siêu Mỏng, Còn Data Dư Thừa Đẩy Hết Sang Chỗ Thằng Cửa Phụ Trọng Tâm UserInfo Chứa Giữ An Toàn Rất Sạch Test Mạng Lỗ Trống!
+> **Hạn chế việc gọi liên tục:** Không nên gọi UserInfo Endpoint tại mọi request của người dùng vì nó đòi hỏi Database lookup ở Keycloak, gây thắt cổ chai (bottleneck) hệ thống. Nên truy vấn một lần ở lần đăng nhập đầu tiên, sau đó cache lại dữ liệu ở Server Client hoặc Session nội bộ.
 
----
+> [!WARNING]
+> **Access Token Leakage:** UserInfo API dùng Bearer Token. Nếu Access Token bị rò rỉ, bất kỳ ai cũng có thể gọi `/userinfo` để trích xuất toàn bộ thông tin cá nhân được cấp phép. Luôn đảm bảo thời gian sống (Lifespan) của Access Token ngắn và dùng HTTPS tuyệt đối.
+
+- **Dùng Thin Token:** Một chiến lược Enterprise tốt là cấu hình Keycloak phát hành "Thin Token" (ID và Access Token chứa rất ít claim, chỉ có `sub` và `iss`), sau đó bắt Client gọi UserInfo bằng Server-to-Server back-channel để lấy dữ liệu.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cấu Hình Đập Lệnh Lấy Data Avatar User Tĩnh Trượt Bọt API OIDC:
-1. Đảm Bảo Client Của Bạn (Ví Dụ `react-spa`) Đang Chọn Scope `profile`. Mặc Định Keycloak Đã Lấy.
-2. Mở Cửa Giao Diện Terminal Lệnh cURL Hoặc Postman Gõ Oanh:
+Ví dụ cấu hình gọi UserInfo Endpoint bằng một lệnh `curl`:
+
 ```bash
-curl -X GET "http://localhost:8080/realms/master/protocol/openid-connect/userinfo" \
-     -H "Authorization: Bearer <NHÉT_CÁI_ACCESS_TOKEN_CỦA_KHÁCH_VÀO_ĐÂY>"
+# Giả sử ACCESS_TOKEN đã được lưu
+ACCESS_TOKEN="eyJhbGciOiJSUz..."
+
+# Yêu cầu thông tin UserInfo
+curl -X GET \
+  https://keycloak.example.com/realms/myrealm/protocol/openid-connect/userinfo \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Accept: application/json"
 ```
-3. Lưu Ý Tối Quan Trọng Khung Cắt: KHÔNG CẦN NHÉT CLIENT_SECRET Ở ĐÂY. Tại vì Lệnh Lấy UserInfo là Dành Cho Khách Hàng (Tức Là Cái Access Token Này Tự Nó Đã Mang Đủ Lực Uy Quyền Chứng Minh Dòng Nhựa Bọc Nó Lụa Bọt Cắt Lệnh Giao Thức API.
-4. Nó Bắn Phanh Trả Chữ Giao Dịch Rỗng Rút Cáp JSON Mạch Cắt Oanh Trọng Thép Bọc Lụa Đỉnh Chóp!
+Kết quả phản hồi JSON tiêu chuẩn:
+```json
+{
+  "sub": "248289761001",
+  "name": "Jane Doe",
+  "given_name": "Jane",
+  "family_name": "Doe",
+  "preferred_username": "j.doe",
+  "email": "janedoe@example.com",
+  "email_verified": true
+}
+```
 
----
+Trong Keycloak, để một Custom Claim (ví dụ `department`) xuất hiện ở UserInfo:
+1. Vào **Client Scopes** -> `profile` -> **Mappers**.
+2. Thêm mapper kiểu `User Attribute`.
+3. Bật tùy chọn **Add to userinfo** sang `ON` (đảm bảo nó không nằm trong token nếu muốn giảm size: tắt `Add to ID token` và `Add to access token`).
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
-**1. Sếp Yêu Cầu Code App Xác Thực. Trong Mạch Cấu Trúc Khung Rỗng OIDC. Nếu Cậu Dùng Cục 'ID Token' Để Vẽ Màn Hình Hiển Thị Tên Khách, Vậy Tại Sao OIDC Phải Sinh Thêm Tính Năng Đập API 'UserInfo' Làm Gì Cho Thừa Thãi, Trong Khi Tên Mất Bọt Đã Có Trong Cái Thẻ ID Token Rồi Khớp Lệnh Oanh Trọng Lõi Mạch Dữ Lụa Cắt Khung?**
-- **Senior:** Chà, Sếp Hỏi Đúng Điểm Tử Huyệt Giao Thức Cấu Trúc Vingroup Đỉnh Đáy Oanh Mạng!
-  - Lý Do Thứ 1 (Tính Cập Nhật Chóp Lụa): Cái thẻ **ID Token** Bị Trói Mệnh Bằng Chữ Ký Đóng Dấu Tĩnh Bọt. Tức là Cục Token Đó Sau Khi Ra Đời (Mất 5 Phút Hạn), Lỡ Khách Vào Web Sửa Lại Tên Của Mình Đổi Lệnh Đáy DB, Thì Cái ID Token Trên Tay Nó Vẫn Là Tên Cũ Mù Lòa! (Nó Không Thể Tự Cập Nhật Chữ Nghĩa Cũ Mạch Lệnh Trút Lụa Code Cấu Trúc Khung Rỗng).
-  - Lý Do Thứ 2 (Bảo Mật Băng Thông Size Rác Giao Lệnh Mạch Bọc): Nhờ Cái **UserInfo API**, Thằng Client Web Khi Cần Lấy Dữ Liệu Tươi (Tên Mới Vừa Đổi DB Lãnh Chúa), Thay Vì Phải Khổ Sở Đăng Nhập Lại Từ Đầu Để Lấy ID Token Mới. Nó Chỉ Cần Dội Lệnh Trút Lụa Rút Trọng Tâm Cầm Access Token Đập Mạch Gọi Lên `/userinfo`, Keycloak Query DB Và Trả Dữ Liệu Đỉnh Chóp Tươi Sống Ngay Lập Tức! UserInfo API Không Bị Dính Lỗi Statless Mã Khớp Bọc!
+- **Lỗi 401 Unauthorized:** Gặp khi Access Token bị hết hạn, bị thu hồi (revoked), hoặc không chứa scope `openid` (Keycloak yêu cầu mọi token gọi UserInfo phải thuộc chuẩn OIDC).
+  - *Cách xử lý:* Client phải sử dụng Refresh Token để lấy một cặp token mới và thử gọi lại (Retry logic).
+- **Lỗi Thiếu Claims (Missing Claims):** Gọi `/userinfo` thành công nhưng thông tin bị rỗng.
+  - *Nguyên nhân:* Mặc dù mapper đã được cấu hình "Add to userinfo", nhưng Client lúc khởi tạo Authorization Request đã quên truyền vào Scope tương ứng (ví dụ: thiếu `scope=profile`).
+- **Sự cố tải (High Load):** Khi một đợt burst traffic đến Client, hàng ngàn request cùng gọi `/userinfo` làm Keycloak kiệt sức do truy vấn Database.
+  - *Cách xử lý:* Cache thông tin ở Redis (phía Client) với thời gian TTL tương ứng với chu kỳ update profile hợp lý.
 
----
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
 
-## 6. Tài liệu tham khảo (References)
-- **OIDC Core 1.0:** Section 5.3 UserInfo Endpoint.
-- **Keycloak Documentation:** Server Administration Guide - OIDC Endpoints.
+1. **Junior:** UserInfo Endpoint dùng để làm gì trong OpenID Connect?
+   - *Đáp án:* Là một API để lấy thêm thông tin của người dùng hiện tại (profile, email, phone) dựa trên Access Token được cung cấp.
+2. **Junior:** Tôi có cần gọi UserInfo Endpoint nếu ID Token đã chứa đủ mọi thông tin cần thiết?
+   - *Đáp án:* Không. Việc gọi UserInfo là một tùy chọn thêm. Nếu ID Token đã thoả mãn nghiệp vụ, có thể tiết kiệm một lệnh gọi mạng (network call).
+3. **Senior:** Nếu ta muốn giữ cho ID Token và Access Token thật nhỏ gọn trên mạng, làm sao để Client vẫn có đủ Profile Data?
+   - *Đáp án:* Chúng ta cấu hình "Thin Tokens" trên Keycloak bằng cách tắt tùy chọn "Add to ID Token" và "Add to Access Token" trong các Mappers. Thay vào đó, bật "Add to userinfo". Client khi có Access Token mỏng sẽ gọi UserInfo Endpoint qua Back-channel để tải Full Profile.
+4. **Senior:** Tại sao có lúc gọi UserInfo trả về lỗi 403 Forbidden hoặc trả về thiếu trường `email` dù User có cấu hình email?
+   - *Đáp án:* Lỗi có thể do Access Token thiếu scope `openid` (biến nó thành thuần OAuth thay vì OIDC) hoặc thiếu scope `email`. Keycloak kiểm tra chặt chẽ Client Scopes được cấp trong quá trình gọi token.
+5. **Senior:** Dữ liệu trả về từ UserInfo có an toàn chống giả mạo khi qua đường truyền hay không?
+   - *Đáp án:* Trả về JSON qua HTTPS thì ngăn chặn nghe lén (Man-in-the-Middle). Nhưng nếu yêu cầu tính toàn vẹn (Non-repudiation) ở mức message, ta phải cấu hình Keycloak phát hành Signed UserInfo Response (JWS - JSON Web Signature) thay vì chỉ là raw JSON.
+
+## 7. Tài liệu tham khảo (References)
+
+- [OpenID Connect Core 1.0 - UserInfo Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)
+- [Keycloak Official Docs: Protocol Mappers](https://www.keycloak.org/docs/latest/server_admin/#_protocol-mappers)
+- [RFC 6750 - OAuth 2.0 Bearer Token Usage](https://datatracker.ietf.org/doc/html/rfc6750)

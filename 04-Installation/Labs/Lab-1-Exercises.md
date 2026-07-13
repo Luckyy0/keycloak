@@ -1,51 +1,92 @@
-# Lab 1: Dựng Cụm High Availability (HA) với Nginx và Keycloak
+# Lab 1: Triển khai Keycloak với PostgreSQL qua Docker Compose
 
 > [!NOTE]
-> Bài Lab này sẽ biến lý thuyết thành hiện thực. Bạn sẽ tự tay đóng một Đấu Trường gồm 1 Khối Database (Postgres), 2 Động Cơ Keycloak (Chạy Khớp Cụm), và 1 Nhạc Trưởng (Nginx Load Balancer).
-> Chúng ta sẽ kiểm chứng Tuyệt Kỹ: Chết 1 Máy, Session Không Rớt!
+> **Category:** Practical/Lab
+> **Goal:** Cài đặt và vận hành Keycloak sử dụng Docker Compose, kết nối với cơ sở dữ liệu PostgreSQL. Cấu hình các biến môi trường thiết yếu để khởi chạy chế độ Production.
 
-## Chuẩn bị
-- Máy có Docker và Docker-Compose.
+## 1. Kịch bản Thực hành (Lab Scenario)
+Trong môi trường doanh nghiệp (Enterprise), việc lưu trữ dữ liệu của Keycloak (Users, Clients, Sessions) không thể dùng H2 Database mặc định (In-memory) vì nguy cơ mất dữ liệu khi restart container. Bài lab này giả lập tình huống bạn là một DevOps/System Administrator được yêu cầu khởi tạo Keycloak Cluster ở chế độ tối ưu cho môi trường Production, sử dụng **PostgreSQL** làm Relational Database Backend.
 
-## Bước 1: Khởi động Đấu Trường Cụm
+## 2. Chuẩn bị Môi trường (Prerequisites)
+Để thực hiện bài lab, bạn cần chuẩn bị:
+- Máy chủ (Server/Local Machine) có cài đặt **Docker** và **Docker Compose**.
+- Đảm bảo các port `8080` (Keycloak) và `5432` (PostgreSQL) không bị tiến trình khác chiếm dụng.
+- RAM trống ít nhất 2GB để chạy mượt mà hệ thống Java application.
 
-1. Mở Terminal, đi vào thư mục `04-Installation/code`.
-2. Khám phá file `docker-compose.yml`. Ta có:
-   - `postgres_db`: Nền tảng Đáy Database Trọng Tĩnh.
-   - `kc_node_1` và `kc_node_2`: Cặp Song Sinh Đóng Role HA Khởi Start Nén Chạy Production (`KC_PROXY=edge`).
-   - `nginx_proxy`: Đứng Giữa Mở Nút Keo Dính `ip_hash`.
-3. Chạy lệnh Khởi động Cụm:
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
+
+**Bước 1: Tạo thư mục làm việc và tệp `docker-compose.yml`**
+Tạo một thư mục mới có tên `keycloak-postgres` và di chuyển vào đó:
+```bash
+mkdir keycloak-postgres
+cd keycloak-postgres
+```
+
+Tạo tệp `docker-compose.yml` với nội dung sau:
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - keycloak-net
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.0
+    container_name: keycloak-server
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - keycloak-net
+
+networks:
+  keycloak-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+```
+
+**Bước 2: Khởi chạy các dịch vụ**
+Chạy lệnh sau để pull các images và khởi tạo containers:
 ```bash
 docker-compose up -d
 ```
-4. Ngồi Đợi 1 Phút. Gõ `docker-compose logs -f kc_node_1` Và `kc_node_2`. Bạn Cần Phải Đợi Cho Tới Khi Cả 2 Thấy Dòng Chữ:
-`ISPN000094: Received new cluster view... [kc_node_1, kc_node_2]`.
-Đây là khoảnh khắc Linh Thiêng JGroups Đã Gắn Rễ 2 Khối Này Tìm Thấy Nhau Và Bắt Đầu Chia Sẻ Session RAM Rỗng! (Clustering Sóng Đỉnh Đã Thành Công Bọc Nét Sóng).
 
-## Bước 2: Test Chức Năng Bù Trừ Nóng (Load Balancing)
-
-1. Mở Trình Duyệt Bấm Cổng Nginx: `http://localhost:8080/admin`
-2. Đăng Nhập `admin`/`admin`. (Bạn Chú Ý Nginx Tự Keo Dính Gọi Về Node Gắn Phẳng).
-3. Tạo 1 Realm Mới `TestHA`. Tạo 1 User Tên `Hero`.
-4. Mở 1 Tab Trình Duyệt Riêng Tư (Incognito). Đăng Nhập Bằng User `Hero` Ở Account Console `http://localhost:8080/realms/TestHA/account`. (Chú ý Bạn Vừa Sinh Ra 1 Cái Token/Session Sống Mỏng Lệnh Trọng Chóp RAM OIDC).
-
-## Bước 3: Phép Thuật Gây Cháy Máy Chủ Vẫn Không Mất Khách Khung Session
-
-1. Quay Về Tab Trình Duyệt Đầu Ở Trang Admin (Session Admin Đang Chạy Sóng Mạch). Xem Bảng Danh Sách Trống Session Hiện Của Thằng Khách Bọc `Hero`.
-2. Kích Bật Máy Gõ Lệnh Bạo Cắt Phích Điện Đít Mạng Node 1 Kẽ Sống Khung Cắt:
+**Bước 3: Xem log khởi động**
+Quan sát log của Keycloak để đảm bảo kết nối DB thành công và server khởi động không gặp lỗi:
 ```bash
-docker stop kc_node_1
+docker logs -f keycloak-server
 ```
-(Máy Chủ KC1 Bị Tắt 1 Cú Giết Nóng Rớt Oanh Liệt). Nginx Phát Hiện Và Ném Khách Qua Node Cứu Tinh KC2 Rớt Code Sóng Đỉnh Trí Nhanh Kẹp.
-3. Qua Cái Tab Trình Duyệt Của Kẻ `Hero`. Bấm Reload (F5).
-**KẾT QUẢ VĨ ĐẠI:** Thằng Khách `Hero` Bấm Sang Đáy Trang Profile Web Nhẹ Băng Trôi Khung OIDC KHÔNG HỀ BỊ VĂNG RA NGOÀI ĐÒI NHẬP PASSWORD LẠI ĐUÔI RỖNG CHỮ!
-Mạch Mã OIDC Lệnh Cookie Ném Cú Nginx Tới Bụng KC2 Rút Mạch Máu. Bụng Thằng Não KC2 Lôi Ở Ram Nó Chữ Ký Infinispan Đã Ghi Đồng Bộ Ngầm Chéo Từ Hồi KC1 Còn Sống Giữ Trọng Giao OIDC Đánh Chặn Khách Hoàn Toàn Tươi Nóng.
+Bạn sẽ thấy thông báo tương tự `Keycloak 22.0.0 on Quarkus started in XXms`.
 
-## Bước 4: Dọn Dẹp Chiến Trường
-Bạn Vừa Chạm Tay Khung Vận Hành Kiến Trúc Scale Doanh Nghiệp Không Rớt Nghẽn. Tắt Toàn Cụm Rỗng Lệnh:
-```bash
-docker-compose down -v
-```
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-> [!TIP]
-> Bất Kỳ Lúc Nào Thấy Mạng Keycloak Rớt 1 Đứa Mới Cập, Vào Xem Cấu Hình Lỗi UDP Hay Lệnh Báo DNS_PING. Khung Infinispan Chạy Sống Hay Chết Là Tội Rất Nặng Làm Phá Trận Kẹp HA Khách Thỉnh Văng Out Thẳng Đứt Cụm Chập Tải. Tụ OIDC Doanh Nghiệp Cốt Dựa Tại Phép Cluster Sống Chết Đuôi Mạch Kép Jgroups Infinispan Thép Giao Đáy Khung Rút Nhất Lõi!
+**Nghiệm thu:**
+1. Mở trình duyệt và truy cập `http://localhost:8080`.
+2. Nhấp vào **Administration Console**.
+3. Đăng nhập bằng `Username: admin` và `Password: admin`.
+4. Truy cập **Master Realm** -> **Realm settings** và đảm bảo giao diện quản trị phản hồi tốt.
+
+**Troubleshooting (Khắc phục sự cố):**
+- **Lỗi không kết nối được PostgreSQL (`Connection refused`):** Có thể do PostgreSQL mất thời gian khởi động, trong khi Keycloak lại kết nối ngay. *Cách xử lý:* Restart lại Keycloak container bằng `docker restart keycloak-server` hoặc thêm script wait-for-it.
+- **Lỗi xung đột Port (`bind: address already in use`):** Do port `8080` bị chiếm dụng. *Cách xử lý:* Thay đổi port mapping thành `"8081:8080"` trong `docker-compose.yml` và restart lại.
+- **Dữ liệu bị mất khi khởi động lại (Data loss):** Kiểm tra cấu hình `volumes` của service postgres xem có map chính xác đường dẫn chứa dữ liệu trong container (`/var/lib/postgresql/data`) chưa.

@@ -1,82 +1,130 @@
-# Lesson 3: Đánh Khối Hóa Thạch (Legacy System Integration)
-
 > [!NOTE]
-> **Category:** Theory & Practical (Lý thuyết & Thực hành)
-> **Goal:** Khi đụng vào các Hệ Thống Cổ Đại (Legacy Systems Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) 15-20 năm tuổi Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, bạn không chỉ phải viết User Storage để đọc dữ liệu Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, mà còn phải đối mặt với một vấn đề đau đầu: **Nâng Cấp Mật Khẩu (Password Migration Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần)**. Hệ thống cũ lưu pass bằng Chuỗi Băm Cổ Lỗ Sĩ (MD5, SHA-1 Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa), vô cùng dễ bị bẻ khóa bằng Rainbow Table Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Bài học này chỉ bạn Ma Thuật Nâng Cấp Chuỗi Băm Vô Hình khi Khách Vừa Đăng Nhập Xong Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
+> **Category:** Architecture/Design (Kiến trúc/Thiết kế)
+> **Goal:** Hiểu sâu về kiến trúc User Storage SPI trong Keycloak để giải quyết bài toán tích hợp, đồng bộ hóa và quản lý xác thực với các cơ sở dữ liệu hệ thống cũ (Legacy Systems).
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Bóng Đen Của Mật Khẩu Hóa Thạch Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-Khi bạn tích hợp bằng `UserStorageProvider` Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Khách hàng gõ chữ "123456". 
-Trong hàm `isValid()` của bạn, bạn lấy mã băm MD5 cũ từ Database Oracle lên, bạn cũng lấy chữ "123456" kia đem băm thử MD5 một lần nữa Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Thấy 2 chuỗi trùng nhau -> Return True (Cho qua Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề).
-Nhưng nếu bạn cứ giữ mãi cái MD5 đó thì hệ thống bạn sẽ không bao giờ đạt chuẩn bảo mật (PCI-DSS Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Bạn KHÔNG THỂ gọi điện cho 5 triệu khách hàng và bảo: *"Mọi người ơi vào bấm Quên Mật Khẩu đổi lại mật khẩu mới đi cho tụi em cập nhật lên thuật toán PBKDF2 của Keycloak cái Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp!"* (Họ sẽ chửi bạn sấp mặt Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa).
+Một trong những thách thức lớn nhất khi doanh nghiệp chuyển đổi số và áp dụng IAM (Identity and Access Management) hiện đại như Keycloak là: **Hàng triệu người dùng đang nằm trong hệ thống cũ (Legacy Database)**. Các hệ thống này có thể là Oracle DB, MS SQL, cấu trúc bảng tự chế, hoặc dùng thuật toán băm (hashing) mật khẩu cổ điển (như MD5, SHA-1). 
 
-### 1.2. On-the-fly Migration (Nâng Cấp Trên Đường Bay)
-Keycloak hỗ trợ một nghệ thuật nâng cấp vô cùng mượt mà. 
-- Ngay tại khoảng khắc hàm `isValid()` chạy thành công (Tức là MD5 khớp Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh). 
-- Nghĩa là ngay tại cái Mili-giây đó Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, bạn **ĐANG NẮM TRONG TAY Chữ Nổi 123456 (Plain Text) Của Khách Hàng Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề**!
-- Lập tức Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp, bạn không thả cho Khách đi vội. Bạn ra lệnh cho Cỗ Máy Nội Bộ Của Keycloak (Cái PostgreSQL gốc): *"Ê Keycloak Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, tạo một dòng User này trong DB Mày đi Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, lấy chữ 123456 kia băm lại bằng Thuật Toán Tối Tân Nhất PBKDF2 của Mày rồi ghi đè lưu thẳng vào bụng mày luôn nhé Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!"* (Quá trình này gọi là Lazy Migration Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa).
-- Ở lần Đăng Nhập Vào Ngày Hôm Sau của ông Khách đó Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Khi Keycloak dò tìm User Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, nó sẽ ưu tiên Lục Trong PostgreSQL của nó Trước Tiên Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Vì hôm qua bạn đã lôi thằng này sang DB chuẩn của KC, nên hôm nay KC nhận ra ngay và dùng Hash PBKDF2 chuẩn để Verify (Xác thực)! Bỏ Mặc Luôn Cái Cục MySQL Cũ Kỹ (Nó Bị Rơi Vào Quên Lãng Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh). Cứ Như Thế Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, sau vài tháng Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Toàn Bộ Khách Hàng Tự Động Di Cư Sang Công Nghệ Mới Mà Không Hề Hay Biết!
+Không thể dễ dàng di chuyển (migrate) toàn bộ người dùng vào Keycloak ngay lập tức vì các ứng dụng cũ vẫn đang kết nối trực tiếp vào DB đó. Giải pháp của Keycloak là cung cấp cơ chế **User Storage SPI (Service Provider Interface)**.
 
----
+**User Storage SPI (Federation):** Thay vì sao chép dữ liệu, Keycloak cho phép bạn viết một plugin (Provider) bằng ngôn ngữ Java. Plugin này sẽ kết nối trực tiếp vào Legacy DB. Khi người dùng gõ username/password trên màn hình Keycloak, Keycloak sẽ gọi plugin này. Plugin sẽ truy vấn vào DB cũ để xác thực mật khẩu. 
+
+Nhờ cơ chế này, Keycloak đóng vai trò như một Proxy thông minh. Người dùng vẫn xác thực bằng tài khoản cũ, nhưng hệ thống mới nhận được Token hiện đại (JWT/SAML).
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Của Thuật Di Cư Bóng Đêm Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:
+Quá trình xác thực thông qua User Storage SPI không đồng bộ hóa mật khẩu vào Keycloak, mật khẩu vẫn nằm ở Legacy DB.
 
 ```mermaid
 sequenceDiagram
-    participant User as Khách Hàng Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần
-    participant KC as PostgreSQL Lõi KC Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    participant SPI as Custom User Storage Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    participant Legacy as Oracle Đồ Cổ Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp
-    
-    %% Lần 1: Khách Login Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề
-    User->>KC: "Tôi Là Bác Sĩ Cảnh, Pass 123" Oanh Khung Dịch Lụa Mạch Lệnh
-    KC->>KC: Tìm Bác Sĩ Cảnh Trong PostgreSQL... Không Có Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Đẩy Sang SPI!
-    
-    KC->>SPI: "Mày Kiếm Phụ Thằng Cảnh Bác Sĩ Tao Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng"
-    SPI->>Legacy: Chọc DB Cũ Lấy Thông Tin Cảnh Và Hash MD5 Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    Legacy->>SPI: Lấy Về OK.
-    
-    SPI->>SPI: Tự Tay Băm Chữ "123" Bằng MD5 Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. So Sánh Khớp Nhau Với Oracle!
-    
-    Note over SPI, KC: GIAI ĐOẠN MA GIÁO BẮT ĐẦU Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    
-    SPI->>KC: (Nói Nhỏ Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) "Anh Mở Bảng PostgreSQL Của Anh Ra Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Nhập Tên Thằng Cảnh Này Vào Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Và Lưu Luôn Cái Pass PBKDF2 Mới Của Chữ '123' Này Bằng Lệnh `user.credentialManager().updateCredential()` Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Giúp Em!"
-    KC->>KC: Ghi Đè Local DB Hoàn Tất! 
-    SPI->>KC: Báo Cáo Chữ Ký Hợp Lệ Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Pass True!
-    KC->>User: Cấp Phát Token Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-    
-    %% Lần 2: 1 Tháng Sau Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-    User->>KC: "Tôi Là Bác Sĩ Cảnh, Pass 123" Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề
-    KC->>KC: Tìm Thấy Thằng Cảnh Trong DB Nội Bộ Của Tui Rồi Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! (Nó Đã Trở Thành Công Dân Keycloak Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề). Tự Verify PBKDF2 Thành Công. Đéo Cần Đi Đâu Nữa Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần! 
+    participant User
+    participant KC as Keycloak Core
+    participant SPI as User Storage Provider (Custom Java)
+    participant LegacyDB as Legacy Database (Oracle/MSSQL)
+
+    User->>KC: POST /login (Username: "user1", Password: "xyz")
+    KC->>KC: Tìm "user1" trong Keycloak Local DB
+    alt Không tìm thấy trong DB nội bộ
+        KC->>SPI: Gọi getUserByUsername("user1")
+        SPI->>LegacyDB: SELECT * FROM TBL_USERS WHERE user_id = 'user1'
+        LegacyDB-->>SPI: Trả về record người dùng
+        SPI->>KC: Trả về đối tượng `UserModel` mô phỏng
+        KC->>SPI: Gọi isValid(UserModel, "xyz")
+        SPI->>SPI: Băm mật khẩu "xyz" bằng thuật toán Legacy (vd: MD5)
+        SPI->>SPI: So sánh Hash mới tạo với Hash lấy từ Legacy DB
+        SPI-->>KC: Trả về TRUE (Xác thực thành công)
+        KC->>KC: (Optional) Import user vào DB Keycloak (Cached)
+        KC->>User: Cấp phát Access Token thành công
+    end
 ```
 
----
+**Cơ chế Import (Caching) vs Non-Import:**
+SPI hỗ trợ hai chế độ. 
+1. **Import:** Lần đầu user đăng nhập thành công, Keycloak copy ID, Username, Email vào DB nội bộ của nó (không copy password). Các lần sau, Keycloak tìm thấy user ở nội bộ ngay, giảm độ trễ, nó chỉ gọi SPI để check password.
+2. **Non-Import (No-cache):** Keycloak không lưu bất cứ thông tin gì, mọi request (kể cả tìm user, check pass) đều phải chọc xuống Legacy DB thông qua SPI. Phù hợp nếu Legacy DB thường xuyên bị đổi dữ liệu bởi app khác.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Đâm Chết Dữ Liệu Xung Đột)**
-> **Tội Ác Không Đồng Bộ 2 Chiều Ở Trạng Thái Hybrid Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh:** Bác Sĩ Cảnh được Nâng Cấp Sang DB Của Keycloak Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Tuy nhiên, Một Hệ Thống ERP Quản Trị Nhân Sự Cũ Vẫn Đang Chọc Vào Cái Oracle Đồ Cổ Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Hôm Sau Bác Sĩ Cảnh Vào Cái ERP Cũ, Đổi Pass Thành "456" Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bác Sĩ Đăng Nhập Lại Bằng Màn Hình Keycloak Mới Bằng Chữ "456", Keycloak Báo "Sai Mật Khẩu Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh!" 
-> **Hậu Quả Chết Khét:** 
-> Do Keycloak Đã Lưu Thằng Cảnh Vào Local DB PostgreSQL Của Nó, Nên Nó Bỏ Mặc Sự Thay Đổi (Cái Pass Mới Bị Sinh Ra Hôm Sau) Ở Oracle Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chuyện Gì Xảy Ra Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa? Dữ Liệu Bị Nứt Gãy Thành 2 Nửa Không Đồng Nhất Oanh Khung Dịch Lụa Mạch Lệnh!
-> **Biện Pháp Sống Còn Chặt Đức Đuôi:** Khi Dùng Kỹ Thuật (Imported User Migration Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Bạn Phải Rào Kỹ Giao Thức Đổi Mật Khẩu:
-> 1. Thiết Kế Cái Giao Diện Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Đổi Mật Khẩu Của Hệ Thống Cũ (ERP) Đẩy Gọi API Sang Keycloak Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Keycloak Phải Là TRUNG TÂM SỰ THẬT (Single Source of Truth Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp). Đổi Pass Phải Đi Qua Lõi Của Nó.
-> 2. Hoặc Phải Viết Hàm Check `isValid()` Của Cái Provider Xoáy Lại Thành Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy: Dù Có Tìm Thấy Ở Local Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp, Nếu Pass Nhập Bị Sai Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng -> Đừng Từ Chối Vội Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Mà Phải Tranh Thủ Dọt Sang DB Oracle Xem Nó Có Pass Mới Nhập Không Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề! Nếu Ở Đó Khớp Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh -> Lại Sync Ghi Đè Qua Cho Keycloak Local Lần Nữa Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Bằng Việc Này Bạn Vừa Linh Hoạt Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Vừa Khắc Phục Hiện Tượng Đồng Băm Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần!
+> [!WARNING]
+> **Performance Overhead:** Nếu Legacy DB chậm, việc login trên Keycloak sẽ cực kỳ chậm. Gây hiệu ứng thắt cổ chai (Bottleneck) làm treo thread pool của Keycloak. Hãy dùng Connection Pooling (HikariCP) bên trong mã Java SPI của bạn.
 
----
+> [!IMPORTANT]
+> **Phasing out Legacy (Chiến lược loại bỏ dần):** Mục tiêu cuối cùng là từ bỏ Legacy DB. Hãy áp dụng chiến thuật "Migration on the fly". Khi SPI xác thực mật khẩu thành công bằng MD5, SPI nên cập nhật luôn mật khẩu (bằng cơ chế PBKDF2 của Keycloak) vào DB Keycloak, sau đó ngắt kết nối user đó khỏi Legacy. Dần dần 100% user sẽ chuyển sang dùng Keycloak DB.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+- **Bảo mật thuật toán cũ:** Các hệ thống cũ thường băm MD5 hoặc SHA1 (dễ bị bẻ khóa). Nếu sử dụng SPI, bạn phải đảm bảo kết nối mạng (Network) từ cụm Keycloak đến Legacy DB được mã hóa qua TLS/VPN, không truyền dữ liệu dạng plain-text trên đường truyền nội bộ.
+- **Read-Only vs Read-Write:** Luôn implement các Interface `UserLookupProvider` và `CredentialInputValidator` (chỉ đọc). Trừ khi cực kỳ cần thiết mới implement `UserRegistrationProvider` (cho phép thêm user mới từ Keycloak dội ngược xuống Legacy DB), vì nó có thể phá vỡ tính toàn vẹn dữ liệu của hệ thống cũ.
 
-**1. Khách Nhắn Nhủ: "Thôi Bây Giờ Cái Bảng Của Tụi Oracle Đồ Cổ Này Cũng Bé Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Cỡ 500,000 Thằng User Thôi. Mày Đừng Code Java Lằng Nhằng Nữa Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Viết 1 Cái Script SQL Hút Sạch 500k Thằng Đó Nhồi Trực Tiếp Bằng Lệnh `INSERT INTO user_entity` Của PostgreSQL Keycloak Cho Xong Việc Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị! Đi Cửa Sau Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Đỡ Phải Viết SPI Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh!" Em Có Đồng Ý Không Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề?**
-- **Senior:** Dạ Thưa Sếp Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Câu Này Em Chấp Nhận Mất Việc Chứ Quyết Không Đâm Script SQL Vào Database Của Lõi Keycloak Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
-  - DB Của Keycloak Thiết Kế Rất Cực Đoan Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Không Phải Cứ Bơm Bảng `user_entity` Là Xong Đâu Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Để 1 Thằng User Sống Sót Nó Kèm Theo Vô Số Cấu Trúc Nhằng Nhịt Ở Bảng `credential` Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, `user_attribute` Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Và Hàng Loạt Hash ID Được Lõi Java Nặn Bằng Tay Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị.
-  - Vấn Đề Chí Mạng Thứ Hai: Password Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp! Password Bên Kia Đang Lưu Dưới Chuỗi Băm MD5 Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Bọn PostgreSQL Làm Chó Gì Có Thể Nặn Ra Thằng MD5 Cho Keycloak Hiểu Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề! Keycloak Chỉ Đọc Thuật Toán Băm Của Riêng Nó (PBKDF2 Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Argon2 Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh). Đâm Thẳng MD5 Vào Bảng Của KC Coi Như Bỏ Đi Toàn Bộ Cổng Đăng Nhập Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-  - Thay Vì Đâm Cửa Sau Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Mình Chịu Khó Bỏ 3 Ngày Code Cái SPI User Storage Chơi Trò Lừa Đảo Lấy Password Cũ Nén Sang Password Mới Dần Dần (Lazy Migration Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng). Keycloak Thiết Kế API Cấp Bậc Cho Vấn Đề Này Quá Chuẩn Mực Tội Gì Không Sài Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
----
+Bạn không cấu hình SPI bằng UI, mà phải lập trình Java. Dưới đây là cấu trúc cơ bản của một Custom User Storage Provider (dùng JPA/Hibernate để nối vào Legacy DB).
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Developer Guide - User Storage SPI - Migrating user passwords.
+**1. Khai báo Factory (UserStorageProviderFactory):**
+```java
+public class LegacyUserStorageProviderFactory implements UserStorageProviderFactory<LegacyUserStorageProvider> {
+    public static final String PROVIDER_ID = "legacy-user-db";
+
+    @Override
+    public LegacyUserStorageProvider create(KeycloakSession session, ComponentModel model) {
+        // Khởi tạo Provider và inject EntityManager/Connection DB
+        return new LegacyUserStorageProvider(session, model);
+    }
+    
+    @Override
+    public String getId() { return PROVIDER_ID; }
+}
+```
+
+**2. Implement Provider Logic (UserLookupProvider, CredentialInputValidator):**
+```java
+public class LegacyUserStorageProvider implements UserStorageProvider, UserLookupProvider, CredentialInputValidator {
+    
+    @Override
+    public UserModel getUserByUsername(String username, RealmModel realm) {
+        // Query cơ sở dữ liệu cũ
+        LegacyUser user = entityManager.find(LegacyUser.class, username);
+        if (user == null) return null;
+        // Map LegacyUser sang UserModel của Keycloak
+        return new UserAdapter(session, realm, model, user);
+    }
+
+    @Override
+    public boolean isValid(RealmModel realm, UserModel user, CredentialInput input) {
+        if (!supportsCredentialType(input.getType())) return false;
+        
+        String password = input.getChallengeResponse();
+        // Giả sử legacy dùng MD5
+        String hashedInput = md5Hash(password); 
+        LegacyUser legacyUser = getLegacyUser(user.getUsername());
+        
+        return legacyUser.getPasswordHash().equals(hashedInput);
+    }
+    // ... các phương thức râu ria khác ...
+}
+```
+**Deploy:** Đóng gói thành `legacy-provider.jar`, nhét vào file `META-INF/services/org.keycloak.storage.UserStorageProviderFactory` để đăng ký. Chép jar vào thư mục `/opt/keycloak/providers/`. Khởi động lại Server.
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Legacy DB Down (Database cũ chết):** Nếu hệ thống cũ rớt mạng, mọi nỗ lực đăng nhập của user (dù đã được import thông tin cơ bản) đều thất bại vì Keycloak không lưu mật khẩu. Giải pháp: Có chiến lược DB Replica hoặc tạm thời bật Fallback mode nếu logic nghiệp vụ cho phép.
+- **Xung đột Username:** User A tồn tại ở cả Local Keycloak DB và Legacy DB (do admin nhập tay). Keycloak luôn ưu tiên tìm trong Local DB trước. Nghĩa là User A sẽ được xác thực bằng mật khẩu nội bộ, SPI không bao giờ được gọi. Điều này gây khó hiểu ("sao đổi pass ở app cũ mà login app mới báo sai?").
+- **Giao dịch (Transactions):** Provider chạy trong cùng một JTA transaction với luồng login của Keycloak. Nếu mã Java kết nối Legacy DB gặp lỗi và văng Exception, toàn bộ quá trình login (của user đó) bị rollback, người dùng thấy trang Lỗi 500. Phải bắt (`try-catch`) cẩn thận và trả về `null` hoặc log lỗi để Keycloak xử lý duyên dáng (Graceful degradation).
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior:** User Storage SPI trong Keycloak dùng để làm gì?
+   - *Đáp án:* Dùng để liên kết (federate) Keycloak với một cơ sở dữ liệu người dùng từ hệ thống cũ bên ngoài mà không cần phải thực hiện di chuyển (migrate) hay sao chép toàn bộ dữ liệu người dùng.
+2. **Junior:** Mật khẩu của người dùng có được sao chép vào Database của Keycloak khi dùng User Storage SPI không?
+   - *Đáp án:* Mặc định là KHÔNG. Mật khẩu vẫn nằm ở Database cũ. Keycloak chỉ đóng vai trò nhận password người dùng gõ vào, truyền cho SPI xử lý so sánh băm và chờ kết quả.
+3. **Senior:** Sự khác biệt giữa chế độ "Import User" và "Non-Import" trong Storage SPI là gì?
+   - *Đáp án:* "Import" sẽ tạo ra một bản sao (shadow copy) các thuộc tính cơ bản (tên, email) của user vào Local DB của Keycloak sau lần đăng nhập thành công đầu tiên, giúp liên kết (link) user với Roles/Groups của Keycloak dễ dàng. "Non-Import" không lưu gì cả, dữ liệu chỉ tồn tại in-memory trong phiên chạy, phù hợp nếu dữ liệu DB ngoài thay đổi liên tục.
+4. **Senior:** Công ty có kế hoạch bỏ hoàn toàn Legacy DB sau 1 năm. Thiết kế chiến lược "Migration on the fly" bằng SPI như thế nào?
+   - *Đáp án:* Viết SPI. Trong hàm `isValid` xác thực mật khẩu, nếu xác thực bằng Legacy DB thành công, gọi API nội bộ của Keycloak: `user.credentialManager().updateCredential(UserCredentialModel.password(inputPassword))`. Điều này lưu PBKDF2 hash vào Keycloak DB. Đồng thời unlink user khỏi SPI (chuyển đổi federation link). Các lần login sau, Keycloak tự dùng Local DB.
+5. **Senior:** Điều gì xảy ra nếu lập trình viên SPI không xử lý đóng (close) các Connection tới Database cũ sau mỗi lần xác thực?
+   - *Đáp án:* Gây rò rỉ kết nối (Connection Leak). Vì Keycloak xử lý hàng ngàn request đồng thời, Pool kết nối tới Legacy DB sẽ cạn kiệt (Exhausted). Keycloak thread sẽ bị treo chờ connection, dẫn đến hệ thống login sụp đổ hoàn toàn. Cần quản lý chặt chẽ vòng đời của connection trong Java code.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak User Storage SPI Documentation](https://www.keycloak.org/docs/latest/server_development/#_user-storage-spi)
+- [Legacy Password Migration Strategies](https://www.keycloak.org/docs/latest/server_admin/#_migration_on_the_fly)
+- [Hibernate / JPA Connection Management](https://hibernate.org/orm/documentation/)

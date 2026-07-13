@@ -1,83 +1,141 @@
-# Lab 1: Mở Khóa Và Phù Phép Javascript (Script Mapper)
-
 > [!NOTE]
 > **Category:** Practical/Lab (Thực hành)
-> **Goal:** Học cách kích hoạt tính năng Cấm Thuật `scripts` trên Keycloak bằng cấu hình Docker. Sau đó trực tiếp lên Giao Diện Web cấu hình viết một đoạn mã Javascript tự tính toán chèn một cờ hiệu Độc Lạ vào Access Token. 
+> **Goal:** Ứng dụng các kiến thức về Advanced Mappers để tùy biến Token. Cụ thể là triển khai Role Mapper (để chuẩn hóa quyền cho ứng dụng giả định) và Hardcoded Claim Mapper (để gắn cờ Tenant ID cố định) trên môi trường Keycloak cục bộ.
 
-## 1. Yêu cầu (Prerequisites)
-- Docker Compose.
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## 2. Các bước thực hiện (Step-by-step)
+Công ty bạn đang phát triển một hệ thống API Gateway bằng Spring Cloud Gateway để định tuyến request từ bên ngoài vào. Hệ thống này có hai yêu cầu đặc thù về cấu trúc JWT (Access Token):
 
-### Bước 1: Mở Khóa Cấm Thuật Ở Máy Chủ (Docker)
-Để Script Mapper hiện hình trên giao diện Admin, bạn phải khởi động Keycloak kèm Feature Flag.
-Hãy tạo một file `docker-compose.yml` (Hoặc sửa file ở các bài trước):
+1. **Yêu cầu 1 (Ánh xạ Role):** Hệ thống API Gateway sử dụng phân quyền mặc định của Spring Security, yêu cầu danh sách các quyền phải nằm ở claim gốc tên là `authorities` và mỗi quyền phải bắt đầu bằng tiền tố `ROLE_` (ví dụ: `ROLE_api-admin`). Tuy nhiên Keycloak lại lưu ở `realm_access.roles` mà không có tiền tố.
+2. **Yêu cầu 2 (Định danh Tenant):** Tất cả các người dùng đăng nhập qua Client (ứng dụng Front-end) tên là `frontend-portal` đều phải được Gateway đánh dấu chung một định danh môi trường. Bạn cần gắn tĩnh (hardcode) claim `tenant_domain: "asia.myapp.com"` vào Token cho ứng dụng này.
 
-```yaml
-version: '3.8'
+Nhiệm vụ của bạn là cấu hình Protocol Mappers trong Keycloak để giải quyết cả hai bài toán này mà không phải viết mã (code) phía Backend.
 
-services:
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0.1
-    # BẮT BUỘC CÓ --features=scripts Ở LỆNH KHỞI ĐỘNG Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    command: start-dev --features=scripts
-    environment:
-      KC_DB: dev-file
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    ports:
-      - 8080:8080
+## 2. Chuẩn bị Môi trường (Prerequisites)
+
+- Đã cài đặt và chạy Keycloak phiên bản >= 22 (hoặc cao hơn qua Docker/Podman).
+- Đã có tài khoản Keycloak Admin (`admin` / `admin`).
+- Đã tạo sẵn Realm tên là `Lab-Realm`.
+- Đã tạo một User tên `test-user` (có password) trong Realm này.
+- Công cụ kiểm tra: Trình duyệt web và công cụ [jwt.io](https://jwt.io) để giải mã Token.
+
+*Nếu chưa có Keycloak đang chạy, hãy dùng lệnh sau để khởi động tạm thời:*
+```bash
+docker run -p 8080:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:latest start-dev
 ```
-Gõ `docker-compose up -d`. Đợi một phút cho KC nổ máy.
 
-### Bước 2: Tạo Dữ Liệu Thô (User Attribute)
-1. Đăng nhập `localhost:8080` (admin/admin).
-2. Tạo 1 User tên là `teo`, đặt mật khẩu là `123`.
-3. Chuyển qua Tab **Attributes** của thằng User `teo`.
-4. Gắn cho nó một cái Cột Thuộc Tính tên là `so_tien_trong_tui`, Value gõ vào `5000000` (5 Triệu). Save Lại!
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-### Bước 3: Cấy Script Mapper Bằng Giao Diện
-1. Vào mục `Client Scopes` (Ở cột Menu trái).
-2. Chọn thằng Scope tên là `roles` (Hoặc tạo 1 Scope mới để khỏi đụng chạm thằng Mặc định).
-3. Sang tab **Mappers** -> Bấm Add Mapper -> **By Configuration**.
-4. Chọn loại **Script Mapper** (Nếu bạn không gắn `--features=scripts` ở Bước 1, loại này sẽ Ẩn Mất Tăm Không Tìm Thấy).
-5. Khai báo các thông tin sau:
-   - **Name:** `Xep_Loai_Dai_Gia`
-   - **Token Claim Name:** `xep_loai`
+### Bước 1: Thiết lập Client và gán Role
+
+1. Truy cập Keycloak Admin Console: `http://localhost:8080/admin`. Đăng nhập và chuyển sang `Lab-Realm`.
+2. Tạo Client:
+   - Menu trái -> **Clients** -> **Create client**.
+   - **Client ID:** `frontend-portal`.
+   - Bấm **Next**. Để mặc định, ở trang cuối đổi **Valid redirect URIs** thành `*` (chỉ dùng cho môi trường dev). Bấm **Save**.
+3. Tạo Role cấp Realm:
+   - Menu trái -> **Realm roles** -> **Create role**.
+   - **Role name:** `api-admin`. Bấm **Save**.
+4. Gán Role cho User:
+   - Menu trái -> **Users** -> Tìm kiếm và chọn `test-user`.
+   - Chuyển sang tab **Role mapping**.
+   - Bấm **Assign role** -> Chọn `api-admin` -> Bấm **Assign**.
+
+### Bước 2: Cấu hình Role Mapper để đáp ứng Yêu cầu 1
+
+Chúng ta không cấu hình trực tiếp vào Client mà dùng Client Scopes để tái sử dụng.
+
+1. Tạo Scope mới:
+   - Menu trái -> **Client Scopes** -> **Create client scope**.
+   - **Name:** `spring-authorities`.
+   - **Type:** `Default` (để tự động thêm vào mọi token của client).
+   - Bấm **Save**.
+2. Cấu hình Mapper trong Scope:
+   - Trong giao diện của `spring-authorities`, chọn tab **Mappers**.
+   - Bấm **Add mapper** -> **By configuration**.
+   - Chọn **User Realm Role**.
+   - Cấu hình như sau:
+     - **Name:** `roles-to-authorities`
+     - **Realm Role prefix:** `ROLE_` (đây là tiền tố sẽ thêm vào).
+     - **Multivalued:** `ON` (để tạo mảng JSON, điều này rất quan trọng).
+     - **Token Claim Name:** `authorities` (Tên thuộc tính trong Token).
+     - **Add to ID token:** `OFF`.
+     - **Add to access token:** `ON`.
+   - Bấm **Save**.
+3. Gán Scope vào Client:
+   - Về lại menu **Clients** -> Chọn `frontend-portal` -> Tab **Client scopes**.
+   - Bấm **Add client scope** -> Chọn `spring-authorities` -> Bấm **Add** -> Chọn **Default**.
+
+### Bước 3: Cấu hình Hardcoded Claim Mapper đáp ứng Yêu cầu 2
+
+Vì Tenant là đặc thù của Client `frontend-portal`, ta sẽ cấu hình Hardcoded Mapper trực tiếp vào Client này.
+
+1. Menu trái -> **Clients** -> Chọn `frontend-portal`.
+2. Chuyển sang tab **Client scopes**.
+3. Bấm trực tiếp vào link của client scope tên là `frontend-portal-dedicated` (Đây là scope độc lập của riêng client này).
+4. Chuyển sang tab **Mappers**.
+5. Bấm **Add mapper** -> **By configuration**.
+6. Chọn **Hardcoded claim**.
+7. Cấu hình như sau:
+   - **Name:** `inject-tenant-domain`
+   - **Token Claim Name:** `tenant_domain`
+   - **Claim value:** `asia.myapp.com`
    - **Claim JSON Type:** `String`
-   - **Script:** (Ô vuông Code bự chà bá Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, dán nguyên đoạn JS dưới đây vào):
+   - **Add to access token:** `ON`
+8. Bấm **Save**.
 
-```javascript
-// Lấy thuộc tính gốc kiểu mảng (array) từ DB
-var danhSachTien = user.getAttribute("so_tien_trong_tui");
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-if (danhSachTien != null && danhSachTien.size() > 0) {
-    // Ép kiểu về Số Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    var soTien = parseInt(danhSachTien.get(0));
-    
-    // Logic tính toán Rẽ Nhánh Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    if (soTien > 1000000) {
-        exports = "VIP_DAI_GIA"; // Biến 'exports' là Cổng Đầu Ra Của Script Mapper Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-    } else {
-        exports = "NGHEO_ROT_MONG_TOI";
-    }
-} else {
-    exports = "KHONG_XAC_DINH";
+### 4.1. Lấy Token để kiểm tra
+
+Sử dụng Endpoint cấp token của Keycloak để mô phỏng một đăng nhập từ Client `frontend-portal` bằng Resource Owner Password Credentials flow (cho tiện kiểm tra):
+
+Mở Terminal và chạy lệnh `curl`:
+```bash
+curl -X POST "http://localhost:8080/realms/Lab-Realm/protocol/openid-connect/token" \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "client_id=frontend-portal" \
+     -d "username=test-user" \
+     -d "password=<mật khẩu của test-user>" \
+     -d "grant_type=password"
+```
+
+Bạn sẽ nhận được một phản hồi JSON có chứa trường `access_token`.
+
+### 4.2. Giải mã và Nghiệm thu
+
+Copy đoạn mã chuỗi khổng lồ của `access_token` và dán vào phần "Encoded" trên trang web [https://jwt.io](https://jwt.io).
+
+Nhìn vào phần "Payload (Data)" bên phải, bạn PHẢI thấy kết quả tương tự như sau:
+
+```json
+{
+  "exp": 1699999999,
+  "iat": 1699999000,
+  "jti": "5a5c...",
+  "iss": "http://localhost:8080/realms/Lab-Realm",
+  "sub": "b2c3...",
+  "typ": "Bearer",
+  "azp": "frontend-portal",
+  "session_state": "6...",
+  "tenant_domain": "asia.myapp.com",
+  "authorities": [
+    "ROLE_api-admin",
+    "ROLE_default-roles-lab-realm"
+  ]
 }
 ```
-   - **Add to ID token:** Bật `ON`
-   - **Add to access token:** Bật `ON`
-6. Bấm Save.
 
-### Bước 4: Kiểm Chứng Ma Thuật (Evaluate)
-Sử dụng chức năng Evaluate Tích Hợp Sẵn Của Keycloak (Tránh mất công Postman Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy):
-1. Bạn chuyển sang Tab **Client Scopes -> Evaluate** (Hoặc ở trong cấu hình 1 Client bất kỳ, chọn tab Evaluate).
-2. Ô User: Tìm và Gõ tên `teo`.
-3. Bấm Nút **Evaluate** bự đùng.
-4. Một cục Cửa Sổ Bóc Tách Bụng Token Chạy Ra (Generated Access Token). Bấm vào Tab **Generated Access Token**.
-5. Đảo mắt kéo xuống dưới cùng cục JSON. Bạn sẽ Sướng Rơn khi thấy dòng:
-   `"xep_loai": "VIP_DAI_GIA"`
-6. Quay lại sửa `so_tien_trong_tui` của Tèo thành `500`. Trở lại bấm Evaluate lần nữa. Bụng Token lập tức thay đổi:
-   `"xep_loai": "NGHEO_ROT_MONG_TOI"`
+**Tiêu chí thành công:**
+- Xuất hiện mảng `"authorities"`.
+- Trong mảng đó có chứa chuỗi `"ROLE_api-admin"`.
+- Xuất hiện trường phẳng (flat string) `"tenant_domain": "asia.myapp.com"`.
 
-Chúc Mừng Bạn Đã Tốt Nghiệp Ma Đạo Sư Token Bằng Javascript Oanh Khung Dịch Lụa Mạch Lệnh!
+### 4.3. Lỗi thường gặp (Troubleshooting)
+
+- **Lỗi:** Trường `authorities` chỉ là chuỗi text (`"authorities": "ROLE_api-admin"`) thay vì mảng JSON (Array).
+  - *Cách sửa:* Bạn quên bật nút gạt **Multivalued** sang `ON` ở Bước 2. Hãy quay lại sửa cấu hình Mapper.
+- **Lỗi:** Bắn lệnh `curl` báo lỗi `401 Unauthorized` hoặc `invalid_client`.
+  - *Cách sửa:* Nếu Client của bạn cấu hình là "Confidential" (có Client Secret), lệnh curl bắt buộc phải truyền thêm `-d "client_secret=..."`. Trong lab này chúng ta đang dùng Public Client mặc định.
+- **Lỗi:** Không thấy `tenant_domain` trong Token.
+  - *Cách sửa:* Có thể bạn đã tạo mapper Hardcoded claim nhưng không bật nút **Add to access token**. Kiểm tra lại cấu hình ở bước 3.

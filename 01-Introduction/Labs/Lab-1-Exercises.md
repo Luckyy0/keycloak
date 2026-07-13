@@ -1,109 +1,88 @@
-# Lab 1: Khởi chạy Máy chủ Keycloak Đầu tiên (First Boot)
-
 > [!NOTE]
-> **Category:** Labs (Thực hành)
-> **Goal:** Áp dụng Lý thuyết Chương 1. Chấm dứt việc nói chay. Tự tay thiết lập (Provision) Cỗ máy Keycloak bằng Docker Compose, gắn kèm Database PostgreSQL chuẩn Enterprise và bước những bước đầu tiên vào Lâu đài Quản trị.
+> **Category:** Practical/Lab
+> **Goal:** Tự tay cài đặt, khởi chạy một máy chủ Keycloak hoàn chỉnh bằng Docker, và làm quen với giao diện Admin Console để tạo Realm và User đầu tiên.
 
-## 1. Chuẩn bị Môi trường (Prerequisites)
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-Để thực thi Lab này, trên máy tính cá nhân (Laptop/PC) của bạn bắt buộc phải cài đặt:
-1. **Docker Engine** (Chạy Nền tảng Ảo hóa Container).
-2. **Docker Compose** (Công cụ quản lý cụm Container).
-3. Mở sẵn Port `8080` (Dành cho Web) và `5432` (Dành cho Database) trên máy.
+Bạn là một DevOps/Developer mới bắt đầu tìm hiểu về Keycloak. Công ty giao cho bạn nhiệm vụ dựng một server Keycloak môi trường Development cục bộ trên máy tính cá nhân để các team Frontend và Backend có một hệ thống Identity & Access Management (IAM) kết nối vào.
 
-## 2. Phân tích File Docker Compose (Infrastructure as Code)
+Trong bài Lab này, bạn sẽ sử dụng Docker để khởi chạy Keycloak cực kỳ nhanh chóng mà không cần cài đặt Java trực tiếp lên máy. Sau đó, bạn sẽ thiết lập cấu hình nền tảng đầu tiên.
 
-Hãy mở file `code/docker-compose.yml`. Đây là bản thiết kế Hạ tầng của chúng ta.
-Là một Kỹ sư, đừng Copy chạy mù quáng, hãy phân tích 3 Mảnh ghép Sinh tử:
+## 2. Chuẩn bị Môi trường (Prerequisites)
 
-```yaml
-version: '3.8'
+- **Docker Desktop** (trên Windows/Mac) hoặc Docker Engine (trên Linux) đã được cài đặt và đang chạy.
+- Một trình duyệt web (Chrome, Firefox, Edge).
+- (Tùy chọn) Windows PowerShell hoặc Linux Bash Terminal.
 
-services:
-  # KHỐI 1: TẦNG LƯU TRỮ VĨNH CỬU (DATABASE)
-  postgres:
-    image: postgres:15
-    volumes:
-      - postgres_data:/var/lib/postgresql/data # Gắn ổ cứng Volume để chống mất Data khi tắt máy
-    environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: password
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-  # KHỐI 2: TẦNG LÕI THỰC THI (KEYCLOAK QUARKUS)
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0.1 # Ghim version chuẩn, cấm xài :latest
-    command: start-dev # Chạy chế độ Dev (Bỏ qua cấu hình SSL/HTTPS phức tạp)
-    environment:
-      # Nối mạch máu từ Keycloak sang Database
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: password
-      
-      # Tự động tạo Account Chúa tể (Super Admin) lúc khởi động lần đầu
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    ports:
-      - "8080:8080" # Đục tường lửa mở Port 8080 ra Laptop của bạn
-    depends_on:
-      - postgres # Ra lệnh Docker: Đợi DB chạy lên xong mới được phép gọi Keycloak
+### Bước 3.1. Khởi chạy Keycloak Container
 
-volumes:
-  postgres_data:
-```
+Mở Terminal của bạn và chạy lệnh sau để kéo image mới nhất của Keycloak và khởi chạy nó ở chế độ phát triển (`start-dev`):
 
-## 3. Các bước Thực thi (Execution)
-
-**Bước 1: Chạy lệnh khởi động**
-Mở Terminal/Powershell, đi chuyển vào thư mục `01-Introduction/code/`.
-Chạy lệnh:
 ```bash
-docker compose up -d
+docker run --name my-keycloak \
+  -p 8080:8080 \
+  -e KEYCLOAK_ADMIN=admin \
+  -e KEYCLOAK_ADMIN_PASSWORD=admin \
+  quay.io/keycloak/keycloak:latest \
+  start-dev
 ```
-*(Cờ `-d` là detached mode, giúp nó chạy ngầm trong background để bạn không bị treo Terminal).*
 
-**Bước 2: Soi Log xem Cỗ Máy Hoạt Động (Quan trọng)**
-Kiến trúc sư không bao giờ chạy lệnh xong là ngồi bấm Web luôn. Bắt buộc phải nhìn Log xem Cỗ máy Boot như thế nào:
-```bash
-docker compose logs -f keycloak
-```
-Bạn sẽ thấy Keycloak tự động thực hiện tiến trình **Migration (Tạo bảng CSDL)**. Nó chạy hàng trăm lệnh SQL để tạo Bảng User, Role vào trong PostgreSQL. Cuối cùng bạn sẽ thấy dòng chữ Vàng:
-`Keycloak 24.0.1 on JVM (powered by Quarkus ...) started in 8.5s`
+**Giải thích lệnh:**
+- `--name my-keycloak`: Đặt tên cho container.
+- `-p 8080:8080`: Map cổng 8080 của máy tính với cổng 8080 của Keycloak.
+- `-e KEYCLOAK_ADMIN=admin`: Tạo tự động tài khoản quản trị viên với username là `admin`.
+- `-e KEYCLOAK_ADMIN_PASSWORD=admin`: Đặt mật khẩu quản trị viên là `admin`.
+- `quay.io/keycloak/keycloak:latest`: Hình ảnh Docker chính thức của Keycloak.
+- `start-dev`: Lệnh bắt Keycloak chạy ở chế độ Development (không yêu cầu HTTPS bắt buộc và dùng database H2 in-memory).
 
-**Bước 3: Bước qua Cửa Khẩu**
-- Mở Trình duyệt (Chrome/Firefox).
-- Truy cập vào: `http://localhost:8080/`
-- Bạn sẽ thấy Giao diện Welcome to Keycloak. Click vào **"Administration Console"**.
-- Đăng nhập bằng Account siêu đặc quyền (Super Admin) mà chúng ta đã truyền ở Khối 2: Username: `admin` / Password: `admin`.
+Đợi vài giây cho đến khi Terminal hiển thị dòng: `Keycloak x.x.x (Quarkus x.x.x) started in X ms.`
 
-**CHÚC MỪNG BẠN ĐÃ CHIẾM ĐƯỢC QUYỀN ĐIỀU KHIỂN CỖ MÁY IDENTITY MẠNH NHẤT HÀNH TINH!**
+### Bước 3.2. Truy cập Admin Console
 
----
+1. Mở trình duyệt web, truy cập địa chỉ: `http://localhost:8080`
+2. Bạn sẽ thấy trang chào mừng của Keycloak. Nhấp vào nút **Administration Console**.
+3. Tại trang đăng nhập, nhập tài khoản vừa cấu hình: Username: `admin`, Password: `admin`. Nhấp **Sign in**.
+4. Chào mừng bạn đến với Master Realm của Keycloak!
 
-## 4. Bắt lỗi Hệ thống (Troubleshooting Challenges)
+### Bước 3.3. Tạo một Realm mới (Môi trường cách ly)
 
-Trong môi trường thực tế, mọi thứ hiếm khi chạy mượt mà ngay lần đầu.
+Tuyệt đối không nên lưu thông tin người dùng của ứng dụng kinh doanh vào `Master` realm. Bạn cần tạo một realm riêng biệt.
 
-**Thử thách 1: Chết non vì đụng Port**
-- **Triệu chứng:** Khi gõ `docker compose up -d`, báo lỗi chữ đỏ: `Bind for 0.0.0.0:8080 failed: port is already allocated`.
-- **Nguyên nhân:** Laptop của bạn đang chạy một máy chủ Tomcat, VueJS hoặc Jenkins khác Đang Chiếm Cổng 8080.
-- **Cách Fix (Sửa Code):** Mở `docker-compose.yml`, tìm dòng `ports: - "8080:8080"`. Sửa con số BÊN TRÁI thành `8081` (Ví dụ: `8081:8080`). Con số bên trái là Port Laptop, bên phải là Port Lõi Container (Tuyệt đối không sửa số bên phải). Sau đó gõ truy cập `http://localhost:8081`.
+1. Ở góc trên cùng bên trái màn hình, di chuột hoặc nhấp vào chữ **master** (kế bên logo Keycloak). Một menu xổ xuống sẽ xuất hiện, nhấp vào nút **Create Realm**.
+2. Trong ô **Realm name**, nhập `MyFirstRealm`.
+3. Bấm **Create**. Giao diện sẽ tự động chuyển sang Realm mới tạo này.
 
-**Thử thách 2: Keycloak văng Lỗi KếT NỐI (Connection Refused)**
-- **Triệu chứng:** Xem log thấy báo: `org.postgresql.util.PSQLException: Connection to postgres:5432 refused`. Keycloak tự động Crash chết sấp mặt.
-- **Nguyên nhân:** Lệnh `depends_on` trong Docker Compose chỉ bắt Keycloak "chờ cái Container DB BẬT LÊN" chứ nó KHÔNG ĐỢI DB KHỞI ĐỘNG XONG (DB Postgres chạy lần đầu phải tạo phân vùng mất 10 giây). Thế là Keycloak nhào dô cắn DB khi DB chưa sẵn sàng.
-- **Cách Fix chuẩn Enterprise:** Sửa lệnh `depends_on` thành dạng Check Health nghiêm ngặt:
-  ```yaml
-  depends_on:
-    postgres:
-      condition: service_healthy
-  ```
-  *(Buộc phải viết thêm block `healthcheck` cho DB). Đây là lý do trong Production, người ta thường Setup DB riêng lẻ trước, chạy ổn định cả ngày, rồi mới bơm Máy chủ App vào sau.*
+### Bước 3.4. Tạo người dùng đầu tiên
 
----
+1. Đảm bảo thanh menu bên trái đang hiển thị cấu hình của `MyFirstRealm`.
+2. Nhấp vào menu **Users** ở cột bên trái.
+3. Nhấp nút **Add user**.
+4. Điền thông tin:
+   - **Username:** `user01`
+   - **Email:** `user01@example.com`
+   - **First name:** `Nguyen`
+   - **Last name:** `Van A`
+5. Nhấp **Create**.
+6. Sau khi user được tạo, chuyển sang tab **Credentials** của user đó.
+7. Nhấp vào nút **Set password**.
+8. Nhập mật khẩu: `password123` (cho cả 2 ô).
+9. Tắt cờ **Temporary** (chuyển sang OFF). Nếu để ON, hệ thống sẽ ép user phải đổi mật khẩu ngay lần đăng nhập đầu tiên.
+10. Nhấp **Save** và xác nhận bằng cách nhấp **Save password**.
 
-> [!NOTE] 
-> **HOÀN THÀNH CHƯƠNG 01:**
-> Bạn đã làm chủ hoàn toàn Định nghĩa về IAM, Kiến trúc Phân tầng, Sự khác biệt của các Bản Build (Editions) và có trong tay một Máy chủ Identity thực thụ đang chạy.
-> Ở Chương sau (Chương 02), chúng ta sẽ Khoanh tay Cất Code đi, và học các Khái Niệm Trừu Tượng Tối Cao Của IAM (Identity, Federation, Zero Trust) - Những Ngôn Ngữ Bắt Buộc trong Bàn Cờ Đàm Phán.
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+### 4.1. Nghiệm thu
+Người dùng `user01` có thể đăng nhập vào cổng thông tin quản lý tài khoản cá nhân của họ.
+1. Mở một cửa sổ trình duyệt ẩn danh (Incognito/Private window).
+2. Truy cập vào URL Account Console của Realm bạn vừa tạo: 
+   `http://localhost:8080/realms/MyFirstRealm/account/`
+3. Nhấp vào nút **Sign in**.
+4. Nhập tài khoản: `user01` và mật khẩu `password123`.
+5. Đăng nhập thành công! Bạn sẽ thấy trang quản lý thông tin cá nhân của `user01` nơi họ có thể tự cập nhật email, mật khẩu hoặc cấu hình bảo mật 2 lớp (2FA).
+
+### 4.2. Troubleshooting (Khắc phục sự cố)
+- **Lỗi cổng bị chiếm dụng (Port is already allocated):** Khi chạy docker, nếu báo lỗi `Bind for 0.0.0.0:8080 failed`, nghĩa là trên máy bạn đã có phần mềm khác dùng cổng 8080 (vd: Tomcat, Jenkins). **Khắc phục:** Đổi cổng mapping trong lệnh docker thành `-p 9090:8080` và truy cập qua `http://localhost:9090`.
+- **Lỗi không đăng nhập được bằng admin:** Chắc chắn rằng bạn đã thêm đúng hai biến môi trường `-e KEYCLOAK_ADMIN...` ở bước chạy lệnh. Nếu quên, tài khoản admin sẽ không được tạo. Bạn phải xóa container cũ (`docker rm -f my-keycloak`) và chạy lại lệnh.
+- **Trình duyệt tự động chuyển hướng sang HTTPS:** Trên môi trường Production, Keycloak bắt buộc dùng HTTPS. Nhưng ở chế độ `start-dev`, HTTP được cho phép. Nếu trình duyệt tự ép sang HTTPS (Lỗi SSL_ERROR), hãy kiểm tra tiện ích chặn quảng cáo hoặc xóa bộ nhớ cache HSTS của trình duyệt.

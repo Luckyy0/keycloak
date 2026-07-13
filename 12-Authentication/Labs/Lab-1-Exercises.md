@@ -1,80 +1,75 @@
-# Chapter 12: Authentication - Thực Hành Chống Phá Khóa & Triển Khai Không Mật Khẩu
-
 > [!NOTE]
-> Bài thực hành này sẽ đưa bạn vào vị trí của một Kỹ sư Bảo mật OIDC. Chúng ta sẽ cùng nhau khóa chặt hệ thống trước những đợt tấn công dò mật khẩu tự động (Brute-force) bằng cách bật các lớp bảo vệ của Lãnh chúa. Cuối cùng, chúng ta sẽ mở ra Kỷ nguyên Không mật khẩu (Passkeys) trải nghiệm thực tế ngay trên máy tính của bạn.
+> **Category:** Practical/Lab (Thực hành)
+> **Goal:** Xây dựng và áp dụng cấu hình Luồng Xác Thực (Authentication Flow) nâng cao trong Keycloak, bao gồm việc thiết lập Xác thực có điều kiện (Conditional MFA) dựa trên Role của người dùng.
 
-## Bài tập 1: Dựng Tường Lửa Chặn Đứng Cỗ Máy Quét Mật Khẩu (Brute-Force Protection)
+### 1. Kịch bản Thực hành (Lab Scenario)
+Công ty của bạn yêu cầu triển khai một chính sách bảo mật đa lớp. Người dùng bình thường chỉ cần đăng nhập bằng Username và Password. Tuy nhiên, các nhân viên có quyền quản trị (những người mang Role `admin`) bắt buộc phải trải qua bước xác thực hai yếu tố (OTP / Google Authenticator). 
+Thay vì bắt tất cả mọi người dùng OTP, bạn sẽ cấu hình tính năng **Conditional Authentication** trong Keycloak để kiểm tra linh hoạt tại thời điểm đăng nhập.
 
-Kịch bản: Hacker có một danh sách 1 triệu mật khẩu rò rỉ. Hắn dùng Bot bắn liên tục API POST `/token` để đoán mật khẩu của Admin. Bạn sẽ dùng Tấm khiên Brute-Force để trừng phạt bằng cách khóa tài khoản 5 phút nếu hắn gõ sai 3 lần liên tiếp.
+### 2. Chuẩn bị Môi trường (Prerequisites)
+- Đã cài đặt và khởi chạy Keycloak (phiên bản 21+ trở lên) qua Docker hoặc Standalone.
+- Có quyền truy cập bằng tài khoản Admin Keycloak.
+- Một Realm mới (hoặc sử dụng realm `master`, nhưng khuyến cáo nên tạo realm riêng là `lab-realm`).
+- Điện thoại có cài ứng dụng Google Authenticator hoặc Authy để quét mã OTP.
 
-1. **Chuẩn bị môi trường:**
-   - Đảm bảo `docker-compose` đã chạy (Không cần bật cờ gì thêm vì đây là tính năng cốt lõi).
-   - Truy cập `http://localhost:8080`, đăng nhập bằng `admin` / `admin`.
-   - Vào `Realm settings` (Cột menu trái).
+### 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-2. **Kích hoạt Kỷ luật thép (Brute-Force Detection):**
-   - Chuyển sang Tab `Security Defenses` -> Tab con `Brute Force Detection`.
-   - Gạt nút `Enabled` sang `ON`.
-   - Cấu hình các thông số trừng phạt như sau:
-     - **Max Login Failures:** `3` (Nhập sai 3 lần là bị máy chém gõ).
-     - **Wait Increment:** `5` Minutes (Mỗi lần tiếp tục sai sẽ bị cộng dồn thời gian phạt).
-     - **Max Wait:** `15` Minutes (Phạt tối đa 15 phút, sau đó đếm lại).
-     - **Failure Reset Time:** `1` Hours (Nếu ngừng phá trong 1 tiếng, máy chém sẽ tha thứ đếm lại từ đầu).
-   - Nhấn **Save**. Tấm khiên đã được dựng!
+**Bước 3.1: Chuẩn bị dữ liệu người dùng và Role**
+1. Đăng nhập vào **Keycloak Admin Console**.
+2. Chuyển sang Realm `lab-realm`.
+3. Vào mục **Realm Roles**, tạo một Role mới tên là `admin`.
+4. Vào mục **Users**, tạo 2 người dùng:
+   - User 1: Username: `john_doe`, Password: `123` (tắt cờ Temporary). Không gán Role gì thêm.
+   - User 2: Username: `boss_admin`, Password: `123` (tắt cờ Temporary).
+5. Gán Role `admin` cho `boss_admin`: Nhấn vào User `boss_admin`, chọn tab **Role Mapping**, chọn `admin` và nhấn Assign.
 
-3. **Kiểm thử đóng giả Hacker:**
-   - Mở 1 tab ẩn danh mới, vào `http://localhost:8080/realms/master/account`.
-   - Cố tình đăng nhập bằng User: `admin` nhưng Pass sai: `123456`.
-   - Làm lại đúng 3 lần!
-   - Ở lần thứ 4, kể cả bạn nhập **Pass Đúng** là `admin`, Keycloak vẫn văng màn hình lỗi: `Invalid username or password` (Thực chất tài khoản đã bị khóa cứng tạm thời). Bật F12 Network bạn sẽ thấy lỗi `Account is disabled`. Hacker đã bị chặn đứng hoàn toàn!
+**Bước 3.2: Sao chép Browser Flow Mặc định**
+Không thể chỉnh sửa các luồng hệ thống tích hợp sẵn. Bạn phải nhân bản nó:
+1. Chuyển đến mục **Authentication** ở menu bên trái.
+2. Tại tab **Flows**, chọn luồng `browser` từ danh sách thả xuống.
+3. Ở góc trên bên phải của bảng Flow, nhấp vào nút tác vụ (dấu 3 chấm) và chọn **Duplicate**.
+4. Đặt tên luồng mới là `Conditional-Browser-Flow`. Nhấn Save.
 
-4. **Giải cứu con tin (Mở khóa thủ công):**
-   - Về lại màn hình Admin Console (ở Tab cũ đang còn Session).
-   - Vào mục `Users` -> Tìm User `admin` -> Sang Tab `Details`.
-   - Nhấn nút `Unlock users` ở ngay góc trên bên phải màn hình để ân xá cho tài khoản.
+**Bước 3.3: Thêm Sub-flow có Điều kiện (Conditional MFA)**
+1. Mở `Conditional-Browser-Flow` vừa tạo.
+2. Xóa các bước liên quan đến WebAuthn hoặc OTP mặc định đang có sẵn trong nhánh Forms (nếu có) để bắt đầu một cấu hình sạch.
+3. Tại cấp độ nhánh `Conditional-Browser-Flow forms` (mức thụt lề dưới cùng của Browser Form), nhấn biểu tượng **dấu + (Add Sub-Flow)**.
+4. Đặt tên Sub-flow mới là `MFA-Role-Based`.
+5. Đổi `Requirement` của `MFA-Role-Based` từ `Alternative` sang `Conditional`.
+6. Tại dòng của `MFA-Role-Based`, nhấn biểu tượng **dấu + (Add execution)**. Tìm và chọn **Condition - user role**. Nhấn Add.
+7. Đặt `Requirement` của Condition này là `Required`. Nhấn vào biểu tượng **bánh răng (Cài đặt)** của Condition này, gán thuộc tính Role thành `admin`. Nhấn Save.
+8. Vẫn tại dòng của `MFA-Role-Based`, tiếp tục nhấn **dấu + (Add execution)**. Tìm và chọn **OTP Form**. Nhấn Add.
+9. Đặt `Requirement` của OTP Form là `Required`.
 
-## Bài tập 2: Tự Động Hóa Ép Buộc Toàn Bộ Khách Hàng Quét Mã Google Authenticator (Required Actions OTP)
+*Cấu trúc cây Flow của bạn lúc này sẽ giống như sau:*
+- `Cookie` (Alternative)
+- `Identity Provider Redirector` (Alternative)
+- `Conditional-Browser-Flow forms` (Alternative)
+  - `Username Password Form` (Required)
+  - `MFA-Role-Based` (Conditional)
+    - `Condition - user role` (Required, alias: admin)
+    - `OTP Form` (Required)
 
-Kịch bản: Giám đốc bảo mật của Công ty Fintech yêu cầu: "Bắt đầu từ hôm nay, bất kỳ ai login vào hệ thống cũng phải tự cài app Authenticator trên điện thoại và quét mã QR. Nếu không thì văng ra ngoài".
+**Bước 3.4: Kích hoạt Luồng cho Realm**
+1. Vẫn ở trang **Authentication**, trong bảng luồng `Conditional-Browser-Flow`, nhấn vào biểu tượng Tác vụ (3 chấm) góc trên bên phải.
+2. Chọn **Bind flow**.
+3. Chọn loại Binding là **Browser flow**. Điều này sẽ thay thế luồng đăng nhập mặc định của Realm thành luồng do bạn vừa tạo.
 
-1. **Kích hoạt vũ khí ép buộc OTP:**
-   - Đứng ở Realm `master` (Hoặc tạo Realm mới).
-   - Vào Menu `Authentication` -> Tab `Required actions`.
-   - Tại dòng `Configure OTP`, bật công tắc Cột `Default` thành `ON` (Tức là mặc định áp dụng ép buộc này cho toàn bộ user mới và cũ).
+### 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
 
-2. **Kiểm thử luồng Login bị chặn đứng đòi mã:**
-   - Mở tab ẩn danh mới, vào `http://localhost:8080/realms/master/account`.
-   - Tạo 1 User mới bất kỳ bằng tính năng `Register` (hoặc tạo dưới Admin rồi login vào bằng tài khoản đó).
-   - Ngay sau khi nhập mật khẩu thành công. ĐÙNG! Keycloak không cho vào trang đích. Nó chặn màn hình lại và hiện ra 1 cái Mã QR Code chà bá. 
-   - Nó yêu cầu: Cài đặt Google Authenticator/FreeOTP trên điện thoại -> Quét mã QR -> Nhập 6 số hiện trên điện thoại lên màn hình để xác nhận sở hữu. Cứ làm theo là được thả qua trạm gác.
+**Kiểm tra kịch bản 1: Đăng nhập với người dùng bình thường**
+1. Mở một trình duyệt ẩn danh (Incognito Mode).
+2. Lấy link test (Account Console của Keycloak): Truy cập `http://localhost:8080/realms/lab-realm/account`.
+3. Nhập username `john_doe` và password `123`.
+4. **Kết quả kỳ vọng:** Keycloak đăng nhập thành công ngay lập tức và đưa bạn vào giao diện quản lý tài khoản mà không hỏi gì thêm.
 
-3. **Gỡ bỏ thiết quân luật:**
-   - Nhớ tắt Cột `Default` ở mục `Configure OTP` đi để tránh phiền phức cho các bài Lab sau nhé.
+**Kiểm tra kịch bản 2: Đăng nhập với người dùng Admin (Yêu cầu MFA)**
+1. Đóng trình duyệt ẩn danh, mở lại một tab ẩn danh mới.
+2. Truy cập lại đường dẫn `http://localhost:8080/realms/lab-realm/account`.
+3. Nhập username `boss_admin` và password `123`.
+4. **Kết quả kỳ vọng:** Do Keycloak phát hiện user này có Role `admin` thông qua bộ Evaluator, nó sẽ đưa bạn đến một màn hình yêu cầu cấu hình OTP (hiển thị mã QR Code). Quét bằng điện thoại, nhập mã OTP để tiếp tục. Những lần đăng nhập sau, màn hình chỉ hiện ô nhập số OTP.
 
-## Bài tập 3: Cảnh Giới Tối Thượng - Mở Khóa Keycloak Bằng Vân Tay/FaceID (Passkeys)
-
-Kịch bản: Trải nghiệm cảm giác công nghệ tương lai. Đăng nhập hệ thống bằng cảm biến vân tay của chiếc Macbook hoặc Windows Hello mà không cần nhập một ký tự mật khẩu nào.
-
-1. **Bật công tắc Kỷ nguyên Không mật khẩu:**
-   - Vào Menu `Authentication` -> Tab `Required actions`.
-   - Cuộn xuống dưới cùng tìm dòng `Webauthn Register Passwordless`. Nhấn icon ba chấm ở cuối dòng chọn `Enable`.
-
-2. **Sửa luồng Browser Flow (Dành cho bản Keycloak 24 trở xuống, bản mới hơn có sẵn):**
-   - Tab `Flows` -> Mở `Browser`.
-   - Đảm bảo trong cây luồng có cục `WebAuthn Passwordless Authenticator` nằm ngang hàng với `Username Password Form`.
-   - Chuyển cục WebAuthn Passwordless thành `Alternative` (Để ưu tiên quét Vân tay trước, nếu không có mới cho điền form Pass cũ).
-
-3. **Khách hàng tự đăng ký Vân tay (Khai báo Passkeys):**
-   - Đăng nhập vào trang `http://localhost:8080/realms/master/account` bằng User `admin`.
-   - Menu bên trái -> `Account security` -> `Signing in`.
-   - Tìm hộp `Passkeys` -> Bấm `Set up passkey`.
-   - Trình duyệt (Chrome/Safari) sẽ nhảy lên Pop-up do Hệ điều hành bắn ra: Đòi chạm ngón tay vào cảm biến vân tay (Macbook) hoặc Windows Hello. Quét cái rẹt là xong!
-   - Passkey đã được lưu. Giờ đăng xuất (`Sign out`) khỏi Keycloak.
-
-4. **Trải nghiệm đăng nhập Ma thuật:**
-   - Trở lại form Login `http://localhost:8080/realms/master/account`.
-   - Bạn sẽ thấy có 1 nút mới toanh xuất hiện dưới ô Mật khẩu: **`Sign in with Passkey`**.
-   - Bấm vào đó. Hoặc chỉ cần điền đúng chữ `admin` vào ô Username và bấm Enter.
-   - Pop-up vân tay bật lên -> Chạm nhẹ ngón tay -> BÙM! Keycloak đá văng bạn vào trang chủ mà không thèm hỏi Password.
-
-Chúc mừng bạn! Bạn đã hoàn thành Khóa đào tạo Level Core. Mọi lỗ hổng bảo mật chết người đã được vá, và trải nghiệm Authentication đã được đẩy lên tầm cực hạn!
+**Xử lý sự cố (Troubleshooting):**
+- **Lỗi: Không hiện ô nhập mật khẩu mà bị lỗi hệ thống:** Có thể bạn đã vô tình đổi `Username Password Form` từ `Required` sang `Conditional`. Sửa lại thành `Required`.
+- **Lỗi: User admin đăng nhập xong báo lỗi 'Invalid Auth Flow':** Nếu thiết lập Condition Role bị sai tên role, Evaluator có thể ném Exception. Hãy kiểm tra lại đúng chữ `admin` (phân biệt hoa thường) trong phần Cài đặt của `Condition - user role`.
+- **Lỗi: OTP Form bị bỏ qua dù là Admin:** Kiểm tra xem bạn đã để OTP Form nằm **bên trong** (thụt lề) của Sub-flow `MFA-Role-Based` chưa. Nếu nó nằm ngang hàng với Sub-flow, luồng sẽ bị vỡ.

@@ -1,96 +1,114 @@
-# Lesson 3: Ống Bơm Đơn Vị (Group Mapper & Xử Lý Cây Kế Thừa Cứng Đầu)
-
 > [!NOTE]
-> **Category:** Theory & Practice (Lý thuyết & Thực hành)
-> **Goal:** Trong Enterprise (Ví dụ tập đoàn Vingroup), khách hàng không chỉ có Tên, mà còn thuộc các "Nhóm/Phòng ban" (Group) khác nhau. Bài này sẽ bóc trần cách lấy tên các Phòng ban đó bơm vào Token JWT bằng `Group Membership Mapper`, và hậu quả cháy RAM khôn lường của nút `Full group path`.
+> **Category:** Theory
+> **Goal:** Hiểu nguyên lý ánh xạ nhóm người dùng (Group Membership) vào Token, cách xử lý phân cấp nhóm (Group Hierarchy) và những cạm bẫy thiết kế liên quan đến kiểm soát truy cập dựa trên nhóm.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Bản Chất Của Việc Kéo Danh Sách Group Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng
-Khác Với Việc Bơm Chữ Tĩnh Từ Attribute Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!. Nhóm (Group Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng) Trong Keycloak Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Là Một Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Kiến Trúc Liên Kết N-N Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng (Một Khách Thể Nằm Ở 10 Phòng Ban Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung). 
-Đồng Thời Rút Khung Trống Mạng Lệnh Thép Rất Kính, Group Lại Còn Là Cấu Trúc Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh CÂY KẾ THỪA Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! (Cty Mẹ Chứa Cty Con Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo, Chứa Phòng Ban Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh).
-- Khi Client Xin Lệnh Lấy Danh Sách Phòng Ban Của Khách Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng, Cỗ Máy Lệnh Báo Code Bóc Mạch Chữ Khung Rác Dữ Đỉnh Mạng Engine OIDC Của Keycloak Phải Dùng Một Cái Mapper Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Rất Chuyên Biệt Có Tên Là Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh **`Group Membership`**.
-- Ống Bơm Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Này Được Thiết Kế Đặc Biệt Rút Cắn Lại Nén Căng Mạch Phình To Rút Gắn Mã Nhân Lên Mượt Khung Để Gói Hàng Chục/Hàng Trăm Nhóm Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ Của Khách Thành Một Cục Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép `Array JSON` (Mảng Chuỗi Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế!) Bắn Vô Token Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Thường Các Máy Chủ.
+Trong Keycloak, bên cạnh hệ thống Role (Vai trò), **Group (Nhóm)** là một thực thể quan trọng để tổ chức người dùng theo cấu trúc phân cấp (Hierarchy). Một nhóm có thể chứa các nhóm con (Sub-groups), và một người dùng có thể thuộc nhiều nhóm khác nhau (Ví dụ: `IT`, `IT/DevOps`, `HR`).
 
-### 1.2. Thảm Họa Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới Cây Kế Thừa (`Full group path`)
-Điểm Chết Người Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Của Mapper Này Nằm Ở Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Chức Năng `Full group path`.
-- Khi Cờ Này Là Lọc Oanh Liệt Dập Database Thủng Căng **ON**: Keycloak Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh Sẽ In Nguyên Cái Đường Dẫn Tuyệt Đối Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default Của Phòng Ban (Ví Dụ: `/Vingroup/Vinmec/Khoa_Ngoai/Y_Ta` Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh).
-- Khi Cờ Này Là Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh Bảng UI Chặn JWT Mạch Nhựa Kéo Sát **OFF**: Keycloak Cắt Lệnh Sạch Sẽ Trút Bọc Nhựa Tuyệt Mỹ Của Máy Bỏ Sạch Đường Dẫn Khung Code Gãy Cáp OIDC Phẳng Rỗng, Chỉ Lấy Cái Tên Cuối Cùng Oanh Khách Nhanh Sóng Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Chót Của Cây (Ví Dụ: Bơm Chữ Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng `Y_Ta` Vô JSON Rút Khung Gắn Nóng Tự Trị Oanh Khách Vô Form Đáy Bọc Khống Gãy Khung Tốc Độ Khác Nữa Kẽ Đáy).
+**Group Membership Mapper** là công cụ giúp ánh xạ danh sách các nhóm mà người dùng đang tham gia vào bên trong JWT Token. Khi Resource Server (Backend API) nhận được Token này, nó có thể cấp quyền truy cập vào các tài nguyên nhất định dựa trên nhóm (Group-Based Access Control - GBAC).
 
----
+**Tại sao chúng ta cần Group Mapper?**
+- **Tránh kiểm tra thủ công:** Giúp Backend API biết ngay lập tức người dùng thuộc phòng ban/bộ phận nào mà không cần truy vấn vào Database nội bộ hay gọi API lên Keycloak để lấy danh sách Group.
+- **Tính Phân cấp (Hierarchy):** Group trong Keycloak có tính chất cha-con. Mapper cho phép cấu hình để hiển thị đầy đủ đường dẫn nhóm (Full Path - ví dụ: `/Engineering/Backend`) thay vì chỉ hiển thị tên nhóm ngắn gọn (`Backend`). Điều này giúp phân biệt các nhóm trùng tên ở các phòng ban khác nhau.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Bắn Dòng Cục Json Mở Cây Group (Group Mapper Execution Flow Đáy Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung):
+Khi OIDC Engine sinh ra Token, quá trình xử lý Group Mapper diễn ra khá phức tạp do phải duyệt cây phân cấp.
 
 ```mermaid
-graph TD
-    subgraph "Cách Token Engine Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Lọc Group Của Khách Hàng Oanh Liệt Dập Database Thủng Căng"
-        Khach[Khách Đang Nằm Ở 2 Bảng Mạch Oanh Liệt Dập Cụm Trống Nhóm: <br/>- Kế Toán (Con của Vingroup)<br/>- Kỹ Thuật Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Lệnh Thép Chặn Dội Khách (Con của Vinfast)]
-        
-        Mapper((Mapper Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng 'Group Membership'<br/>Cờ Path = ON))
-        Mapper_OFF((Mapper 'Group Membership'<br/>Cờ Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Của Keycloak Path = OFF))
-        
-        KC_Engine[JWT Engine Oanh Khách Nhanh Sóng]
-        
-        Khach-->KC_Engine
-        KC_Engine-->|Gọi Ống Bơm Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc Path| Mapper
-        Mapper-->|Lục Lọi Tìm Đường Dẫn Gốc Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa| JWT_ON[JSON Văng Ra Cồng Kềnh Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy]
-        
-        Note over JWT_ON: "groups": [<br/>  "/Vingroup/Kế Toán",<br/>  "/Vinfast/Kỹ Thuật"<br/>]
-        
-        KC_Engine-->|Gọi Ống Bơm Đáy Lệnh Database UUID Không Gãy Chỗ Trọng Cắt Path OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh| Mapper_OFF
-        Mapper_OFF-->|Chỉ Lấy Tên Đáy Rễ Căn Cứ Code Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo| JWT_OFF[JSON Nhỏ Gọn Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép]
-        
-        Note over JWT_OFF: "groups": [<br/>  "Kế Toán",<br/>  "Kỹ Thuật"<br/>]
+sequenceDiagram
+    participant MapperEngine as Protocol Mapper Engine
+    participant GroupMapper as GroupMembershipMapper (Java)
+    participant UserEntity as UserModel (Database)
+    participant JWT as JWT Builder
+
+    MapperEngine->>GroupMapper: transformAccessToken()
+    GroupMapper->>UserEntity: getGroupsStream()
+    UserEntity-->>GroupMapper: Trả về danh sách Entity Group của User
+    
+    rect rgb(230, 240, 255)
+        note right of GroupMapper: Xử lý hiển thị đường dẫn
+        loop Mỗi Group
+            alt Full Path: Bật (ON)
+                GroupMapper->>GroupMapper: Lặp qua Group Cha -> Lắp ghép chuỗi (VD: /IT/DevOps)
+            else Full Path: Tắt (OFF)
+                GroupMapper->>GroupMapper: Chỉ lấy tên ngắn (VD: DevOps)
+            end
+        end
     end
+    
+    GroupMapper->>JWT: Đẩy mảng dữ liệu vào Token (VD: "groups": ["/IT/DevOps", "/HR"])
 ```
 
----
+**Giải thích chi tiết (Step-by-Step):**
+1. Mapper gọi API nội bộ của Keycloak để lấy tất cả các Group mà User đang làm thành viên trực tiếp.
+2. Nếu thuộc tính cấu hình `Full group path` được đặt là **ON**: Hệ thống sử dụng đệ quy (recursive) để tìm kiếm nhóm cha (Parent Group), rồi nối tên chúng lại với nhau bằng dấu gạch chéo `/`. Ví dụ: `/Parent/Child`.
+3. Nếu người dùng thuộc nhiều nhóm, hệ thống thu thập tất cả các đường dẫn này và tạo ra một Mảng chuỗi (JSON Array of Strings).
+4. Chuỗi JSON Array này sau đó được gán vào Claim do người quản trị chỉ định (mặc định thường là `"groups"`).
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
+- **Sử dụng Full Path để tránh xung đột:** Luôn khuyên dùng `Full group path: ON` (Mặc định). Giả sử bạn có nhóm `/Hanoi/Sales` và `/HCM/Sales`. Nếu tắt Full Path, Token của cả 2 user đều hiện là `["Sales"]`, làm cho Backend không thể phân biệt được User thuộc Sales khu vực nào.
+- **Hạn chế Token Bloat:** Cũng giống như Role Mapper, nếu công ty có hàng nghìn nhóm và một nhân viên ở trong hàng chục dự án, mảng `groups` sẽ rất dài. 
+  - *Giải pháp:* Chỉ kích hoạt Group Mapper trong một Client Scope cụ thể (ví dụ: `department-info`) và yêu cầu Client gửi đúng scope này mới nhận được thông tin.
+- **Không dùng Group để cấp quyền trực tiếp nếu có thể:** Mặc dù Backend có thể đọc `groups` để cấp quyền (GBAC), Best Practice của Keycloak là nên map Role cho Group, và sau đó Backend sẽ đọc các Role (RBAC). Hệ thống nhóm thường thay đổi theo cấu trúc nhân sự, trong khi Role thay đổi theo chức năng kỹ thuật. Tách bạch hai khái niệm này giúp hệ thống bền vững hơn.
+
+> [!WARNING]
+> Không bao giờ tự ý phân giải quyền hạn bằng cách kiểm tra chuỗi regex trên tên nhóm trong mã nguồn Backend. Cấu trúc tên nhóm có thể bị quản trị viên đổi tên trên Keycloak bất cứ lúc nào, làm gãy logic ủy quyền.
+
 > [!IMPORTANT]
-> **Tuyệt Đỉnh Tối Ưu Tẩy Khách Mạng Bọc Chống Tràn Token Bloat Rút Khung Trống Mạng Lệnh Thép Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép (Luật Bất Thành Văn Đối Với Group Membership Mapper Đáy Database Kéo Bơm Đáy Lên Rìa Lúc Giao Tĩnh Khống API Lỗ Đục Rò Nhầm Lệ Lặp Đáy Mạng Rỗng Bề Mặt Khách OIDC Bóc Mạch Chữ Trút Mệnh Khung)**
-> **Tội Ác Ngu Ngốc Nhất Ngành Code Mạng OIDC Khép Kín Cấu Cắt Chữ Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh:** Thằng Dev OIDC Khi Cấu Hình Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế! Cho Mapper Này Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Lệnh Thép Chặn Dội Khách Đã Lười Biếng Để Nguyên Nút Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng! `Full group path = ON`. 
-> Ở Hệ Thống Enterprise Bức Cắt Khung Lệnh Thép Chặn Dội Mạch Sẽ Cắt Cụm Băng Bó Bắn Oanh Khống Chạm Pass (Nhất Là Hệ Thống Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Đồng Bộ Từ Active Directory Của Microsoft Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ), Cây Phân Cấp Group Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng Có Thể Dài Tới 10 Level (Ví dụ Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh: `/APAC/Vietnam/Hanoi/CauGiay/Tech/Backend/Java/TeamA` Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép). Khách Nằm 10 Nhóm Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers Như Vậy, Dòng JSON Văng Ra Sẽ Dài Hàng Ngàn Ký Tự Rút Cắn Lại Nén Căng Mạch Phình To Rút Gắn Mã Nhân Lên Mượt Khung.
-> Token Sinh Ra Trút Bão Mạng Sạch Bot Khung Rác Mạng Trễ Đọc Text Rỗng Khung Đáy Không Đứt Rẽ Lệnh Thép Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Bị Gửi Lên Trình Duyệt Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính, Và Frontend Nhét Vô Oanh Khách Nhanh Sóng Lỗ Trống Mạng Request Header Gọi Xuống Nginx Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!. Nginx Đo Thấy Header > 8KB Liền Quăng Lỗi 431 `Request Header Or Cookie Too Large` Đứt Khúc Cáp Chữ OIDC Rỗng Backend Bọc Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép. Hệ Thống Chết Đứng Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token!
-> **Biện Pháp Sống Còn Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng!:** LUÔN LUÔN ÉP BẮT BUỘC Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới Tắt Tính Năng `Full group path = OFF` Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Thường Các Máy Chủ Được Đặt Đằng Sau Nginx Load Balancer Khung Cắt Mạch Đáy Role Nhựa. Cắt Bỏ Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC Quãng Đường Rác Rưởi Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh! Chỉ Giữ Tên Group Cuối Cùng Ở JWT Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!. 
-
-> [!CAUTION]
-> **Nỗi Lòng Đứt Form Sập App Bằng Bảng Lệnh Mạch Cứng Do Cấu Hình JWT Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Bị Sai Định Dạng JSON Array Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách (Lỗi Động Cơ Backend Gãy Cáp Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Do Token Bắn Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Ra String Thay Vì Array OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế!)**
-> Thằng Spring Boot Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Đang Code Vòng Lặp Lọc Oanh Liệt Dập Database Thủng Căng Quét Token Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc: `for (String group : json.groups)` Khung Code Gãy Cáp OIDC Phẳng Rỗng (Trông Chờ Dữ Liệu Từ Keycloak Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Phải Bắn Ra JSON Mảng `[]` Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!).
-> Bỗng Một Ngày Đẹp Trời Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh Bảng UI Chặn JWT Mạch Nhựa Kéo Sát. Có Khách Hàng Oanh Khách Nhanh Sóng Chỉ Nằm Duy Nhất Trong 1 Group Rút Khung Gắn Nóng Tự Trị Oanh Khách Vô Form Đáy Bọc Khống Gãy Khung Tốc Độ Khác Nữa Kẽ Đáy. Token Engine Của Keycloak Thấy Có 1 Dữ Liệu Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo, Liền Lười Biếng Ép Chạy Bắn JSON Dạng Chữ String Đơn Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng: `"groups": "Ke_Toan"`.
-> Thằng Backend Chạy Vòng Lặp Bị Lỗi Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Báo Lệnh `ClassCastException` (Ép Khung Cắt Mạch Đáy Role Nhựa Kéo Nhóm Default Array Bị Đứt Cáp Lệnh Báo Code Bóc Mạch Chữ Khung Rác Dữ Đỉnh Mạng).
-> Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính: Đối Với Những Mapper Đáy Rễ Căn Cứ Code Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Trả Dữ Liệu List Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng (Như Group Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC, Audience Đáy Lệnh Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Của Phương Pháp Khung Cắt Mạch). Bạn BẮT BUỘC Phải Bật ON Nút Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh Mạch Oanh Liệt Dập Cụm Trống **`Multivalued`** (Đa Giá Trị Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!) Ở Trong Bảng Cấu Hình Mapper Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép. Động Tác Này Rút Gắn Mã Nhân Bọc Nhựa Bằng Cắt Kẽ Đội Oanh Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Sẽ Ép Cỗ Máy Keycloak Lệnh Database Khung Rỗng Kéo Sát Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Lệnh Thép Chặn Dội Khách LUÔN LUÔN Phải In Ra Dấu Ngoặc Vuông Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Của Keycloak Khung Code Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới! `[]` Kể Cả Khi Khách Hàng Chỉ Nằm Trong 1 Nhóm Hoặc 0 Nhóm Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính! Backend Sẽ Sống!
-
----
+> Thuộc tính `Full group path` khi kết xuất ra Token sẽ luôn bắt đầu bằng dấu `/` (ví dụ `/Admins`). Phía backend khi tiến hành so sánh chuỗi (String matching) phải lưu ý điều này để không bị lỗi Logic.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cắt Cụm Băng Bó Lệnh Mạch Giao Khung OIDC Đóng Khuôn Chữ Nhóm Cắt Lệnh Sạch Sẽ Trút Bọc Nhựa Tuyệt Mỹ Của Máy (Tạo 1 Cột `department` Chứa List Tên Nhóm Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép):
-1. Đứng Ở Màn Hình Bảng Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh! Scope Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Thường Cần Cấu Hình -> Tab Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế! `Mappers`.
-2. Bấm Nút Trút Kéo Ngầm Lập Tức Bức Cắt Khung Lệnh **`Configure a new mapper`** Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Rút Khung Trống Mạng Lệnh Thép Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép.
-3. Tìm Thằng Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng **`Group Membership`** Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Lệnh Thép Chặn Dội Khách Rồi Click Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới.
-4. Cấu Hình Như Sau Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách Lệnh:
-   - **Name:** Đặt Lệnh Báo Code Bóc Mạch Chữ Khung Rác Dữ Đỉnh Mạng Tên Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới! `mapper_phong_ban`.
-   - **Token Claim Name:** Nhập Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh `department` (Tên Key Sẽ Văng Vô Payload Token Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!).
-   - **Full group path:** Gạt Công Tắc Sang Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép **`OFF`** Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers (Cắt Lệnh Bơm Toàn Bộ Cây Đáy Kẽ Lớn Nguồn Cấp Của Keycloak Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Chặn Kéo Mất Lệnh API Phế! Rút Cắn Lại Nén Căng Mạch Phình To Rút Gắn Mã Nhân Lên Mượt Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng).
-   - **Add to access token:** Bật Rút Khung Gắn Nóng Tự Trị Oanh Khách Vô Form Đáy Bọc Khống Gãy Khung Tốc Độ Khác Nữa Kẽ Đáy **`ON`**.
-5. Bấm Đáy Rễ Căn Cứ Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo Bất Báo Lỗi Nhựa Lệnh **Save** Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng. Token Văng Ra Của Khách Sẽ Chứa: `"department": ["KeToan", "CNTT"]` Oanh Kẽ Sóng Khúc Code Java Json Đáy Tĩnh Cắt Chữ String Mà Bơm Cái Chữ.
+Để cấu hình Group Mapper vào Client của bạn:
 
----
+1. Vào `Client scopes` -> Nhấn vào scope `profile` (hoặc tạo scope mới tên là `groups`).
+2. Tab `Mappers` -> `Configure a new mapper` -> Chọn **Group Membership**.
+3. Điền các tham số:
+   - **Name:** `Groups Mapper`
+   - **Token Claim Name:** `groups`
+   - **Full group path:** `ON` (để lấy chuỗi kiểu `/Company/IT/Dev`)
+   - **Add to ID token:** `ON`
+   - **Add to access token:** `ON`
+   - **Add to userinfo:** `ON`
+4. Nhấn **Save**.
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+**Mẫu Payload nhận được:**
+```json
+{
+  "sub": "user-uuid-1234",
+  "preferred_username": "john.doe",
+  "groups": [
+    "/Engineering/Developers",
+    "/Internal/BetaTesters"
+  ]
+}
+```
 
-**1. Trong Realm Khách Hàng Nắm Cổng Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!. Cậu Dev Đáy Lệnh Database UUID Trọng Lệnh Đơn Database Nhạy Cảm Sống Backend Đang Map Nhóm Cho Token Lọc Oanh Liệt Dập Database Thủng Căng. Khách Hàng Login Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh Bảng UI Chặn JWT Mạch Nhựa Kéo Sát Này Đang Sinh Hoạt Ở Nhóm Tên Cực Dài OOM Lỗi Đáy Kéo Vứt Rác Chặn Cắt Mạch Token Bloat Bọc Oanh: "Trung_Tam_Cong_Nghe_Thong_Tin_Khoi_Backend". Khi JWT Token Văng Ra Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Rút Khung Trống Mạng Lệnh Thép Rất Kính, Cái Chuỗi Dài Lòng Thòng Đó Bị Nhét Vô Payload Lọc Bảng Mạch Oanh Bọc Bằng Cơ Chế Client Credentials Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo. Cậu Frontend Đáy Lệnh Kéo Dọc Mũi Bằng Vòng Lặp Vô Hạn Composite Loop Đáy Database UUID Không Gãy Chỗ Trọng Kêu Ca Là Cái Tên Mạch Lưới Lệch Băng Tần Khác Sóng Bắn Cụt Oanh Mạch Rắn Đáy Đó Khó Đọc Code Quá Oanh Khách Nhanh Sóng, Cậu Muốn OIDC Của Keycloak Rút Mạch Đáy Database Lọc Value Mạch Bắn Kép Lệnh Thép OIDC Tự Động Rút Gọn Cột Tên Nhóm Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh Khách Thành 1 Dòng Code Chuẩn: `"CNTT"` Khi Bơm Vô JWT Oanh Kẽ Sóng Giao Lệnh Đồng Bộ Rìa Lệnh OIDC Bọc Oanh Cáp Sóng Token. Hỏi Group Mapper Có Làm Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh! Được Trò Này Không Đáy Khung Rễ Lệnh Database Đỉnh Lỗ Sụp Nhựa Băng Bọc Nằm Phẳng Oanh Kẽ Sóng Đục Tĩnh Khách Hàng Nắm Cổng?**
-- **Junior:** Dạ chắc mình đổi tên Group ở dưới DB Keycloak thành CNTT là lẹ nhất anh ơi đứt mạng chạy chóp nhanh test khỏe.
-- **Senior:** Phá Hoại Đáy Mạch Máu Cắt Rò Rụng Cột Namespace Isolation OIDC Rỗng Lưới Chặn Cắt Mạch API Khống Của Dữ Liệu Công Ty Đáy Rễ Căn Cứ Code Lọc Đáy Kéo Khống Mệnh Hủy Diệt Ảo! Tên Group Để Report Mà Đổi Thì Kế Toán Chửi Chết Oanh Khách Nhanh Sóng Lỗ Trống Mạng Rút Khung Trống Mạng Lệnh Thép Rất Kính!
-Bản Thân Thằng Oanh Liệt Dập Database Thủng Căng Lệnh Lỗ Trống Mạng Đáy Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Ống Bơm `Group Membership Mapper` Lọc API Nhựa Đỉnh Bằng Lưới Filter Bọc Lệnh Cài Tới Mảnh Đóng Data Mạch Oanh Khách Nhanh Sóng Lỗ Trống Mạng CHỈ CÓ KHẢ NĂNG Bơm Chính Xác Lệnh Code Khống Gãy Kẽ Đáy Mạch Sóng Đục Tĩnh Khách Hàng Nắm Cổng Đúng Cái Tên Khai Sinh Của Cái Nhóm Đó Đáy Lệnh Kéo Cụt Oanh Khách Nhanh Sóng Cấm Cửa Mù Lòa Lệnh Báo Code Kéo Sinh Ra Cho Khách (Kể Cả Tắt Nút Bức Cắt Khung Không Mở Rỗng Thừa 1 Dòng Code Trái Đáy Khung Thép Bọc OIDC Phẳng Rỗng Khúc Path Lọc Khung Tốc Độ Không Phân Gãy Tải Lên Xuyên Nhựa Lõi Rác Ảo Bọt Kép). Nó KHÔNG CÓ TÍNH NĂNG Rút Khung Trống Mạng Lệnh Thép Chặn Đỉnh Sóng Tắt Cụm Mạch Máu Cắt Rò Rụng Cột Token Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Dịch Chữ (Mapping Alias Đáy Ngầm Gắn Khung Tĩnh Oanh Data Thép Token Cấp Đáy Lõi Nhanh Khung Bức Tường Lưới Mạng Sập Đáy HTTP Router Ác Mạng Chặn Kéo Mất Lệnh API Phế!).
-Để Giải Quyết Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Trút Lệnh Đuôi Ác Xé Form Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng Rút Dòng Khách Chặn OOM Vỡ Lỗ Rụng Server Của Expire Password Trút Mệnh Khung Áp Phẳng Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng Cắt Lệnh Rỗng Phun Sinh Data Trọng Lệnh Đơn Database UUID Không Gãy Chỗ Trọng!. Thay Vì Dùng Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép Lệnh Thép Chặn Dội Khách OIDC Form Gắn Mã Cứng Kẽ Password Policies `Group Membership`, Bạn Sẽ Phải Mạch Nhựa Kéo Sát Giao Lệnh Đồng Bộ Của Keycloak Khung Code Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới! Xóa Bỏ Oanh Khách Nhanh Sóng Ống Này Đi Khung Chạy Nằm Im Vỡ Tải Ngầm Lưới OIDC Kép Mạch Dữ Liệu Rất Sạch Test Mạng Lỗ Trống Mạng. Và Phải Sử Dụng Ống Bơm Javascript Cắt Lệnh Sạch Sẽ Trút Bọc Nhựa Tuyệt Mỹ Của Máy Lọc Khung Tốc Độ Khác Nữa Kẽ Đáy **`Script Mapper`** (Bài Học 5 Đáy Kẽ Lệnh Database Cắt Đứt Đáy Mạch Oanh Khách Nhanh Sóng! Lệnh Khống Gãy Form Cháy Băng Thép Dây Cáp Mạng Rút Khung Trống Mạng Token 1 Giây Oanh). 
-Ở Mã Của Script Mapper Lệnh Database Khung Cắt Mạch Mở Cửa Phun Mạch Báo Lỗi Khách Oanh Lệnh, Bạn Tự Tay Khai Báo Khung Thép Bọc OIDC Phẳng Rỗng Khúc Dữ Đỉnh Mạng Rất Tàn Bạo Trút Mạch Vô Bụng Hủy Diệt Ảo JavaScript Lệnh Đáy Thép Chặn Dội Khách OIDC: Kéo List Tên Group Đáy Kẽ Lệnh TLS Bọc HTTPS Trực Diện Rỗng Lệnh Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!, Sau Đó Dùng Vòng Lặp Lệnh Khống Đỉnh Cụm Kẽ Đội Bất Chạm Đáy Lệnh Mappers Check Lọc Bảng Mạch Oanh Trút Nhanh Cụm Nóng Đáy Bọt Kép `if (group.name == "Trung_Tam_Cong_Nghe...") { array_out.push("CNTT") }` Rút Mạch Mở Giao Đít Khung Tĩnh OIDC Bọc Oanh Cáp Mạch Nóng Xuống Hashing Engine Bắn JWT Mới!. Kết Quả JS Chạy Xong Sẽ Trút Bão Mạng Sạch Bot Khung Rác Mạng Trễ Đọc Text Rỗng Khung Đáy Không Đứt Rẽ Lệnh Thép Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh! Bơm Đúng Cái Cục Chữ Gọn Đáy Rễ Căn Cứ Lọc Đáy Kéo Gàng Dịch Được Vô Bụng Token Rút Khung Gắn Nóng Tự Trị Oanh Khách Vô Form Đáy Bọc Khống Gãy Khung Tốc Độ Khác Nữa Kẽ Đáy Giúp Thằng Frontend Sống Khỏe Mạch Oanh Liệt Dập Cụm Trống Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh Rút Khung Trống Mạng Lệnh Thép Rất Kính!
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
----
+- **Người dùng không thuộc nhóm nào:** 
+  - Theo chuẩn JSON, nếu mảng rỗng, Keycloak có thể không đưa mảng này vào Token để tối ưu, hoặc trả về một mảng rỗng `[]` tùy cấu hình phiên bản. Client App phải luôn kiểm tra null an toàn.
+  - **Khắc phục:** `const userGroups = token.groups || [];`
+- **Nhóm bị đổi tên (Renamed Group):**
+  - Khi một người quản trị Keycloak đổi tên nhóm `/IT` thành `/Technology`, các Token đang phát hành (đang còn hạn) vẫn chứa chuỗi cũ `/IT`. Backend sẽ không còn nhận dạng đúng người dùng nữa cho đến khi Token hết hạn và được refresh.
+  - **Khắc phục:** Sử dụng Access Token có tuổi thọ ngắn (Short-lived JWT, ~5 phút) để hệ thống tự động làm mới thông tin quyền.
 
-## 6. Tài liệu tham khảo (References)
-- **Keycloak Protocol Mappers:** Group Membership Mapper.
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior:** "Full group path" trong cấu hình Group Mapper là gì? Cho ví dụ.
+   - *Đáp án:* Là tùy chọn để hiển thị đường dẫn đầy đủ từ nhóm gốc đến nhóm con trong Token. Nếu ON, giá trị là `/Region/Asia/Vietnam`. Nếu OFF, giá trị chỉ là `Vietnam`.
+2. **Junior:** Điều gì xảy ra nếu người dùng thuộc 5 nhóm khác nhau, Token sẽ hiển thị thế nào?
+   - *Đáp án:* Mapper sẽ nhóm tất cả lại thành một Mảng JSON chứa 5 chuỗi (JSON Array of Strings) và gán vào Claim do bạn chỉ định.
+3. **Senior:** Có nên dùng Group Name để làm tham số phân quyền cốt lõi ở Backend Microservices không? Tại sao?
+   - *Đáp án:* Không nên. Tên nhóm mang tính kinh doanh/tổ chức và dễ bị thay đổi. Tốt hơn là nên dùng Role. Gán Role cho Group trong Keycloak, và map Role vào Token. Mã nguồn chỉ quan tâm đến Role (`CAN_EDIT_POST`), không cần quan tâm họ ở nhóm (`/IT` hay `/Content`).
+4. **Senior:** Nếu một công ty có cấu trúc phân cấp nhóm quá sâu (ví dụ 10 cấp độ), việc bật "Full group path" có gây ra vấn đề hiệu suất trên Keycloak Database không?
+   - *Đáp án:* Việc tải cấu trúc cây (Tree structure) có thể gây ra nhiều truy vấn nhỏ nếu Keycloak không tận dụng cache. Tuy nhiên, Keycloak đã tích hợp sẵn cơ chế Infinispan caching cho Realms/Groups ở mức bộ nhớ. Vấn đề lớn nhất không phải là Database, mà là kích thước Token bị "phình" ra khi đường dẫn quá dài.
+5. **Senior:** Group Mapper có hỗ trợ ánh xạ Attribute tùy chỉnh (Custom Attributes) của chính Group đó vào Token không?
+   - *Đáp án:* Không. Group Membership Mapper mặc định chỉ xuất ra Tên (hoặc Path) của nhóm. Để lấy Custom Attribute gắn trên Group, bạn phải viết một Custom Protocol Mapper bằng Java (SPI) hoặc cấu hình các Mapper đặc biệt khác.
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak Official Docs: Groups and Roles](https://www.keycloak.org/docs/latest/server_admin/#_groups)
+- [Keycloak Group Membership Mapper Source Code (GitHub)](https://github.com/keycloak/keycloak)

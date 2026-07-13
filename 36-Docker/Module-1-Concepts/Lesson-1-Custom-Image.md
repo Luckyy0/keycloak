@@ -1,83 +1,107 @@
-# Lesson 1: Lò Đúc Chân Không (Custom Image)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Hiểu cơ chế đúc Image bằng Dockerfile đặc thù của bản Keycloak Quarkus. Học tuyệt kỹ "Multi-stage Build" (Đúc 2 Giai Đoạn) để làm ra một cái File nhẹ nhất, chạy nhanh nhất.
+> **Category:** Theory
+> **Goal:** Hiểu sâu về cách thức Keycloak tối ưu hóa hiệu suất với Quarkus thông qua quá trình build và lý do tại sao phải tạo Custom Image.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Tại sao không xài thẳng Image Gốc?
-Image gốc trên mạng `quay.io/keycloak/keycloak:latest` là một cái xe nguyên bản. Nó không có Logo công ty bạn (Theme), nó không biết cài đặt kết nối với cái Database Oracle kỳ cục của bạn (JDBC Driver), và nó chưa được nén (Optimize) các biến cấu hình tĩnh.
-Nếu mỗi lần chạy, bạn dùng `volumes` để nhét Theme vào thì quá chậm và dễ sinh lỗi quyền file (Permission Denied Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần).
-Việc Đóng Gói Toàn Bộ (Build Image) Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Giúp: **Bất biến (Immutable Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy)**. Chạy ở môi trường Dev, Staging hay Production đều giống hệt nhau 100%.
+Từ phiên bản 17, Keycloak đã chuyển đổi hoàn toàn sang kiến trúc sử dụng **Quarkus** thay vì WildFly. Quarkus được thiết kế theo triết lý "Container First", giúp tối ưu hóa thời gian khởi động (Startup Time) và tiết kiệm tài nguyên bộ nhớ (Memory Footprint). 
 
-### 1.2. Bí Quyết Lõi Quarkus: Multi-Stage Build
-Từ ngày Keycloak chuyển sang dùng ruột Quarkus Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Quá trình bật máy được chia làm 2 phe Rạch Ròi Oanh Khung Dịch Lụa Mạch Lệnh:
-1. **Pha Nung Chảy (Build-time Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh):** Bạn chạy lệnh `kc.sh build`. Lúc này Quarkus nó Đọc các cấu hình Cố Định (Ví dụ: Loại Database là Postgres Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Tính năng Health Check có bật hay không Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Các Plugin SPI bạn nhét vào Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa). Nó Xào Nấu và Biên Dịch Lại Ruột Java. Quá trình này tốn khoảng 30s.
-2. **Pha Cất Cánh (Run-time Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa):** Chạy lệnh `kc.sh start`. Do cái ruột đã được xào chín ở Pha 1, nên ở Pha này nó Vút Lên Trời Chỉ Trong 3 Giây Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
+Trong kiến trúc mới này, Keycloak chia vòng đời chạy thành hai giai đoạn rõ rệt: **Build time** và **Runtime**. 
+- **Build time:** Keycloak sẽ biên dịch trước các cấu hình tĩnh (như Database Vendor, Metrics, Health Checks, Caching providers) thành một bản phân phối được tối ưu hóa (Optimized Distribution). Quá trình này thay đổi cấu trúc mã Bytecode của ứng dụng.
+- **Runtime:** Khởi chạy bản phân phối đã được tối ưu đó. Tại bước này, hệ thống sẽ không nạp lại toàn bộ cấu hình tĩnh nữa, giúp tăng tốc độ khởi động lên gấp nhiều lần.
 
-Vì Lẽ Đó Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề, Khi Viết Dockerfile Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Ta Sẽ Viết Thành 2 Chặng Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Chặng 1 Lấy Lò Nung Của Gốc Red Hat Để Chạy Lệnh Build. Sau Đó Ở Chặng 2 Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Ta Vớt Cái Đồ Vừa Nung Chín Bỏ Sang Một Chiếc Vỏ (Image) Trống Trơn Sạch Sẽ Để Chạy Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng!
-
----
+Vì vậy, trong môi trường Production, thay vì cung cấp các biến môi trường cấu hình tĩnh mỗi lần container khởi động, cách làm chuẩn (Best Practice) là sử dụng một **Custom Image** (Docker Image tùy chỉnh) kết hợp với multi-stage build. Custom Image này thực thi bước `kc.sh build` trước, sau đó chỉ việc gọi `kc.sh start --optimized` ở môi trường thực tế.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Của Dockerfile 2 Tầng (Multi-Stage):
+Khi chúng ta tạo Custom Docker Image cho Keycloak, có một luồng làm việc bên trong để tối ưu hóa hệ thống.
 
-```dockerfile
-# --------- GIAI ĐOẠN 1: LÒ NUNG (builder) ---------
-FROM quay.io/keycloak/keycloak:latest as builder
-
-# 1. Khai báo Loại Database Chết Cứng
-ENV KC_DB=postgres
-
-# 2. Nhét Theme Công Ty Vào
-COPY my-company-theme/ /opt/keycloak/themes/my-company-theme/
-
-# 3. Nhét File Cục Gạch Tính Năng Custom SPI Vừa Code Ở Chương Trước
-COPY my-custom-otp.jar /opt/keycloak/providers/
-
-# 4. Gõ Lệnh Búa Tạ Để Ép Nóng Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp
-RUN /opt/keycloak/bin/kc.sh build
-
-# --------- GIAI ĐOẠN 2: THUYỀN VŨ TRỤ SIÊU NHẸ ---------
-FROM quay.io/keycloak/keycloak:latest
-
-# Bốc Toàn Bộ Khối Động Cơ Đã Được Nung Chín Ở Bước Trên Chuyển Sang Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-COPY --from=builder /opt/keycloak/ /opt/keycloak/
-
-# Mở Cờ Khởi Động Tự Lái
-ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
-```
-
-Trục Chuyển Hóa Của Quarkus Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:
 ```mermaid
 sequenceDiagram
-    participant Dev as Thợ Gõ Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    participant Docker as Máy Đúc (Docker Build Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần)
-    participant K8s as Đám Mây (Run)
-    
-    Dev->>Docker: Gõ `docker build -t my-kc:1.0 .`
-    Docker->>Docker: Kéo Image Gốc Về Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    Docker->>Docker: Ném Theme, Ném File Cục Jar SPI Vào
-    Docker->>Docker: Chạy Lệnh `kc.sh build` (Đốt 30 Giây Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa). Quarkus Xóa Bỏ Sạch Code Driver Hỗ Trợ MySQL/Oracle... Chỉ Giữ Lại Dòng Huyết Mạch Của Postgres!
-    Docker->>Dev: Đẻ Ra File Tàu Không Gian Mới `my-kc:1.0` Gọn Gàng Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-    
-    Dev->>K8s: Bơm Tàu Lên Bầu Trời Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    K8s->>K8s: Chạy `kc.sh start --optimized` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh
-    K8s->>K8s: Keycloak Bật Căng Đét Trong Đúng 3 Giây Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Đã Nuốt Gọn Theme Công Ty Và Module Chống Lừa Đảo Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
+    participant Docker as Docker Daemon
+    participant Base as quay.io/keycloak/keycloak (Base)
+    participant Quarkus as Quarkus Build Engine
+    participant Output as Custom Image (Optimized)
+
+    Docker->>Base: 1. Kéo Image Base mới nhất
+    Docker->>Base: 2. Sao chép Providers (JARs), Themes vào /opt/keycloak/
+    Docker->>Quarkus: 3. Chạy lệnh: kc.sh build --db=postgres ...
+    Quarkus->>Quarkus: 4. Phân tích cấu hình, loại bỏ mã thừa, tối ưu hóa Bytecode
+    Quarkus-->>Output: 5. Lưu trạng thái đã tối ưu hóa vào thư mục lib/quarkus
+    Docker->>Output: 6. Đặt Entrypoint: kc.sh start --optimized
 ```
 
----
+**Giải thích chi tiết (Step-by-Step):**
+1. **Pull Base Image:** Bắt đầu bằng Image chính thức `quay.io/keycloak/keycloak`.
+2. **Add Customizations:** Các thư viện mở rộng (SPI/Providers) hoặc Themes được chép vào thư mục của Keycloak. Điều này là bắt buộc ở Build time vì Quarkus cần quét và liên kết các class Java này.
+3. **Build Step (`kc.sh build`):** Trình biên dịch của Quarkus đọc các tham số như `--db=postgres`, `--features=...`. Nó tiến hành loại bỏ các driver của MySQL, Oracle, v.v. (những thứ không cần thiết), chỉ giữ lại Postgres.
+4. **Optimization:** Hệ thống tạo ra một bytecode được cấu trúc lại, giảm dung lượng bộ nhớ tĩnh (Static memory overhead) lúc Runtime.
+5. **Start Step (`--optimized`):** Khi Custom Image được khởi chạy bằng `start --optimized`, Keycloak bỏ qua toàn bộ giai đoạn quét cấu hình tĩnh, nạp thẳng cấu hình đã build sẵn và chỉ cấu hình các biến động (Dynamic configs như DB URL, mật khẩu).
 
-## 3. Câu hỏi Phỏng vấn (Interview Questions)
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-**1. Em Thấy Keycloak Quay Bản Quarkus Có 2 Lệnh Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Lệnh `start` Và Lệnh `start-dev`. 2 Đứa Nó Khác Nhau Dữ Dằn Chỗ Nào Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh? Mà Tại Sao Ở Môi Trường Đám Mây (Production Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh) Sếp Tuyệt Đối Khóa Lệnh Cấm Em Chạy Chữ `start-dev` Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề?**
-- **Senior:** Dạ Cú Chốt Này Rất Sắc Bén Thưa Sếp Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! 
-  - **`start-dev` Là Mì Ăn Liền Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:** Khi Gõ Lệnh Này Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Keycloak Tự Động Bật Theo Cấu Hình Yếu Ớt Nhất: Dùng Database H2 Đồ Chơi Nằm Trong RAM Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, Tắt Sạch Yêu Cầu Chứng Chỉ Bảo Mật HTTPS Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Bật Mở Cửa Sổ Logging In Ra Console Toàn Bộ Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Hơn Nữa Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Nó Gộp Luôn Lệnh `build` + Lệnh `start` Vào Cùng 1 Nhịp Oanh Khung Dịch Lụa Mạch Lệnh. Nghĩa Là Máy Bật Lên Sẽ Rất Lâu Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-  - **`start` (Đi Cùng Với --optimized Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy) Là Áo Giáp Chống Đạn Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh:** Để Chạy Lệnh Này Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Bắt Buộc Trước Đó Nó Đã Phải Trải Qua Bước `build` Rồi Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Lệnh `start` Chạy Lên Sẽ Đóng Sập Toàn Bộ Cửa Sổ Dễ Dãi Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Nó Ép Bộc Phải Cắm Database Xịn Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Ép Bộc Phải Có Môi Trường HTTPS (Hoặc Proxy Edge Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh), Và Đặc Biệt Thời Gian Khởi Động (Startup Time Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) Của Lệnh `start` Rất Ngắn (Chỉ Chừng 3 Giây Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng). Nếu Sếp Mang Chữ `start-dev` Lên Production Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Nhỡ Bị Cúp Điện Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Máy Nó Reset Lại Mà Cái Database Của Nó Lại Là Thằng H2 Nằm Trong Bộ Nhớ Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Dữ Liệu Tỷ Đô Bốc Hơi Trong 1 Phút Tắt Nguồn Thưa Sếp Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
+- **Sử dụng Multi-stage Build:** Khuyến cáo dùng multi-stage build trong Dockerfile. Build trên một stage dùng hình ảnh `builder`, sau đó copy thư mục `/opt/keycloak` sang một stage nhỏ gọn hơn để chạy (Minimal Runtime Image). Điều này giúp giảm bề mặt tấn công.
+- **Không nhúng Secrets vào Build-time:** Những thông tin nhạy cảm như Mật khẩu DB (`KC_DB_PASSWORD`), Private Keys KHÔNG ĐƯỢC thiết lập trong lúc chạy `kc.sh build`. Chỉ đưa chúng vào lúc Runtime thông qua Environment Variables hoặc Docker Secrets.
+- **Quản lý Provider an toàn:** Chỉ chép các file `.jar` từ các nguồn đáng tin cậy. Bất kỳ Provider nào chứa mã độc có thể giành quyền kiểm soát toàn bộ máy chủ Keycloak.
 
----
+> [!WARNING]
+> Nếu bạn chạy `kc.sh start` (không có `--optimized`), Keycloak sẽ ngầm định chạy bước `build` mỗi lần khởi động. Điều này vừa làm chậm thời gian boot, vừa tiêu tốn CPU không cần thiết trong môi trường Cloud/Kubernetes.
 
-## 4. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Running Keycloak in a container.
+> [!IMPORTANT]
+> Các biến bắt đầu bằng `KC_DB_URL`, `KC_DB_USERNAME` có thể cung cấp ở Runtime, nhưng biến định nghĩa *loại* database (`KC_DB=postgres`) PHẢI được thiết lập ở Build-time.
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+
+Dưới đây là một Dockerfile chuẩn mực sử dụng Multi-stage build cho Keycloak:
+
+```dockerfile
+# Stage 1: Builder
+FROM quay.io/keycloak/keycloak:latest as builder
+
+# Kích hoạt health metrics và chỉ định loại Database
+ENV KC_HEALTH_ENABLED=true
+ENV KC_METRICS_ENABLED=true
+ENV KC_DB=postgres
+
+# Sao chép các custom providers và themes
+# COPY custom-providers/ /opt/keycloak/providers/
+# COPY custom-themes/ /opt/keycloak/themes/
+
+# Chạy build để tối ưu hóa Quarkus
+RUN /opt/keycloak/bin/kc.sh build
+
+# Stage 2: Runtime
+FROM quay.io/keycloak/keycloak:latest
+
+# Sao chép kết quả đã tối ưu hóa từ stage builder
+COPY --from=builder /opt/keycloak/ /opt/keycloak/
+
+# Chỉ định Entrypoint chạy chế độ optimized
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
+CMD ["start", "--optimized"]
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Lỗi Provider không tương thích:** Khi chép một tệp `.jar` (Custom Mapper) cũ vào bản Keycloak mới, lệnh `kc.sh build` có thể báo lỗi `ClassDefNotFound` do xung đột thư viện.
+  - **Khắc phục:** Phải biên dịch lại Provider với phiên bản Keycloak đích (update dependencies trong `pom.xml` của provider).
+- **Out of Memory (OOM) khi Build:** Trong môi trường CI/CD (như GitHub Actions), lệnh `kc.sh build` có thể bị kill (OOMKilled) nếu container cấp phát không đủ RAM (ít nhất cần ~1.5GB RAM để build).
+  - **Khắc phục:** Tăng RAM cho Docker engine hoặc cấu hình biến môi trường `JAVA_OPTS` cho bước build.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior:** Lệnh `kc.sh build` khác biệt thế nào với `kc.sh start` trong Keycloak phiên bản mới (Quarkus)?
+   - *Đáp án:* `build` thực hiện tối ưu hóa cấu hình tĩnh (như loại database, provider) vào một bản phân phối được biên dịch sẵn. `start` khởi động ứng dụng (nếu không có `--optimized` sẽ tự động build lại).
+2. **Junior:** Có nên cấu hình thông tin kết nối Database (`db-url`, `db-username`) vào trong Dockerfile không?
+   - *Đáp án:* Không. Đây là những cấu hình Runtime. Việc hardcode vào Dockerfile sẽ gây rủi ro bảo mật (lộ thông tin) và làm mất tính linh hoạt của Image trên nhiều môi trường.
+3. **Senior:** Tại sao Multi-stage build được coi là Best Practice khi tạo Custom Image cho Keycloak?
+   - *Đáp án:* Nó giúp quá trình build tách biệt với runtime. Có thể thêm các công cụ build (như Maven/Gradle) vào stage 1 để compile Java Provider, sau đó chỉ copy file JAR sang stage 2. Giúp Image cuối cùng nhẹ, giảm thiểu attack surface.
+4. **Senior:** Những cấu hình nào bắt buộc phải thiết lập ở Build-time thay vì Runtime?
+   - *Đáp án:* Database vendor (`--db`), FIPS mode (`--fips-mode`), Metrics/Health API (`--metrics-enabled`, `--health-enabled`), và việc nạp các SPI/Providers mới.
+5. **Senior:** Nếu ta muốn dùng MySQL thay vì Postgres, ta thay đổi Dockerfile như thế nào và điều gì xảy ra ở dưới nền?
+   - *Đáp án:* Đổi `ENV KC_DB=postgres` thành `KC_DB=mysql`. Dưới nền, Quarkus sẽ đóng gói (bundle) JDBC driver của MySQL và loại bỏ driver của Postgres trong bước build.
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak Official Guide: Running Keycloak in a Container](https://www.keycloak.org/server/containers)
+- [Keycloak Architecture: Quarkus Migration](https://www.keycloak.org/migration/migrating-to-quarkus)
+- [Docker Documentation: Multi-stage builds](https://docs.docker.com/build/building/multi-stage/)

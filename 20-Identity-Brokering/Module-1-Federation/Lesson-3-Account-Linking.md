@@ -1,68 +1,101 @@
-# Lesson 3: Cuộc Sát Nhập Đẫm Máu (Account Linking)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Trong Lesson 2, nếu Khách Login Google mà Email chưa tồn tại, máy chủ Tạo User mới dễ dàng. Nhưng thảm họa xảy ra khi Khách Hàng Này Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy ĐÃ TỪNG tạo Tài Khoản Trực Tiếp Vào App Bằng Username/Password Bằng Cái Email Đó Trước Rồi! Keycloak KHÔNG DÁM Tạo Account Mới Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy, Cũng KHÔNG DÁM Map Bừa! Làm Sao Giải Quyết?
+> **Category:** Theory
+> **Goal:** Hiểu sâu về cơ chế Account Linking trong Keycloak Identity Brokering, cách Keycloak liên kết danh tính người dùng từ nhiều Identity Providers (IdP) vào một tài khoản cục bộ duy nhất.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Sự Tồn Tại Email Của Người Dùng Đáy Lõi DB Trút Cắt Khung Tương Lai
-Khi Luồng **`First Broker Login`** Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Chạy Lá Chấp Pháp `Create User If Unique Oanh Cáp Giao Diện Lệnh Chặt Mạch Lụa`. 
-Nó Check CSDL Và Thấy Email `teoteo@gmail.com` ĐÃ TỒN TẠI TRONG NHÀ CỦA LÃNH CHÚA Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh.
-Lãnh Chúa Phải Đặt Câu Hỏi Oanh Khung Dịch Lụa Mạch Lệnh: "Thằng Khách Đang Cầm Trạm Xác Thực Google Kìa Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Có Thực Sự Là CHỦ NHÂN Của Thằng User Đã Tồn Tại Trong Trái Tim Mạch Này Không Cắt Khung Đứt Băng?".
-Nếu Mù Quáng Map Bừa Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Hacker Sẽ Dùng Một Provider Lạ Tạo Acc Fake Để Ép Trộm Quyền Đáy Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+Trong các hệ thống phân tán phức tạp, một người dùng có thể sở hữu nhiều tài khoản tại các Identity Providers (IdP) khác nhau, ví dụ: đăng nhập bằng Google, Facebook, hoặc tài khoản Active Directory nội bộ của công ty. **Account Linking** là khả năng hợp nhất (merge) các định danh phân tán này lại thành một người dùng hợp nhất (unified user) trong hệ thống Identity Access Management (IAM) - ở đây là Keycloak.
 
-### 1.2. Mạch Buộc Link Của Lãnh Chúa (Link Existing Account)
-Trong Cây Flow, Ngay Dưới Cái Cánh Rơi Rụng `Create User If Unique` Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp, Có Một Nhánh **`Handle Existing Account`** (Mang Cờ Required Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy).
-Nhánh Này Ép Khách Hàng Phải XÁC NHẬN MINH CHỨNG Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Mình Mới Là Chủ Nhân! Bằng 1 Trong 2 Cách:
-1. Gửi Mạch Mail Bắt Kích Chuột (Email Verification Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt).
-2. Hoặc Đập Ra Màn Hình Bắt Nhập Password Gốc Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ (Password Authenticator).
-
----
+**Tại sao cần Account Linking?**
+- **Trải nghiệm người dùng (UX)**: Người dùng có thể sử dụng linh hoạt bất kỳ IdP nào để đăng nhập mà vẫn giữ nguyên được Profile, Roles, và lịch sử giao dịch ở ứng dụng đích.
+- **Quản lý phân quyền tập trung**: Khi tài khoản được liên kết, administrator chỉ cần phân quyền (assign role/group) cho một Local Account duy nhất trong Keycloak.
+- **Tránh trùng lặp dữ liệu**: Thay vì tạo ra nhiều bản ghi user khác biệt (Ví dụ: `john_google`, `john_fb`), hệ thống chỉ lưu một `john_doe` duy nhất và lưu thông tin về các Federated Identities được liên kết với nó.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Phân Tích Nhánh Gãy Rụng Sub-Flow Đáy Lõi Tự Trị Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Account Linking Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh:
+Khi một người dùng lần đầu đăng nhập thông qua một IdP mới (nhưng email hoặc username của họ đã tồn tại trên Keycloak), Keycloak sẽ kích hoạt một Authentication Flow có tên là **First Broker Login**. Dưới đây là kiến trúc luồng dữ liệu của quá trình Account Linking:
 
 ```mermaid
-graph TD
-    A[Gốc First Broker Login] -->|ALTERNATIVE| B[Lá: Create User If Unique Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ]
-    A -->|ALTERNATIVE Lệnh Oanh Rút| C((Hộp Đen: Handle Existing Account Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ))
-    
-    B -->|Xịt Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Vì Email Đã Tồn Tại Chữ Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm| C
-    
-    C -->|REQUIRED Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa| D[Lá: Confirm Link Existing Account Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề]
-    C -->|ALTERNATIVE Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt| E[Lá: Nhập Password Cũ Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống]
-    C -->|ALTERNATIVE Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa| F[Lá: Gửi Code Bấm Email Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần]
-    
-    style A fill:#f9f,stroke:#333,stroke-width:4px
-    style C fill:#bbf,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
-```
-*Ghi Chú Đáy Lõi DB Trút Cắt Khung Tương Lai:* Chữ Cờ ALTERNATIVE Bọc Cả Hộp Oanh Cáp Giao Diện Lệnh Chặt Mạch Lụa. Nên Nếu Thằng B Xịt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Cỗ Máy Rơi Xuống Bắt Nhánh C Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bắt Khách Bấm Đồng Ý Link (Lá D Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. RỒI SAU ĐÓ Buộc Phải Đậu 1 Trong 2 Cửa E Hoặc F (Vì Cả Hai Đều Là Nhóm Alternative Chung Sub-Flow Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh). Khách Phải Thỏa Mãn Minh Chứng Lệnh Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh!
+sequenceDiagram
+    participant User
+    participant App as Client Application
+    participant KC as Keycloak (Broker)
+    participant IdP as Identity Provider (Google, GitHub)
 
----
+    User->>App: Truy cập ứng dụng
+    App->>KC: Redirect (OIDC Request)
+    KC-->>User: Hiển thị trang Login (có nút Login via IdP)
+    User->>KC: Click "Login with Google"
+    KC->>IdP: Redirect sang Google (SAML/OIDC Request)
+    IdP-->>User: Yêu cầu xác thực & uỷ quyền
+    User->>IdP: Nhập Username/Password & Approve
+    IdP->>KC: Trả về Token/SAML Assertion
+    KC->>KC: Trích xuất Profile (Email, Name)
+    KC->>KC: Phát hiện Email đã tồn tại ở Local DB!
+    KC-->>User: Bật trang yêu cầu Account Linking
+    User->>KC: Cung cấp mật khẩu Local (hoặc xác thực OTP/Email)
+    KC->>KC: Liên kết Federated ID vào Local Account
+    KC->>App: Cấp phát Token (Dựa trên Local Account)
+```
+
+**Cơ sở dữ liệu (Low-level):**
+Keycloak duy trì Account Linking bằng cách ghi dữ liệu vào bảng `FEDERATED_IDENTITY`. Bảng này có cấu trúc ánh xạ giữa `USER_ID` (Local Account ID) và `IDENTITY_PROVIDER` cùng `BROKER_USER_ID` (ID của user bên phía IdP). Khi người dùng đăng nhập những lần sau qua IdP đó, Keycloak sẽ join bảng này để xác định Local Account một cách tức thời.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!IMPORTANT]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Bắt User Đọc Lệnh OTP Trong Khi Google Đã Làm Sạch Khung Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa)**
-> **Tội Ác Thiết Kế API Trọng Lực Bọc Thép OIDC:** Đội Dev Rất Tự Tin Đáy Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Công Ty Chỉ Đấu Nối DUY NHẤT Lãnh Chúa Với Gã Khổng Lồ Là **Google Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống**. Mà Google Là Cỗ Máy Xác Minh Email Bậc Nhất Thế Giới Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích. 
-> Nhưng Đội Dev Lại Để Nguyên Cái Máy Bắt Buộc Nhánh Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép `Handle Existing Account` Đòi Pass Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Khách Hàng Oanh Khung Dịch Lụa Mạch Lệnh Vừa Gõ Login Bằng Google Xong Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Văng Qua Keycloak Bị Bật Cửa Sổ Bắt Bấm Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng Đòi Nhập Password Cũ Của Keycloak Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. KHÁCH SẼ QUÊN SẠCH PASS VÌ TOÀN LOGIN GOOGLE Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần! 
-> **Biện Pháp Sống Còn Lớp Trọng Lực OIDC Đáy Lụa:** Nếu Bạn TIN TƯỞNG TUYỆT ĐỐI Trạm IdP Bên Ngoài Đỉnh Đáy Oanh Mạng Bắt Lụa (Như Google/Apple - Trust Email Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp). Trong Cấu Hình Identity Provider Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Của Admin Console, Có Một Nút CÔNG TẮC BỌC MẠCH OANH LỤA Tên Là: **`Trust Email`**. 
-> Bật Cờ Này Lên Cắt Khung Đứt Băng Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ! Máy Chủ Keycloak Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Sẽ BỎ QUA Luôn Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Cả Cái Nhánh Chấp Pháp `Handle Existing Account` Đáy Lõi DB Trút Cắt Khung Tương Lai Đầy Máu Me Này Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Keycloak Tự Bóc Bảng Link ACC DB Auto Map Không Cần Khách Bấm Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Bất Kỳ Chữ Nào Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp! Cực Kỳ User-Friendly Lệnh Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
+> **Yêu cầu xác minh chủ sở hữu tài khoản (Ownership Verification)**: Tuyệt đối KHÔNG cấu hình tự động liên kết tài khoản dựa trên Email mà không yêu cầu user chứng minh họ sở hữu tài khoản Local (Ví dụ: thông qua việc nhập lại Password cũ hoặc qua OTP gửi qua Email). Kẻ tấn công có thể tạo một tài khoản tại một IdP yếu kém với email của nạn nhân (Account Takeover vulnerability).
 
----
+> [!WARNING]
+> **Cẩn trọng với Trust Email**: Nếu IdP được đánh dấu là `Trust Email` (Ví dụ: Google Workspace nội bộ công ty), Keycloak có thể tự động Linking. Hãy chỉ bật tính năng này với các IdP có tính bảo mật cực cao và bạn hoàn toàn tin tưởng về việc xác minh email của họ.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+- **Quản lý vòng đời**: Luôn hướng dẫn hoặc cung cấp cổng Self-Service Account Console để người dùng có thể chủ động unlink (huỷ liên kết) một IdP khi họ bị mất quyền kiểm soát tài khoản bên ngoài đó.
 
-**1. Trong Giao Thức Liên Mạng Identity Brokering Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy. Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Khi Khách Hàng Đã Bị Vướng Vào Nhánh 'Account Linking Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa', Khách Đã Lỡ Bỏ Quên Mật Khẩu (Password Của Lãnh Chúa Keycloak). Việc Này Sẽ Chặn Đứt Cửa Khách Mãi Mãi Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. Trạm Nào Có Thể Phá Lỗ Hổng Này Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp?**
-- **Senior:** Dạ thưa sếp, Đây Chính Là Cơ Chế Sinh Tử Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Của Nhóm Gắn Cờ Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị:
-  - Khách Không Nhớ Password (Không Lọt Qua Được Cửa Password Lỗ Bọt Cắt Trắng Oanh Tĩnh Lệnh Khúc Tới Ngay Lệnh). 
-  - NHƯNG Như Em Đã Nói Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, Thằng Password Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy VÀ Thằng Gửi Email Xác Minh Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. CẢ HAI ĐỨA NÀY NẰM CẠNH NHAU TRONG 1 SUB-FLOW Bọc Cờ **`Alternative`** Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt!
-  - Khách KHÔNG NHỚ PASS Thất Bại Ở Cửa E Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống. Khách Hàng Có Quyền Bấm Vào Nút Dưới Cùng Cắt Khung Đứt Băng Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ "Gửi Email Đỉnh Chóp Cho Tao Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh".
-  - Chạy Qua Cửa Lá F Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Keycloak Sẽ Gửi Email Liên Kết Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Khách Qua Thùng Mail Bấm Đồng Ý. Là Hệ Thống Đánh Đậu (Pass Chữ Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm) Toàn Bộ Hộp Đen Cũ Oanh Khung Dịch Lụa Mạch Lệnh Mặc Kệ Thằng Password Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Bị Đứt Gãy! Cơ Chế Dự Phòng Rẽ Nhánh Khủng Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Của RedHat Hoàn Mỹ Đáy Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
----
+Để cấu hình Account Linking trong Keycloak, bạn cần tinh chỉnh Authentication Flow, cụ thể là luồng **First Broker Login Flow**:
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Administration Guide - Account Linking.
+1. Vào **Authentication** -> **Flows** -> Chọn `First Broker Login`.
+2. Kiểm tra nhánh `Handle Existing Account`:
+   - Execution: **Verify Existing Account by Email** (Hoặc qua Password). Đặt trạng thái là `REQUIRED` hoặc `ALTERNATIVE`.
+   - Điều này sẽ buộc người dùng xác minh danh tính trước khi Keycloak tiến hành ghi bản ghi liên kết.
+
+*Sử dụng API nội bộ qua REST Admin API để liên kết tài khoản thủ công:*
+```bash
+# Link một IdP vào User thông qua Admin API
+curl -X POST \
+  http://localhost:8080/admin/realms/myrealm/users/<USER_ID>/federated-identity/<IDP_ALIAS> \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "<ID_OF_USER_IN_IDP>",
+    "userName": "<USERNAME_IN_IDP>"
+  }'
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Xung đột Username nhưng khác Email (Username Clash)**: Nếu IdP trả về một username đã tồn tại trong Keycloak nhưng lại đi kèm một Email khác, luồng First Broker Login có thể gây nhầm lẫn nếu không được xử lý cẩn thận. Keycloak thường sẽ đổi tên username tự động (sử dụng Mapper `Username Template Importer`) để tạo ra một Local Account mới nhằm tránh liên kết nhầm tài khoản.
+- **Tài khoản Local chưa được verify email**: Nếu tài khoản trong Keycloak tồn tại nhưng chưa bao giờ được xác thực email, và một user khác đăng nhập qua IdP lấy chính email đó, nguy cơ chiếm đoạt tài khoản là rất cao. Admin nên cấu hình `Require Email Verification` trên mức độ Realm.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+**Junior Level:**
+1. Tính năng Account Linking trong Keycloak giải quyết bài toán gì?
+   - *Đáp án:* Cho phép người dùng đăng nhập bằng nhiều Identity Providers (Social, Enterprise) nhưng chỉ sử dụng duy nhất một tài khoản định danh trong hệ thống nội bộ để dễ dàng quản lý phân quyền.
+2. Khi hai tài khoản được liên kết, làm thế nào Keycloak biết chúng là một?
+   - *Đáp án:* Dựa vào bảng ánh xạ `FEDERATED_IDENTITY` nối giữa ID của Local User và ID do IdP cung cấp.
+
+**Senior Level:**
+3. Trình bày rủi ro bảo mật (Account Takeover) nếu bạn kích hoạt tính năng tự động Account Linking dựa trên Email match mà không có bước xác minh?
+   - *Đáp án:* Nếu một IdP cho phép người dùng tự do chọn email mà không cần xác thực (hoặc IdP bị hack), kẻ tấn công có thể sử dụng email của quản trị viên hệ thống để đăng nhập và Keycloak sẽ tự động nối vào tài khoản quản trị viên.
+4. Làm thế nào để bạn tuỳ biến quá trình Account Linking để thay vì yêu cầu mật khẩu, hệ thống sẽ gửi OTP qua tin nhắn SMS?
+   - *Đáp án:* Cần phát triển một Custom Authenticator (Spi) cho Keycloak, cấu hình nó vào trong First Broker Login flow tại nhánh `Handle Existing Account` để thay thế cho bước `Password Form` mặc định.
+5. So sánh sự khác nhau giữa việc sử dụng "First Broker Login Flow" tự động và việc dùng REST API để Admin chủ động Link tài khoản?
+   - *Đáp án:* Tự động thích hợp cho môi trường B2C nơi user tự phục vụ. REST API thích hợp cho môi trường Enterprise B2B, nơi dữ liệu đồng bộ hoá (Sync) từ các hệ thống nhân sự (HR) đẩy sang Keycloak.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak Official Documentation - Identity Brokering](https://www.keycloak.org/docs/latest/server_admin/#_identity_broker)
+- [Keycloak Official Documentation - Default Provider Flow](https://www.keycloak.org/docs/latest/server_admin/#_default_provider_flow)
+- [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)

@@ -1,85 +1,100 @@
-# Lesson 1: Rào Cản Phiên Bản (Version Compatibility)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Hiểu được Nỗi Đau Khủng Khiếp khi nâng cấp Keycloak. Nhận diện 3 yếu tố rủi ro dễ bị gãy nhất: Theme (Giao diện), SPI (Code Java Tùy chỉnh), và Hệ Cấu Trúc Dữ Liệu Ẩn.
+> **Category:** Theory
+> **Goal:** Hiểu rõ các quy tắc về Khả năng tương thích phiên bản (Version Compatibility) trong hệ sinh thái Keycloak và cách lập kế hoạch lộ trình nâng cấp (Migration Path) an toàn.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Ảo Giác Tương Thích Ngược (Backwards Compatibility)
-Nhà sản xuất (Red Hat) luôn nói rằng: *"Chúng tôi nâng cấp rất an toàn, dữ liệu cũ vẫn chạy được"*. Điều đó ĐÚNG với Dữ Liệu (Users, Roles, Clients) nằm trong Database. Bảng Database luôn được tự động vá lỗi để tương thích lên phía trước.
-Nhưng Nỗi Đau lại nằm ở những thứ **BẠN TỰ LÀM THÊM (Customizations)**. 
-Nếu bạn chạy Keycloak thuần túy, nâng cấp chỉ mất 1 phút. Nếu bạn chế cháo càng nhiều, Nâng cấp là một Đám Tang kéo dài vài tháng!
+Một trong những sai lầm nguy hiểm nhất khi vận hành hệ thống Identity Access Management là thực hiện nâng cấp nhảy vọt (Jump Upgrade) mà không kiểm tra tính tương thích. Việc bạn nâng cấp Keycloak không chỉ ảnh hưởng đến Server Keycloak mà còn tác động trực tiếp đến hàng loạt các thành phần vệ tinh khác.
 
-### 1.2. Ba Sát Thủ Phá Hoại Nâng Cấp
-1. **Custom Themes (Giao Diện Tự Chế):** 
-   - Nhớ lại Chương Theme: Bạn đã copy file `login.ftl` của Bản 17 ra để sửa Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Ở Bản 24 Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Red Hat thêm tính năng "Đăng Nhập Passkeys/WebAuthn". Họ đã Viết Thêm Cả Đống Dòng Code mới vào file `login.ftl` Gốc!
-   - Nếu bạn đè cái thư mục Theme cũ kỹ của Bản 17 lên Bản 24 Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Hệ Thống Vẫn Chạy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp, Nhưng Màn Hình Sẽ Mất Tích Nút "Passkeys", Lỗi Văng Giao Diện Tè Le Hột Me!
-   - *Luật:* Cứ mỗi lần nâng cấp Major, phải đem cái Theme gốc của bản Mới ra SO SÁNH (Diff) với cái Theme chế của mình để vá Code! Cực kỳ mệt mỏi!
-2. **Custom SPI Providers (Code Java User Storage / Mapper):**
-   - Bạn viết một cục `UserStorageProvider` bằng Java ở bản 17. 
-   - Sang bản 21, Red Hat ĐỔI TÊN MỘT VÀI HÀM (API Deprecation) trong lõi Java Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-   - Cục `.jar` của bạn nhét vào bản 21 Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Khởi Động Sẽ Văng Lỗi Đỏ Chóe: `NoSuchMethodError` (Không Tìm Thấy Hàm) hoặc `ClassNotFoundException` Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp! Server Đột Tử!
-   - *Luật:* Phải tải Source Code của dự án Java về, nâng version `keycloak-server-spi` trong Maven lên bản mới tương ứng, Bấm Build lại. Nếu Lỗi Đỏ, Phải tự Fix Code theo Document mới, rồi Compile ra Cục Jar mới đem lên Production!
-3. **Môi Trường Container Quarkus Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:**
-   - Các biến Môi trường (Environment Variables) thỉnh thoảng bị Đổi Tên Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Ví dụ Ngày Xưa Là `KC_HTTPS_CERTIFICATE_FILE`, Bản Mới Có Thể Đổi Thành `KC_HTTPS_CERT_FILE`. Nếu Copy File Docker-Compose Cũ Sang Chạy Mù Quáng Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Bạn Sẽ Sấp Mặt Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
+**Khái niệm Version Compatibility (Tính tương thích phiên bản):**
+1. **Server Version**: Là phiên bản của lõi Keycloak (ví dụ: `21.0.0`, `24.0.2`).
+2. **Adapter/Client Library Compatibility**: Ứng dụng Frontend (React, Angular) sử dụng thư viện `keycloak-js`, hoặc Backend dùng Spring Boot Adapter. Các thư viện này có bị hỏng khi Server nâng cấp không?
+3. **SPI/Plugin Compatibility**: Các code tuỳ chỉnh (Custom Authenticators, Custom Event Listeners) được lập trình bằng Java. SPI interface của Keycloak thường xuyên thay đổi qua các bản Major.
+4. **Database Schema Compatibility**: Cơ sở dữ liệu ở bản thấp không thể tự động migrate nếu bạn nhảy qua quá nhiều phiên bản.
 
----
+**Quy tắc Semantic Versioning (SemVer) trong Keycloak:**
+Keycloak thường sử dụng định dạng `MAJOR.MINOR.PATCH`.
+- **PATCH**: Vá lỗi bảo mật (CVEs), hoàn toàn tương thích ngược, nên cập nhật ngay.
+- **MINOR**: Thêm tính năng nhỏ, có thể yêu cầu thay đổi nhỏ ở DB. Tương thích tương đối cao.
+- **MAJOR**: Phá vỡ tính tương thích (Breaking Changes). Xóa bỏ tính năng cũ, thay đổi cấu trúc Database lõi.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Của Quy Trình Bóp Cổ Trước Khi Lên Đời:
+**Lộ trình Nâng cấp (Migration Path):**
+Keycloak Database Scripts được thiết kế theo dạng tịnh tiến. Nó không chứa một file siêu script "Từ Version 10 nhảy lên 24". Thay vào đó, nó chứa các bước nhảy tuần tự (Ví dụ: `V10 -> V11`, `V11 -> V12`... `V23 -> V24`).
+Nếu bạn nâng cấp từ 10 lên 24, công cụ Liquibase sẽ thực hiện nối chuỗi hàng chục file script lại với nhau.
 
 ```mermaid
-sequenceDiagram
-    participant SysAdmin as Kỹ Sư Hệ Thống (Bạn Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh)
-    participant Dev as Lập Trình Viên Java/Frontend
-    participant Staging as Môi Trường Test (Staging)
-    participant Prod as Môi Trường Thật (Production Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy)
+flowchart LR
+    subgraph Unsupported / Risky
+        A[Bản 11.0] -.->|Direct Jump (Lỗi cao)| E[Bản 24.0]
+    end
     
-    Note over SysAdmin, Prod: ❌ QUY TRÌNH NGU NGỐC Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: 
-    SysAdmin->>Prod: Mở Docker, Đổi Image Thành Bản 24! Khởi Động!
-    Prod->>Prod: (Crash) SPI Bị Lỗi Code Không Tương Thích!
-    Prod->>SysAdmin: (Crash) Theme Lỗi Đăng Nhập Không Chạy!
-    SysAdmin->>SysAdmin: Hoảng Loạn! Nửa Đêm Ngồi Fix Code Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng! Ngân Hàng Sập 10 Tiếng Đồng Hồ Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp!
-    
-    Note over SysAdmin, Prod: ✅ QUY TRÌNH HOÀNG GIA (Best Practice):
-    SysAdmin->>Dev: "Ê, Tuần Sau Nâng Cấp KC Lên V24 Nhé. Đem Cái File Jar Và Cái Folder Theme Ra Mổ Xẻ Với Bản Gốc Của V24 Xem Có Gãy Chữ Nào Không Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!"
-    Dev->>Dev: Đổi Maven Bản 24. Code Gãy! Fix Lại! Đóng Ra Cục Jar V2 Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Diff Lại Theme Oanh Khung Dịch Lụa Mạch Lệnh!
-    Dev->>Staging: Quăng Bọn Đã Fix Sang Môi Trường Giả Lập. Bơm DB Backup Của Prod Vào Cục Test Này Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh!
-    Staging->>Staging: Chạy Thành Công Tuyệt Đối Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh! Màn Hình Mượt Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-    SysAdmin->>Prod: Đêm Chủ Nhật: Đổi Image Docker Mới + Ném Đống Jar/Theme Đã Fix Sang Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề.
-    Prod->>Prod: Lên Đời Thành Công Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Ngủ Ngon Sáng Hôm Sau Nhận Thưởng Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
+    subgraph Recommended Path (Stepping-stone)
+        B[Bản 11.0] --> C[Bản 15.0]
+        C --> D[Bản 19.0 (Quarkus Transition)]
+        D --> F[Bản 24.0]
+    end
 ```
 
----
+**Cơ chế thay đổi SPI (Service Provider Interface):**
+Keycloak không đảm bảo tương thích ngược vĩnh viễn cho mã nguồn Java SPI. Khi bản Major thay đổi, các class (ví dụ `UserModel`, `Authenticator`) có thể bị thay đổi phương thức (method signature) hoặc bị xoá bỏ (`@Deprecated`). Nếu bạn ném một file `.jar` code cũ vào server mới, quá trình Boot sẽ bị lỗi `ClassNotFoundException` hoặc `NoSuchMethodError`.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Đọc Tài Liệu Lệch Pha Nhảy Vọt Ngân Hà)**
-> **Tội Ác Nâng Cấp Băng Hỏa (Leapfrog Upgrade Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa):** Bạn Đang Chạy Keycloak Bản Rất Cổ (Ví Dụ Bản 15 Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Hôm Nay Keycloak Phát Hành Bản 24 Siêu Đẹp! Bạn Quyết Định Nâng Trực Tiếp Bằng Cách Xóa Container Bản 15 Và Chạy Mới Image Bản 24 (Vẫn Trỏ Chung Vào Đít Database PostgreSQL Cũ Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy).
-> **Hậu Quả Chết Lạc Lối (Database Corruption Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa):** 
-> Giữa Bản 15 Tới Bản 24 Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Trải Qua Chục Phiên Bản Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Cấu Trúc Database Của Keycloak (Migration Scripts Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề) Có Quá Nhiều Đoạn Bẻ Cong Nhau (Bản 18 Đổi Cột Này Thành NULL Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Bản 20 Đổi Bảng Nọ Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh). Khi Bản 24 Nó Nằm Trực Tiếp Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Nó Dùng Script Quá Hiện Đại Để Biến Đổi Cái Đống Data Đồ Đá Của Bản 15 Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. RẤT NHIỀU TRƯỜNG HỢP NÓ BỊ GÃY KỊCH BẢN (Migration Failed Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp). Data Của Bạn Bị Mắc Kẹt Lơ Lửng Nửa Đời Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề Nửa Đoạn Đầu Là Data Mới, Nửa Chót Là Data Cũ! DB BANH XÁC KHÔNG THỂ PHỤC HỒI Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-> **Biện Pháp Sống Còn Nâng Cấp Bậc Thang (Incremental Upgrade Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh):**
-> Trong Thế Giới Keycloak, Luật Bất Thành Văn Là KHÔNG BAO GIỜ NHẢY QUÁ 1 BẢN PHÁT HÀNH DÀI HẠN (LTS) Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần! 
-> Muốn Từ 15 Lên 24 Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Bạn Phải Làm 3 Bước Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng:
-> 1. Đổi Image Thành Bản 18. Bật Máy Lên. Cho Nó Biến Đổi DB 1 Lần Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Thấy OK Chạy Được Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Tắt Đi Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-> 2. Đổi Image Thành Bản 21. Bật Lên. Biến Đổi Lần 2 Oanh Khung Dịch Lụa Mạch Lệnh. Tắt Đi Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-> 3. Đổi Image Thành Bản 24. Bật Lên Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Thành Công Tuyệt Đối Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh! 
-> Nâng Cấp Từng Nấc Thang Dài Hạn Luôn Là Trái Tim Của Sự Cẩn Thận Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
+> [!WARNING]
+> **Từ bỏ các Adapter cũ của Keycloak**: Kể từ các bản mới, Keycloak đã chính thức ngừng hỗ trợ (Deprecate) các bộ Adapter dành riêng cho Framework (như Spring Boot Keycloak Adapter, Tomcat Adapter). Bạn bắt buộc phải chuyển sang sử dụng các thư viện chuẩn của nền tảng như `Spring Security OAuth2 Resource Server` thay vì cố gắng nâng cấp phiên bản Keycloak Adapter.
 
----
+> [!IMPORTANT]
+> **Đọc Migration Guide là Bắt Buộc**: Trước khi nâng cấp bất kỳ phiên bản nào, việc đầu tiên và quan trọng nhất là đọc file `Upgrading Guide` chính thức trên trang chủ Keycloak. Nó liệt kê chi tiết mọi "Breaking Changes". Không có bài học nào quý hơn tài liệu chính hãng.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+- **Nâng cấp Bắc cầu (Stepping-stone Upgrade)**: Không nên nhảy từ bản 10 lên 24. Hãy nâng cấp từng bước qua các cột mốc quan trọng, ví dụ 10 -> 15 -> 19 -> 24. Ở mỗi bước, khởi động Server, kiểm tra DB migration, sao lưu, rồi mới đi tiếp.
 
-**1. Công Ty Của Em Đang Code Quá Nhiều Tính Năng Bằng SPI Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Gắn Hàng Đống Extension `.jar` Vào Bụng Keycloak Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Mỗi Lần RedHat Ra Bản Mới, Công Ty Rất Sợ Hãi Việc Phải Build Lại Code Vì Không Biết Nó Gãy Ở Đâu Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. Có Cách Nào Để Biết Trước RedHat Sẽ Sắp Xóa Bỏ Hoặc Sửa Chữa Hàm API Nào Trong Bản Tiếp Theo Để Team Dev Có Thể Phản Ứng Tránh Né Chuẩn Bị Code Sớm Hơn Không Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa?**
-- **Senior:** Dạ Thưa Sếp Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Đây Là Cuộc Chiến "Mã Khấu Hao" (Deprecation Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Đội Dev Không Bao Giờ Phải Mò Mẫm Trong Đêm Cả Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
-  - **Sổ Tay Báo Tử (Upgrading Guide Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh):** Mọi Chữ Cái Đầu Tiên Trước Khi Tải Bảng Mới Về, Bọn Em Đều Phải Mở Trang Chủ `keycloak.org` Của RedHat Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Đọc Vào Đít Cái Tài Liệu Có Tên Là `Upgrading Guide` Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Trong Đó Sẽ Liệt Kê Một Mục Chết Chóc Là "API Changes" Oanh Khung Dịch Lụa Mạch Lệnh. Họ Sẽ Ghi Rõ Ràng: *"Lớp Java XYZ Ở Bản Này Sẽ Bị Đánh Dấu Là @Deprecated (Chưa Xóa Đâu Nhưng Khuyên Bỏ) Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Và Sẽ Bị Xóa Vĩnh Viễn Khỏi Vũ Trụ Ở Bản ABC Tiếp Theo Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa"*.
-  - **IDE Cảnh Báo Sớm Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần:** Ngay Tại Lúc Code Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Nếu Dev Bọn Em Xài IntelliJ Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Kéo Thư Viện Bản Mới Nhất Về Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Bất Cứ Khi Nào Dùng Tới Hàm Mà RedHat Đã Đánh Dấu Gạch Ngang (Deprecated Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy), Là Bọn Em Bắt Dev Phải Thay Máu Sang Hàm Mới Ngay Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề Dù Cái Hàm Cũ Vẫn Còn Đang Chạy Tốt Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chống Lầy Lội Cho Tương Lai!
-  - **Sự Kỷ Luật Của SPI Core Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng:** Hơn Nữa Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Em Luôn Dặn Đàn Em Rằng, Chỉ Import Các Package Chứa Chữ `org.keycloak.models.*` Hoặc `org.keycloak.provider.*` Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề. Tuyệt Đối CẤM Dùng Trực Tiếp Các Hàm Nằm Trong Lớp `org.keycloak.services.*` Hay Mấy Lõi Sâu Bên Trong Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Vì Bọn RedHat Thường Xuyên Đập Phá Cấu Trúc Bụng Của Chúng Nó Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Càng Dùng Đồ Sâu Càng Dễ Gãy Ạ!
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
----
+Sử dụng thư viện Node.js/JS chuẩn (Tương thích tốt hơn).
+Thay vì phụ thuộc vào thư viện `keycloak-js` phải map chuẩn xác version với Keycloak Server, hãy sử dụng thư viện OIDC chuẩn như `oidc-client-ts`.
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Upgrading Guide - Migration Changes.
+```javascript
+// Sử dụng oidc-client-ts thay cho keycloak-js giúp tăng cường tính tương thích khi Server Keycloak nâng cấp.
+import { UserManager } from 'oidc-client-ts';
+
+const config = {
+    authority: 'http://localhost:8080/realms/myrealm',
+    client_id: 'my-frontend',
+    redirect_uri: 'http://localhost:3000/callback',
+    response_type: 'code', // Luôn dùng Authorization Code với PKCE
+    scope: 'openid profile'
+};
+
+const userManager = new UserManager(config);
+userManager.signinRedirect();
+```
+*(Code này hoạt động ổn định trên bất kỳ hệ thống SSO nào tuân thủ OpenID Connect, không sợ bị phá vỡ khi Keycloak update).*
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Sự chuyển đổi từ WildFly sang Quarkus (Phiên bản 17-19)**: Đây là cột mốc lớn nhất trong lịch sử Keycloak. Nó thay đổi hoàn toàn kiến trúc Application Server nền tảng (Bỏ JBoss Wildfly, dùng Quarkus). Tất cả các tham số CLI truyền vào command line, các cấu hình file `standalone.xml` đều hoàn toàn vô dụng ở phiên bản mới. Quá trình nâng cấp qua giai đoạn này yêu cầu viết lại toàn bộ file cấu hình Deployment, Dockerfile và các biến môi trường.
+- **Mã hoá Mật khẩu thay đổi (Password Hashing Hashing)**: Tại một số phiên bản, Keycloak tăng cường số vòng lặp băm mật khẩu (ví dụ thuật toán pbkdf2 thay đổi số iterations từ 27500 lên 210000). Dữ liệu cũ vẫn hoạt động, nhưng mỗi khi user login vào, nó tiêu tốn nhiều CPU hơn để re-hash. Cần cẩn trọng về tải CPU hệ thống sau khi update.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+**Junior Level:**
+1. Khi Keycloak server nâng cấp, thư viện `keycloak-js` trên Frontend có bắt buộc phải nâng cấp theo không?
+   - *Đáp án:* Mặc dù không bắt buộc ngay lập tức đối với các thay đổi nhỏ (Minor), nhưng thực hành tốt nhất là luôn giữ phiên bản của `keycloak-js` khớp hoặc gần với phiên bản của Server nhất để tránh các lỗi tương thích ngầm.
+2. Breaking Change (Thay đổi phá vỡ) thường xảy ra ở phiên bản nào theo chuẩn Semantic Versioning?
+   - *Đáp án:* Bản MAJOR.
+
+**Senior Level:**
+3. Tại sao Keycloak lại khuyên bỏ sử dụng các bộ Adapter (như Spring Boot Adapter) riêng lẻ của hãng?
+   - *Đáp án:* Bởi vì việc bảo trì các Adapter cho hàng chục Framework khác nhau tiêu tốn quá nhiều nguồn lực của dự án. Hơn nữa, giao thức OpenID Connect và SAML là chuẩn chung công nghiệp. Các Framework hiện nay (như Spring Security) đã hỗ trợ chuẩn OIDC rất tốt, việc dùng thư viện chuẩn (Standard libraries) sẽ an toàn và tương thích rộng hơn.
+4. Điều gì khiến việc nâng cấp hệ thống Keycloak từ bản 15 lên 22 trở thành một cơn ác mộng cấu hình?
+   - *Đáp án:* Sự thay đổi lõi Server từ Wildfly sang Quarkus. Định dạng file cấu hình chuyển từ XML sang file properties/YAML của Quarkus. Cấu trúc thư mục bị thay đổi, CLI commands thay đổi, và hệ thống SPI cũng đòi hỏi phải đóng gói lại.
+5. Khi nâng cấp một phiên bản Keycloak mới có thay đổi về SPI (Interface code Java), quy trình chuẩn để cập nhật code Custom Authenticator của bạn là gì?
+   - *Đáp án:* (1) Xem lại Javadocs của Keycloak bản mới. (2) Sửa đổi code Java tuân thủ phương thức mới. (3) Compile lại ra file `.jar` dựa trên thư viện Keycloak phiên bản mới. (4) Deploy vào cụm Staging để kiểm thử hành vi thực tế trước khi lên Production.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak Official Upgrading Guide](https://www.keycloak.org/docs/latest/upgrading/index.html)
+- [Keycloak Quarkus Migration Guide](https://www.keycloak.org/migration/migrating-to-quarkus)
+- [Semantic Versioning 2.0.0](https://semver.org/)

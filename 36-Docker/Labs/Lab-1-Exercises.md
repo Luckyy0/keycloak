@@ -1,70 +1,141 @@
-# Lab 1: Xưởng Đúc Tàu Trăm Nghìn Tỷ (Custom Build Lab)
-
 > [!NOTE]
-> **Category:** Practical/Lab (Thực hành)
-> **Goal:** Tự tay viết Dockerfile theo cơ chế Lò Nung Của Quarkus (Multi-stage). Gói ghém cấu hình Database và đẩy con Tàu Keycloak Lên Không Gian chỉ Bằng 1 Nút Bấm duy nhất. Trải Nghiệm cảm giác "Code Đã Compile Chạy Cực Nhanh" của bản Run-time.
+> **Category:** Practical/Lab
+> **Goal:** Triển khai Keycloak và cơ sở dữ liệu PostgreSQL lên môi trường thực tế bằng Docker Compose, đồng thời thực hành tối ưu hóa image (Custom Image) và thiết lập mạng nội bộ.
 
-## 1. Yêu cầu (Prerequisites)
-- Docker.
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## 2. Các bước thực hiện (Step-by-step)
+Bạn là Kỹ sư Hệ thống (DevOps Engineer) tại một công ty công nghệ. Dự án mới yêu cầu thiết lập một hệ thống định danh trung tâm bằng Keycloak. Yêu cầu đặt ra là hệ thống không được dùng cơ sở dữ liệu H2 mặc định (chỉ dùng cho Dev), mà phải dùng PostgreSQL để đảm bảo tính bền vững (Persistence). Ngoài ra, hệ thống cần được cấu hình theo tiêu chuẩn Production bằng cách sử dụng Docker Compose với các volume để lưu trữ dữ liệu database và mạng nội bộ để bảo mật.
 
-### Bước 1: Chuẩn Bị Khoang Hàng Gốc
-Tạo một thư mục `code/lab/` (Tự Tạo).
-Mở Terminal trỏ vào thư mục `code/lab/` đó Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
+Trong bài Lab này, bạn sẽ tự tay viết Dockerfile cho Keycloak, viết `docker-compose.yml` và khởi chạy toàn bộ stack.
 
-### Bước 2: Viết Lò Nung (Dockerfile)
-Tạo file `Dockerfile` với đoạn Code Cắt Tỉa Chế Trọng Lượng sau:
+## 2. Chuẩn bị Môi trường (Prerequisites)
+
+- Máy tính đã cài đặt **Docker** và **Docker Compose** (phiên bản V2 trở lên).
+- Có kết nối Internet ổn định để kéo (pull) các Docker images (`quay.io/keycloak/keycloak` và `postgres`).
+- Có quyền Administrator/Root hoặc user thuộc nhóm `docker` để chạy các lệnh quản trị vùng chứa.
+- Sử dụng Terminal (Bash/PowerShell) và một Text Editor (VS Code hoặc Nano/Vim).
+
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
+
+### Bước 3.1: Tạo cấu trúc thư mục dự án
+Mở Terminal và tạo một thư mục mới cho bài Lab:
+```bash
+mkdir keycloak-docker-lab
+cd keycloak-docker-lab
+```
+
+### Bước 3.2: Viết Dockerfile tối ưu cho Keycloak (Custom Image)
+Tạo một tệp tin tên là `Dockerfile` bằng editor của bạn:
+```bash
+touch Dockerfile
+```
+Dán nội dung sau vào `Dockerfile`:
 ```dockerfile
-# ---------------- GIAI ĐOẠN 1: Nung Lõi Quarkus ----------------
-FROM quay.io/keycloak/keycloak:24.0.1 as builder
+# Sử dụng base image mới nhất của Keycloak
+FROM quay.io/keycloak/keycloak:latest as builder
 
-# 1. Bật Các Tính Năng Giám Sát Cố Định
+# Cấu hình biến môi trường Build-time
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
-
-# 2. Ép Trái Tim Postgres Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh
 ENV KC_DB=postgres
 
-# NẾU BẠN CÓ THEME CÔNG TY, HÃY UNCOMMENT DÒNG NÀY ĐỂ BƠM NÓ VÀO BỤNG
-# COPY my-theme /opt/keycloak/themes/my-theme
-
-# 3. Kích Hoạt Lệnh Nung Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy (Xóa Hết Các Thứ Nhảm Nhí Không Phải Postgres Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề)
+# Chạy build để tối ưu hóa Quarkus
 RUN /opt/keycloak/bin/kc.sh build
 
-
-# ---------------- GIAI ĐOẠN 2: Bơm Vào Lớp Vỏ Mỏng Siêu Nhẹ ----------------
-FROM quay.io/keycloak/keycloak:24.0.1
+# Stage 2 (Tùy chọn cho Runtime)
+FROM quay.io/keycloak/keycloak:latest
 COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
-# Dùng Nẹp OOM Killer Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-ENV KC_JAVA_OPTS="-Xmx512m"
-
-# Tự Lái Tàu Vào Bay
+# Đặt Entrypoint
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
 ```
 
-### Bước 3: Ép Khuôn (Build Image)
-Ở Dưới Khung Lệnh, Gõ Nút Đúc Tàu Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:
+### Bước 3.3: Tạo tệp cấu hình Docker Compose
+Tạo tệp `docker-compose.yml` trong cùng thư mục:
 ```bash
-docker build -t my-keycloak:1.0 .
+touch docker-compose.yml
 ```
-Bạn Sẽ Thấy Docker Nó Đốt Ruột (Chữ Đỏ Chạy Kèo Kéo `kc.sh build` Khoảng Mấy Chục Giây Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh). 
-Xong Báo "Successfully built...".
-
-### Bước 4: Nhét Tàu Trực Tiếp Lên Bệ Phóng (Docker Compose)
-Ở Thư mục `code/`, mở file `docker-compose.yml`. Thay Vị Trí Dòng Image:
+Dán nội dung sau vào:
 ```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: kc_postgres
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kc_network
+
   keycloak:
-    # NGUỒN CỘI LÀ BẢN ĐÚC CỦA BẠN Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    image: my-keycloak:1.0 
-    
-    # KHI TÀU CHẠY Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, BẮT BUỘC Phải Mang Chữ --optimized (Đã Xào Nấu Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy)
-    command: start-dev --optimized 
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: kc_server
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password123
+      KC_HOSTNAME: localhost
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev # Chạy mode dev để bỏ qua cấu hình HTTPS rườm rà trong Lab này, nhưng cấu trúc vẫn là Production ready
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - kc_network
+
+volumes:
+  postgres_data:
+
+networks:
+  kc_network:
+    driver: bridge
 ```
 
-### Bước 5: Ngắm Tốc Độ Cất Cánh Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần
-Chạy Lệnh `docker-compose up -d`.
-Gõ `docker logs -f code-keycloak-1`. 
-**CHIÊM NGƯỠNG ĐI Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp!** Tàu Bay Bật Khởi Động Chưa Tới 3 Giây Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! (Bản Gốc Mất Chừng 15 Giây Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). 
-Bạn Đã Nung Chảy Hoàn Mỹ Một Khối Cấu Trúc Bất Biến Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Tàu Dù Bay Ở Trạm Host Nào Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Cũng Bơm Phụt Phát Ăn Ngay Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề! Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
+### Bước 3.4: Khởi chạy hệ thống
+Tại thư mục chứa hai tệp trên, chạy lệnh sau để build và khởi động các container:
+```bash
+docker compose up -d --build
+```
+Hệ thống sẽ mất khoảng 1-2 phút để tải images, build Keycloak và khởi chạy PostgreSQL. 
+
+Theo dõi log của Keycloak để biết khi nào hệ thống sẵn sàng:
+```bash
+docker logs -f kc_server
+```
+Chờ đến khi bạn thấy dòng chữ tương tự như: `Keycloak x.x.x (Quarkus) started in Xms`.
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+**Nghiệm thu (Verification):**
+1. Mở trình duyệt web và truy cập: `http://localhost:8080`
+2. Bạn sẽ thấy màn hình Welcome của Keycloak. Nhấp vào "Administration Console".
+3. Đăng nhập bằng thông tin đã khai báo trong file compose:
+   - Username: `admin`
+   - Password: `admin`
+4. Nếu đăng nhập thành công vào màn hình Admin, bạn đã cấu hình đúng!
+
+**Kiểm tra tính bền vững (Persistence Check):**
+1. Đăng nhập vào Keycloak, tạo một Realm mới tên là `TestRealm`.
+2. Dừng và xóa toàn bộ container:
+   ```bash
+   docker compose down
+   ```
+3. Khởi động lại hệ thống:
+   ```bash
+   docker compose up -d
+   ```
+4. Đăng nhập lại vào `http://localhost:8080`. Bạn sẽ thấy `TestRealm` vẫn tồn tại do dữ liệu đã được lưu an toàn trong Docker Volume (`postgres_data`).
+
+**Các lỗi thường gặp (Troubleshooting):**
+- **Lỗi cổng 8080 đã được sử dụng:** Nếu bạn nhận thông báo `bind: address already in use`, hãy dừng dịch vụ đang chiếm cổng 8080 (ví dụ Tomcat hoặc một container Keycloak khác), hoặc đổi cổng trong file compose (`ports: - "8081:8080"`).
+- **Keycloak Crash vì không kết nối được Database:** Chạy lệnh `docker logs kc_postgres` để xem DB có khởi động lỗi không. Đảm bảo tham số `KC_DB_URL` khớp với tên service (tên container) của Database là `postgres`.

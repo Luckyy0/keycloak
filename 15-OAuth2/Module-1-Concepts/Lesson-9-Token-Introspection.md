@@ -1,98 +1,134 @@
-# Lesson 9: Cảnh Sát Soi Chiếu (Token Introspection)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Trong Bài 8, chúng ta đã biết nhược điểm chết người của JWT là "Cắt Đầu Vẫn Sống" vì API (Resource Server) thường chỉ check chữ ký offline. Để vá lỗ hổng này ở mức độ bảo mật cao nhất, các API phải từ bỏ sự lười biếng và chuyển sang gọi ngược về Keycloak để hỏi xem Token còn sống không. Hành động "Hỏi Gốc" này gọi là **Token Introspection**.
+> **Goal:** Hiểu cơ chế chuẩn hóa của RFC 7662 để kiểm tra trạng thái và meta-data của Access Token, Refresh Token (Token Introspection) giữa Resource Server và Authorization Server.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Token Introspection Là Gì?
-Chuẩn RFC 7662 định nghĩa một Endpoint đặc biệt trên Keycloak. 
-Nó sinh ra để phục vụ RIÊNG CHO CÁC MÁY CHỦ API (Resource Server).
-- Thay vì API tự lấy Public Key băm giải mã JWT (Check Offline).
-- API sẽ ném cái cục Token đó qua đường truyền kín vào API của Keycloak: `Ê Keycloak, soi giùm tao cái Token này xem nó còn hợp lệ không?`.
-- Keycloak sẽ chui vào Database của nó, soi xem Token này đã bị Revoke (Thu hồi) chưa, User của Token này có vừa bị Ban (Khóa tài khoản) hay không. Sau đó Keycloak trả về 1 cục JSON thông báo `{"active": true}` hoặc `{"active": false}`.
+**OAuth 2.0 Token Introspection (RFC 7662)** định nghĩa một phương thức (endpoint) cho phép các Resource Server (RS) truy vấn chủ động vào Authorization Server (AS) để lấy trạng thái (status) hoạt động hiện tại của một OAuth 2.0 Token.
 
-### 1.2. Opaque Token (Token Bọc Nhựa Bí Mật)
-Introspection Endpoint sinh ra để hỗ trợ loại Token siêu bảo mật có tên là **Opaque Token (Token Đục)**.
-- **JWT (Token Trong Suốt):** Dài loằng ngoằng, ai cầm lấy ném lên trang `jwt.io` cũng đọc được sạch sành sanh ruột gan (Tên, Email, Role) vì nó chỉ mã hóa Base64URL. Dễ bị lộ thông tin cá nhân (PII) ra màn hình Trình duyệt.
-- **Opaque Token:** Cực ngắn (VD: `abcxyz123456`). Ném lên mạng chả có ý nghĩa gì. Nó chỉ là 1 con trỏ (Pointer). App khách lấy được chả biết trong đó có gì. Khi App gửi cái mã `abcxyz` này cho Backend API. Bắt buộc Backend API PHẢI GỌI LỆNH INTROSPECTION lên Keycloak. Keycloak sẽ đối chiếu cái mã `abcxyz` này trong Database và nhả về JSON chứa ruột gan của User cho API xử lý. Tuyệt đỉnh bảo mật che giấu dữ liệu!
+**Vấn đề cốt lõi mà Token Introspection giải quyết:**
+Với các Token có định dạng đục (Opaque Tokens) - là những chuỗi ký tự ngẫu nhiên, không mang nội dung ngữ nghĩa bên trong, Resource Server không thể tự mình giải mã hoặc xác minh chữ ký của Token (như JWT). Để biết token có hợp lệ không, do ai phát hành, cho user nào, và bao giờ hết hạn, RS bắt buộc phải mang Token đó "đi hỏi" AS.
+Ngay cả với JWT (định dạng minh bạch), Introspection vẫn rất quan trọng: Nó là cách **duy nhất theo thời gian thực** để biết một JWT đã bị thu hồi (Revoked) trước thời hạn (ví dụ: User bị khóa tài khoản hoặc chủ động đăng xuất khỏi mọi thiết bị) hay chưa. 
 
----
+**Giải pháp:**
+Cung cấp một REST API (POST `/introspect`) để Resource Server truyền Token vào. AS sẽ kiểm tra database/cache nội bộ và trả về một đối tượng JSON đại diện cho tính hợp lệ (`active: true/false`) kèm theo các claims về đối tượng thụ hưởng.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình OIDC Đánh Sập Lỗ Hổng Hủy Token Chậm Nhờ Introspection:
-
 ```mermaid
 sequenceDiagram
-    participant App as Client (SPA)
-    participant API as Resource Server (Spring Boot)
-    participant KC as Keycloak (Auth Server)
+    autonumber
+    participant Client
+    participant RS as Resource Server (API)
+    participant AS as Authorization Server (Keycloak)
 
-    Note over App, KC: Hacker Trộm Token. Admin Bấm Nút Hủy Trên Keycloak (Revoked)
+    Client->>RS: Yêu cầu lấy dữ liệu + Access Token
     
-    App->>API: 1. Đập API Gửi Token Ăn Cắp (Vẫn còn 5 phút hạn trên Chữ ký).
+    Note over RS: Thay vì tự verify cục bộ (hoặc sau khi verify JWT)
+    RS->>AS: Gửi POST /introspect (Kèm Access Token) + Basic Auth (RS Client ID & Secret)
     
-    Note over API: API Cấu Hình Ở Chế Độ Opaque/Introspection Kín (Không Check Offline)
-    API->>KC: 2. Ném Token Vào Endpoint: POST /protocol/openid-connect/token/introspect
-    
-    KC-->>KC: 3. Keycloak Soi Database. "Ê cái mã này bị Admin Chém rồi!"
-    KC-->>API: 4. Trả Về Data: { "active": false }
-    
-    API-->>App: 5. Máy Chủ API Đá Bay Hacker: HTTP 401 Unauthorized CÚT! Mạch Gãy Sạch!
+    alt Token hợp lệ và không bị thu hồi
+        AS-->>RS: Trả về JSON: {"active": true, "sub": "user123", "exp": 1699999...}
+        RS-->>Client: Trả về dữ liệu
+    else Token hết hạn hoặc bị thu hồi
+        AS-->>RS: Trả về JSON: {"active": false}
+        RS-->>Client: Trả về HTTP 401 Unauthorized
+    end
 ```
 
----
+**Phân tích chi tiết quy trình:**
+1. **Introspection Request:** RS gọi HTTP POST đến Endpoint `/introspect` của AS.
+   - Body chứa tham số `token=...`.
+   - Header phải đi kèm chứng chỉ xác thực của bản thân RS (thường là Basic Auth hoặc Bearer Token), bởi vì điểm cuối này trả về thông tin bảo mật, không được public.
+2. **Introspection Response:**
+   - Trường hợp Token không còn hoạt động, hoặc không tồn tại, JSON trả về chỉ duy nhất `{"active": false}` để ngăn chặn rò rỉ thông tin cho kẻ tấn công (không cho biết token lỗi do ai hay loại trừ token hết hạn).
+   - Trường hợp Token hợp lệ, AS trả về `{"active": true}` và kèm theo các thông số:
+     - `scope`: Quyền hạn của Token.
+     - `client_id`: App nào đã xin cái Token này.
+     - `username`: Người dùng là ai.
+     - `exp`, `iat`, `nbf`: Thời gian hợp lệ.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!IMPORTANT]
-> **Tuyệt Đỉnh An Toàn Lựa Chọn Kiến Trúc (Đánh Đổi Giữa Tốc Độ Và Khóa An Toàn)**
-> **Tội Ác Thiết Kế:** Bạn nghe nói Introspection xịn quá, chặn được lệnh Revoke tức thời. Bạn ép 100 cái Microservices API của Cty chuyển sang xài Introspection 100% thay vì Check Offline.
-> **Hậu Quả:** Cứ mỗi Request từ ReactJS dội xuống API. API của bạn (thay vì xử lý nhanh rồi trả) lại phải Tạm Dừng, Đợi Gọi Nối Mạng TCP/IP sang Keycloak để hỏi Introspect. Bất ngờ lượng Traffic tăng vọt 10.000 Request/s. Keycloak biến thành Cổ Chai Thắt Ngạt Cổ (Bottleneck) chịu đòn 10.000 nhát chém mạng liên tiếp. Keycloak Sập! Toàn bộ hệ thống sập!
-> **Biện Pháp Sống Còn Lớp Trọng Lực:**
-> Phải biết Dùng Đúng Chỗ:
-> - **API Bình Thường (Xem báo chí, tải File):** Dùng Check Offline JWT Tĩnh (Stateless). Nhanh, Không nghẽn máy chủ Keycloak. Bị lộ Token xài chùa 5 phút chả sao.
-> - **API Lõi Siêu Quan Trọng (Chuyển tiền, Duyệt chi 1 Tỷ, Đổi Pass):** Ở Tầng Này Bắt Buộc Dùng Introspection Endpoint (Hoặc Caching Introspect vào Redis). Chấp nhận trễ thêm 10ms mạng nhưng đổi lại Sự An Toàn Chặn Ngược Tức Thì Kẻ Trộm Cắt Phiên!
+> [!WARNING]
+> Việc gọi Token Introspection trên mỗi API Request sẽ tạo ra một nút thắt cổ chai (bottleneck) khổng lồ đối với Authorization Server và làm tăng độ trễ (latency) của hệ thống. 
 
----
+> [!IMPORTANT]
+> - **Cơ chế Caching cục bộ:** Resource Server bắt buộc phải có cơ chế cache (như Redis hoặc In-memory cache với TTL ngắn) để lưu kết quả Introspection. Ví dụ: Cache lại 1 phút, giúp giảm tới 90% lượng request lên Keycloak.
+> - **Ủy quyền sử dụng Introspection:** Không được mở quyền Public cho Introspection endpoint. Chỉ các Client đặc biệt cấu hình đóng vai trò là "Resource Server" và cung cấp Client Secret mới được quyền gọi API này.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cấu Hình Đập Lệnh Vào Cửa Introspection Trên Keycloak Bằng cURL:
-1. URL Chuẩn Oanh Cáp Của Keycloak Nằm Tại: `http://localhost:8080/realms/master/protocol/openid-connect/token/introspect`
-2. **CẢNH BÁO BẢO MẬT KHUNG:** Cái Endpoint này chứa Lệnh Mở Rương Soi Database Của Lãnh Chúa, Cho nên Nó KHÔNG MỞ CỬA PUBLIC Tự Do Trượt Khung.
-3. API Spring Boot Hoặc NodeJS Khi Gọi Gõ Cửa Này Bắt Buộc Phải **Xác Thực Danh Tính Của Nó (Client Authentication)**.
-   - Nó Phải Gửi Kèm Header Lệnh Chứa: `Authorization: Basic [Base64(Client_ID : Client_Secret)]`.
-4. Nếu Lệnh Gõ Cửa Hợp Lệ, Gửi Body Form Data Cột: `token=[Chuỗi Access Token Cần Soi]`.
-5. Kết Quả JSON Trả Về Khớp Lệnh Cắt Khung Sẽ Bao Gồm Toàn Bộ Ruột Của Token (Nếu Đang Sống):
+**Cấu hình bằng curl gọi lên Keycloak:**
+
+```bash
+curl -X POST "http://keycloak.local:8080/realms/myrealm/protocol/openid-connect/token/introspect" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -u "my-resource-server:my-rs-secret" \
+  -d "token=eyJh..." 
+```
+
+**Ví dụ phản hồi JSON khi Token hợp lệ:**
+
 ```json
 {
-  "exp": 1695420000,
-  "iat": 1695419700,
-  "jti": "54b5f483...",
-  "aud": "my-client",
-  "sub": "user-uuid-1234",
+  "exp": 1612345678,
+  "iat": 1612345378,
+  "jti": "d0c0c629-9e8c-4a37-b765-b1a9c3d4e5f6",
+  "iss": "http://keycloak.local:8080/realms/myrealm",
+  "aud": "my-resource-server",
+  "sub": "b2c3d4e5-f6a7-b8c9-d0e1-f2a3b4c5d6e7",
   "typ": "Bearer",
-  "azp": "my-client",
-  "preferred_username": "nguyenvana",
-  "active": true   // <--- Dòng Chữ Sống Còn Quyết Định Sinh Tử Nhả Lụa Mạng Mạch
+  "azp": "my-frontend-client",
+  "session_state": "ab1234cd",
+  "name": "Lucky Dev",
+  "given_name": "Lucky",
+  "family_name": "Dev",
+  "preferred_username": "luckydev",
+  "email": "lucky@example.com",
+  "email_verified": true,
+  "acr": "1",
+  "realm_access": {
+    "roles": [
+      "offline_access",
+      "uma_authorization"
+    ]
+  },
+  "resource_access": {
+    "account": {
+      "roles": [
+        "manage-account",
+        "manage-account-links",
+        "view-profile"
+      ]
+    }
+  },
+  "scope": "openid email profile",
+  "client_id": "my-frontend-client",
+  "username": "luckydev",
+  "active": true
 }
 ```
 
----
+## 5. Trường hợp ngoại lệ (Edge Cases)
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+- **Ngộ nhận trạng thái Error 401 khi gọi Introspection:** Nếu HTTP trả về Status `200 OK` nhưng body JSON là `{"active": false}`, điều đó có nghĩa là API hoạt động tốt và Token truyền vào không hợp lệ. Chỉ khi thông tin xác thực của bản thân Resource Server (`-u rs:secret`) bị sai thì AS mới trả về HTTP `401 Unauthorized` cho HTTP Request.
+- **Microservices và Vấn đề Hiệu năng (Thundering Herd):** Khi một Access Token cấp cho nhiều tác vụ cùng một lúc, nếu một request gọi sang hệ thống và các microservice cùng gọi introspection về một token chưa được cache, Keycloak sẽ chịu tải cực lớn. Hệ thống nên triển khai JWT để verify chữ ký (Local validation) thay vì introspection cho mọi token, và chỉ dùng introspection nếu token bị nghi ngờ hoặc cho các thao tác cực kỳ nhạy cảm (như chuyển tiền).
 
-**1. Nếu Một Access Token Vẫn Còn Cờ 'active: true' Lên Mạch Keycloak. Nhưng Lúc Gọi Lệnh Introspect Về API Lõi Của Spring Boot, API Phát Hiện Mảng 'aud' (Audience) Của Token Đó Mang Tên Là 'app-mua-hang' Chứ Không Phải 'app-ke-toan'. Liệu API Có Chấp Nhận Token Đó Cho Giao Dịch Không? Giải Thích Ý Nghĩa Claim AUD?**
-- **Senior:** Chắc Chắn 100% Là Spring Boot API Phải Từ Chối Và Ném Ra Bọt Lỗi HTTP 403 Forbidden Oanh Khung Dịch Lụa!
-  - Lý do: Mặc dù Token còn sống (Active), nhưng nó Mắc Lỗi Khớp Đích Nhắm **`Audience (aud)`**.
-  - **Audience (Độc giả mục tiêu):** Là cờ bảo mật đỉnh cao của OAuth2. Khi App-Mua-Hang xin Token, Keycloak sẽ đóng dấu lên Token đó cờ `aud="app-mua-hang"`. Cờ này có nghĩa là "Token Này Chỉ Được Dùng Để Đi Chợ Tới Các API Của Hệ Sinh Thái Mua Hàng".
-  - Nếu thằng Hacker cướp được cái Token đó, chạy sang đập vào cửa API App Kế Toán. API Kế Toán bóc Token ra soi lệnh thấy Audience sai lệch với Tên Đích của mình. Lập tức API Ngắt Cửa Vì Thằng Này Có Giấy Thông Hành Của Rạp Phim Mà Đòi Vào Ngồi Sân Bay! Tránh Tấn Công Token Substitution (Tráo Token Mù)!
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
 
----
+1. **(Junior)** Mục đích của Token Introspection endpoint là gì?
+   - *Đáp án:* Cho phép Resource Server kiểm tra xem một Token (Access hoặc Refresh) có còn hợp lệ hay không (`active: true/false`) và trả về các thông tin meta của Token đó.
+2. **(Junior)** Nếu một Token đã hết hạn thì JSON trả về từ endpoint /introspect sẽ trông như thế nào?
+   - *Đáp án:* Sẽ là JSON chứa `{"active": false}`.
+3. **(Senior)** Nếu dùng JWT (có thể tự verify chữ ký offline bằng Public Key), tại sao Resource Server vẫn có thể cần gọi Token Introspection?
+   - *Đáp án:* Vì self-contained JWT không tự phản ánh được trạng thái Revocation (ví dụ: quản trị viên đã thu hồi quyền của User hoặc ép User log out mọi thiết bị trên Keycloak). Lệnh Introspection giúp RS có được trạng thái hợp lệ theo thời gian thực (Real-time validity check).
+4. **(Senior)** Để giải quyết vấn đề hiệu năng do gọi /introspect liên tục, bạn đề xuất kiến trúc nào?
+   - *Đáp án:* Sử dụng mô hình Hybrid: Resource Server sẽ cache cục bộ trạng thái Introspection trong một khoảng thời gian ngắn (ví dụ TTL 30 giây đến 1 phút), kết hợp với việc kiểm tra JWT Signature offline và xác minh Token Expiry (exp).
+5. **(Senior)** API gọi `/introspect` có cần gửi thông tin xác thực nào không hay gọi tự do?
+   - *Đáp án:* Bắt buộc phải có thông tin xác thực của Resource Server (như Client_id và Client_Secret qua Basic Auth), vì đây là API mang tính chất truy vấn hệ thống nhạy cảm.
 
-## 6. Tài liệu tham khảo (References)
-- **RFC 7662:** OAuth 2.0 Token Introspection.
-- **Keycloak Documentation:** Server Administration Guide - Token Introspection.
+## 7. Tài liệu tham khảo (References)
+
+- [RFC 7662: OAuth 2.0 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662)
+- [Keycloak Endpoint Reference - Token Introspection](https://www.keycloak.org/docs/latest/securing_apps/#_token_introspection_endpoint)

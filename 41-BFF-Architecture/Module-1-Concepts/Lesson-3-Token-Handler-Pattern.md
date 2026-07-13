@@ -1,30 +1,113 @@
-# Lesson 3: Giải Cứu Dữ Liệu Kéo (Token Handler Pattern)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Học Mô Hình Kiến Trúc "Token Handler" Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Cách 1 cái BFF đóng vai trò Trung Tâm Xử Lý và Phân Phối Token.
+> **Goal:** Tìm hiểu chi tiết về Token Handler Pattern, một biến thể mạnh mẽ của BFF chuyên biệt cho việc quản lý bảo mật Token và Session, đảm bảo khả năng mở rộng.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Token Handler Pattern là một kiến trúc thiết kế mở rộng từ Backend-For-Frontend (BFF). Thay vì đặt tất cả logic nghiệp vụ và logic chuyển đổi Token vào cùng một service BFF duy nhất, Token Handler Pattern tách bạch rõ ràng phần "xử lý Token" ra một Proxy độc lập.
 
-### 1.1. Luồng Chảy Của SPA Trong BFF Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh
-Trong cái kiến trúc vĩ đại của **Token Handler Pattern** Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh (Thường dùng cho BFF Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa), vòng đời giao tiếp sẽ khép kín tuyệt đối như sau Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa:
+Kiến trúc này giới thiệu hai thành phần chính:
+- **Token Handler:** Đóng vai trò là cổng giao tiếp (Gateway) cho Frontend. Nó chịu trách nhiệm lấy Token (thông qua Authorization Code Flow), lưu trữ Token phân tán, và dịch Session Cookie của trình duyệt thành `Authorization: Bearer <Token>` Header.
+- **Stateless APIs (Resource Servers):** Hoàn toàn không biết về Session Cookie, chỉ thực hiện xác thực bằng Access Token.
 
-1.  **Frontend (React) Hô Hào Oanh Khung Dịch Lụa Mạch Lệnh:** Khi React khởi động Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, nó không tự ôm cái thư viện Keycloak.js nữa Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Nó gửi 1 lệnh gọi `GET /api/auth/login` tới Máy Chủ BFF (Máy chủ Java/Node của bạn Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy).
-2.  **BFF Chuyển Hướng Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:** BFF tiếp nhận Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, lập tức bẻ lái (Redirect 302) trình duyệt sang trang màn hình Đăng Nhập chuẩn của Keycloak Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần.
-3.  **Khách Nhập Mật Khẩu Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:** Khách nhập xong Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Keycloak bắn cái Lệnh Cờ (Auth Code) VỀ LẠI CHO BFF Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp (React lúc này hoàn toàn không biết gì Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa).
-4.  **BFF Nuốt Token Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh:** BFF cầm Code đi đổi lấy JWT Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Nó nhét chặt JWT vào Ram của nó Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
-5.  **BFF Trả Cookie Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh:** BFF phản hồi cho React trang chủ kèm theo chiếc Session Cookie Siêu Bảo Mật (HttpOnly Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề).
-6.  **React Gọi API Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng:** Kể từ đó Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, React cứ việc ngây thơ gọi lên BFF (Không cần cấu hình Bearer Token gì cả Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). BFF nhận lấy ID Cookie Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, soi lại Session Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, rút JWT ép vào Header (Token Relay) rồi tuồn ra sau (Backend APIs) Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
+**Vấn đề giải quyết:** 
+Khi triển khai micro-frontends hoặc nhiều SPA, việc xây dựng một BFF khổng lồ dễ dẫn đến "BFF Monolith". Token Handler Pattern cho phép triển khai một lớp màng bảo vệ nhẹ (như Nginx với OAuth2-Proxy hoặc Envoy), giữ cho phần API phía sau hoàn toàn chuẩn hóa trên JWT Bearer Token.
 
-Nhờ vậy Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, kiến trúc của Frontend trở nên cực kỳ gọn nhẹ Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-### 1.2. Thẩm Vấn (Ping)
-Bởi Vì React Không Cầm JWT Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Nên Nó KHÔNG CÁCH NÀO Biết Được Thằng User Đang Tên Gì Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Avatar Nằm Ở Đâu Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề! 
-Mô Hình BFF Đòi Hỏi Một Cái Điểm Cuối (Endpoint) Đặc Biệt Tại Thằng BFF Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề:
-`GET /api/me` (Hoặc /userinfo)
-Nhiệm Vụ Của Cái API Này Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh: Khi React Gọi Lên Bằng Cái Cookie Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Thằng BFF Sẽ Lôi Cái JWT Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Mở Bụng Nó Ra Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Trích Xuất Cái Tên Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Quyền Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Email Oanh Khung Dịch Lụa Mạch Lệnh. Rồi Trả Một Cục JSON Thường Về Cho Thằng React Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Thằng React Chỉ Cần Đọc Cục JSON An Toàn Này Để Hiện Chữ "Xin Chào Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Admin" Là Xong Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+```mermaid
+sequenceDiagram
+    participant SPA as SPA
+    participant TH as Token Handler (OAuth2-Proxy)
+    participant Auth as Keycloak
+    participant API as API Server
 
----
+    SPA->>TH: 1. Fetch Data (Cookie: session_id=123)
+    TH->>TH: 2. Validate Cookie
+    alt Cookie Expired or Invalid
+        TH-->>SPA: 3. HTTP 401 Unauthorized
+        SPA->>TH: 4. Initiate Login (/oauth2/start)
+        TH-->>SPA: 5. 302 Redirect to Keycloak
+        SPA->>Auth: 6. User Login
+        Auth-->>SPA: 7. Redirect back to TH with Code
+        TH->>Auth: 8. Exchange Code for Tokens
+        Auth-->>TH: 9. Access & Refresh Token
+        TH->>TH: 10. Store Tokens mapping to new session_id
+        TH-->>SPA: 11. Set-Cookie: session_id=456
+    else Cookie Valid
+        TH->>TH: 12. Lookup Access Token by session_id
+        TH->>API: 13. Proxy Request + Header (Authorization: Bearer <Token>)
+        API-->>TH: 14. API Response
+        TH-->>SPA: 15. Forward API Response
+    end
+```
 
-## 5. Tài liệu tham khảo (References)
-- **Token Handler Pattern:** Auth0 Token Handler Architecture.
+**Cơ chế cấp thấp:**
+1. Trình duyệt liên tục giao tiếp với Token Handler thông qua Session Cookie.
+2. Token Handler đóng vai trò như một Reverse Proxy. Tại mỗi request, nó tra cứu Session trong bộ nhớ nội bộ hoặc Redis.
+3. Nếu tìm thấy Access Token tương ứng, Token Handler sẽ "tiêm" (inject) Token này vào `Authorization` header và xóa Session Cookie khỏi Request trước khi chuyển tiếp (forward) xuống API.
+4. Token Handler tự động quản lý vòng đời của Refresh Token mà SPA không hề hay biết.
+
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
+
+> [!IMPORTANT]
+> Token Handler phải loại bỏ (strip) Session Cookie và bất kỳ header nào nhạy cảm trước khi Forward request xuống API Server để tránh rò rỉ session id nội bộ.
+
+- **Khớp nối lỏng lẻo (Loose Coupling):** Các API Servers không được phụ thuộc vào Session ID. Chúng chỉ được thiết kế để xác thực bằng Access Token (JWT).
+- **Lưu trữ an toàn:** Trong Token Handler Pattern, không bao giờ được trả về Access Token cho SPA trong nội dung Response hay URL fragment. Mọi Token phải nằm tại máy chủ Token Handler.
+- **Xử lý đăng xuất (Logout):** Khi có yêu cầu đăng xuất, Token Handler phải gọi Keycloak Backchannel Logout để vô hiệu hóa Token, sau đó xóa Session tại Token Handler và xóa Cookie trên trình duyệt.
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+
+Ví dụ cấu hình `oauth2-proxy` làm Token Handler tích hợp với Ingress Nginx trên Kubernetes:
+
+```yaml
+# oauth2-proxy deployment args
+args:
+  - --provider=keycloak-oidc
+  - --client-id=my-frontend
+  - --client-secret=super-secret
+  - --oidc-issuer-url=https://auth.example.com/realms/myrealm
+  - --redis-connection-url=redis://redis-cluster:6379
+  - --cookie-secure=true
+  - --cookie-httponly=true
+  - --pass-access-token=true # Quan trọng: pass token đến upstream
+  - --set-authorization-header=true # Thêm Authorization: Bearer
+```
+
+Cấu hình Ingress Annotation:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/auth-url: "https://$host/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://$host/oauth2/start?rd=$escaped_request_uri"
+    nginx.ingress.kubernetes.io/auth-response-headers: "Authorization" # Chuyển header từ proxy xuống API
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **Redis Cluster Failure:** Nếu Redis (nơi lưu Session) bị down, Token Handler sẽ mất toàn bộ thông tin mapping giữa Cookie và Access Token. Hệ thống sẽ báo 401 và toàn bộ người dùng phải thực hiện thao tác Login lại. Cần thiết lập Redis HA (Sentinel/Cluster) cho Token Handler.
+- **Clock Skew (Lệch thời gian):** Nếu máy chủ Token Handler và Keycloak có sự chênh lệch đồng hồ hệ thống, Token Handler có thể từ chối một Access Token hợp lệ (nghĩ rằng nó đã hết hạn) hoặc gửi một Access Token đã thực sự hết hạn. Yêu cầu cài đặt và đồng bộ NTP trên tất cả các server.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+**1. (Junior) Sự khác biệt giữa lưu trữ Token tại Client và Token Handler Pattern là gì?**
+*Đáp án:* Lưu trữ tại Client dễ bị tấn công XSS. Token Handler Pattern giữ Token ở phía Server và chỉ dùng Cookie (HttpOnly) để định danh Client, an toàn tuyệt đối với XSS.
+
+**2. (Junior) Tại sao Token Handler không gửi Cookie xuống Resource Server?**
+*Đáp án:* Vì Resource Server (API) được thiết kế theo chuẩn RESTful không trạng thái (Stateless), yêu cầu Bearer Token để dễ dàng phân quyền (Authorization) và không bị phụ thuộc vào môi trường web.
+
+**3. (Senior) Làm thế nào để Token Handler xử lý việc Refresh Token tự động mà không làm gián đoạn Request của người dùng?**
+*Đáp án:* Token Handler kiểm tra thời gian sống (Expiration) của Access Token trước khi proxy request. Nếu gần hết hạn, nó sẽ dùng Refresh Token gọi Keycloak để lấy Access Token mới, cập nhật Session, sau đó mới tiếp tục proxy Request ban đầu.
+
+**4. (Senior) Khi dùng Token Handler Pattern, SPA làm sao lấy được thông tin User (như email, roles)?**
+*Đáp án:* Token Handler có thể mở một endpoint riêng (VD: `/api/userinfo`) hoặc tự động tiêm các thông tin từ ID Token vào Response Header để SPA có thể đọc được (Header không bị hạn chế như HttpOnly Cookie).
+
+**5. (Senior) Mối nguy hiểm lớn nhất của Token Handler là gì?**
+*Đáp án:* Đó là điểm nghẽn cổ chai (Bottleneck) và Single Point of Failure (SPOF). Nếu Token Handler cấu hình không đủ năng lực xử lý, toàn bộ lưu lượng vào hệ thống sẽ bị chậm lại.
+
+## 7. Tài liệu tham khảo (References)
+- [The Token Handler Pattern - Curity](https://curity.io/resources/learn/the-token-handler-pattern/)
+- [OAuth2-Proxy Documentation](https://oauth2-proxy.github.io/oauth2-proxy/)

@@ -1,45 +1,161 @@
-# Lesson 3: Quyền Sinh Quyền Sát (Authorization & Method Security)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Học cách phân quyền dựa trên kết quả đã thẩm định. Từ việc chốt chặn cả 1 cụm đường dẫn API (URL Based) cho đến khóa cửa chi li từng Hàm cụ thể (Method Security).
+> **Goal:** Hiểu sâu về cơ chế phân quyền (Authorization) trong Spring Security khi tích hợp với Keycloak (OAuth2/OpenID Connect), cách trích xuất roles/authorities từ JWT và bảo vệ các API endpoints.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Trong kiến trúc bảo mật của Spring Security, quá trình diễn ra sau khi xác thực (Authentication) thành công là **Phân quyền (Authorization)**. Quá trình này xác định xem một người dùng (đã được định danh) có đủ quyền hạn (roles, scopes, permissions) để truy cập vào một tài nguyên (API endpoint, method) cụ thể hay không.
 
-Sau khi cái thẻ Tên Khách Hàng cất vào Két Sắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Cửa Cuối Cùng Ở Cuối Băng Chuyền Sẽ Bật Lên `AuthorizationFilter` Oanh Khung Dịch Lụa Mạch Lệnh.
+Khi kết hợp Spring Security với Keycloak đóng vai trò là **Authorization Server**, ứng dụng Spring Boot đóng vai trò là **Resource Server**. Access Token (dưới định dạng JWT) gửi từ Client sẽ mang theo các thông tin quyền (Claims). Spring Security cần:
+1. Giải mã và xác minh JWT.
+2. Trích xuất thông tin phân quyền từ JWT Claims (thường là `realm_access.roles` hoặc `resource_access.<client_id>.roles` trong Keycloak).
+3. Ánh xạ các thông tin đó thành đối tượng `GrantedAuthority` của Spring.
+4. Đưa ra quyết định truy cập (Access Decision) dựa trên cấu hình bảo vệ HTTP (`HttpSecurity`) hoặc Method (`@PreAuthorize`).
 
-### 1.1. Chặn Dọc Tuyến Đường (HTTP Request Authorization)
-Ở Cách Chặn Cổ Điển Nhất Trong File Config Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Chúng Ta Dựng Chướng Ngại Vật Ở Đầu API Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp:
-```java
-http.authorizeHttpRequests(auth -> auth
-    .requestMatchers("/api/public/**").permitAll() // Thả cửa không thèm kiểm tra két sắt Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-    .requestMatchers("/api/admin/**").hasRole("ADMIN") // Thằng nào xông vào /api/admin phải mang Role ADMIN Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng!
-    .anyRequest().authenticated() // Mọi nẻo đường khác phải có Mật Mã Trong Két Sắt Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-);
+Sự phức tạp cốt lõi là Keycloak sử dụng cấu trúc Claims lồng nhau cho Roles, trong khi Spring Security mong đợi một danh sách phẳng các chuỗi bắt đầu bằng tiền tố `ROLE_` hoặc `SCOPE_`. Do đó, cần có một bước chuyển đổi (Converter) tùy chỉnh.
+
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
+Quá trình Authorization khi xử lý một Request với JWT:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant FilterChain as SecurityFilterChain
+    participant JwtProvider as JwtAuthenticationProvider
+    participant Converter as JwtAuthenticationConverter
+    participant AuthManager as AuthorizationManager
+    participant Controller as REST Controller
+
+    Client->>FilterChain: HTTP GET /api/admin (Header: Authorization: Bearer <JWT>)
+    FilterChain->>JwtProvider: Yêu cầu xác thực JWT Token
+    JwtProvider->>JwtProvider: Verify Signature & Expiration
+    JwtProvider->>Converter: Chuyển đổi JWT thành Authentication Object
+    Converter->>Converter: Trích xuất `realm_access.roles`
+    Converter-->>JwtProvider: Trả về JwtAuthenticationToken chứa GrantedAuthorities (vd: ROLE_ADMIN)
+    JwtProvider-->>FilterChain: Lưu vào SecurityContext
+    
+    FilterChain->>AuthManager: Kiểm tra quyền truy cập endpoint /api/admin
+    AuthManager->>AuthManager: So sánh Yêu cầu (hasRole('ADMIN')) với GrantedAuthorities
+    alt Nếu đủ quyền
+        AuthManager-->>FilterChain: Cấp phép (Access Granted)
+        FilterChain->>Controller: Chuyển tiếp Request
+        Controller-->>Client: Trả về HTTP 200 OK
+    else Nếu thiếu quyền
+        AuthManager-->>FilterChain: Từ chối (Access Denied)
+        FilterChain-->>Client: Trả về HTTP 403 Forbidden
+    end
 ```
 
-### 1.2. Chốt Chặn Vi Mô Tới Từng Milimet (Method Security)
-Đôi khi hệ thống Cấp Thẩm Quyền HTTP Request Bên Trên Dễ Bị Xuyên Thủng Vì Cú Pháp Của Bọn URL Quá Rộng Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Bạn Cần Bịt Trực Tiếp Trên Hàm Code Java Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-Đầu Tiên Bật Chế Độ Cảnh Giác Ở Phía Trên Lớp Config Bằng Nhãn Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: `@EnableMethodSecurity`.
-Sau Đó Nhảy Xuống Dưới Hàm Controller (Hoặc Hàm Xử Lý Logic Service) Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Cắm Thẳng Lưỡi Lê Chắn Cửa:
+Khi được cấu hình, `JwtAuthenticationConverter` sẽ đóng vai trò là cầu nối đọc cấu trúc JSON của Keycloak JWT và tạo ra `SimpleGrantedAuthority`. `AuthorizationManager` (trước đây là `AccessDecisionManager`) sẽ thực hiện bước kiểm tra logic cuối cùng.
+
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
+
+> [!IMPORTANT]
+> Luôn luôn xác minh JWT Signature dựa trên public key (JWKS) của Keycloak để ngăn chặn tấn công giả mạo token. Spring Security tự động xử lý việc này thông qua cấu hình `jwk-set-uri`.
+
+> [!WARNING]
+> Không nên phụ thuộc hoàn toàn vào cấu hình URL-based Authorization (trong `HttpSecurity`) đối với các hệ thống lớn. Dễ xảy ra thiếu sót. Hãy kết hợp với Method-based Authorization (`@PreAuthorize`) ở tầng Service để đảm bảo bảo mật sâu (Defense in Depth).
+
+- **Principle of Least Privilege:** Chỉ gán các Roles thực sự cần thiết cho người dùng.
+- **Audience Verification:** Đảm bảo cấu hình kiểm tra trường `aud` (Audience) trong JWT để xác nhận rằng Token được phát hành đúng cho Resource Server của bạn, chống lại lỗ hổng Token substitution.
+- **Prefix Naming:** Thống nhất việc sử dụng tiền tố (ví dụ: `ROLE_`) để tránh nhầm lẫn giữa Scopes (OAuth2) và Roles (Ứng dụng).
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+
+Đoạn mã cấu hình Spring Security 6+ để trích xuất Roles từ Keycloak và bảo vệ API:
+
 ```java
-@PreAuthorize("hasRole('ADMIN') or hasAuthority('SCOPE_read')")
-public String deleteUser() { ... }
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.web.SecurityFilterChain;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/public").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+            );
+        return http.build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(new KeycloakRoleConverter());
+        return converter;
+    }
+}
+
+// Converter tùy chỉnh để đọc realm_access.roles từ Keycloak JWT
+class KeycloakRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
+    @Override
+    public Collection<GrantedAuthority> convert(Jwt jwt) {
+        Map<String, Object> realmAccess = (Map<String, Object>) jwt.getClaims().get("realm_access");
+        if (realmAccess == null || realmAccess.isEmpty()) {
+            return List.of();
+        }
+        List<String> roles = (List<String>) realmAccess.get("roles");
+        return roles.stream()
+                .map(roleName -> "ROLE_" + roleName) // Thêm tiền tố ROLE_ cho Spring
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
+    }
+}
 ```
-Lúc Này Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Nếu Kẻ Đăng Nhập Gọi Xuyên Xuống Được Tận Đây Mà Mở Két Sắt Không Có Biển Hiệu ADMIN Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, Sẽ Lập Tức Bị Lưới Điện Bắn Trả Exception Code Phạt 403 Forbidden Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!
 
----
+Và sử dụng Method-Level Security trên Controller:
+```java
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
 
-## 2. Câu hỏi Phỏng vấn (Interview Questions)
+    @PreAuthorize("hasRole('USER')")
+    @GetMapping("/profile")
+    public String getProfile() {
+        return "User Profile";
+    }
+}
+```
 
-**1. Sếp Yêu Cầu Code Tính Năng Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề: Khi User (Đang Giữ Quyền EMPLOYEE Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) Gọi API Lấy Bảng Lương Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Nó CHỈ ĐƯỢC PHÉP ĐỌC BẢNG LƯƠNG CỦA CHÍNH NÓ Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Nghĩa Là Nếu JWT Token Của Khách Hàng Mang Chữ `user_id=100` Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Thì Lời Gọi Hàm Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa `getSalary(String userId)` Nhất Định Phải Bị Chặn Lại Nếu Tham Số Gọi Hàm Là `userId = 101` Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy (Tránh Lỗ Hổng Kẻ Thù Đoán Mã Chéo Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy IDOR Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa). Làm Sao Dùng Method Security Để Bóp Cổ Thằng Gọi Trái Phép Ngay Tại Cửa Hàm Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa?**
-- **Senior:** Dạ Thưa Sếp Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị, Ca Này Rất Sâu Hiểm Của Spring Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Lúc Này Không Thể Xài Trò `hasRole` Trơn Tuột Được Vì Đứa Nào Trong Đám Đều Có Quyền Đọc Lương Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Bọn Em Dùng Tuyệt Kỹ **Expression-Based Access Control (SPEL Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề)** Bắn Kẹp Chung Với `@PreAuthorize` Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng!
-  - Trên Đỉnh Hàm `getSalary(String userId)` Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Bọn Em Kẹp Thẳng Mũi Dao SPEL Đọc Biến Đầu Vào So Khớp Với Khóa JWT Trong Két Oanh Khung Dịch Lụa Mạch Lệnh:
-    `@PreAuthorize("#userId == authentication.name")`
-  - Ý Nghĩa Là Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề: Khi Mày Đòi Gọi Hàm Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Spring Dựng Ở Ngoài Lấy Trực Tiếp Cái Tham Số `#userId` Của Lời Gọi Truyền Vào Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Sau Đó Nó Bóc Két Sắt Gọi Dây `authentication.name` (Tên UserID Móc Từ Token JWT Lúc Đăng Nhập Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa).
-  - Nếu Em Đăng Nhập Bằng User Của Em Số 100 Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Rồi Cố Tình Phái Request Gọi Chọt Xuống Hàm Tham Số Của Mày 101 Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Lúc SPEL Đối Chiếu Phát Hiện Chênh Lệch Dữ Liệu 100 != 101 Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Ngay Lập Tức Nó Đóng Khóa Quyền Phán Tội 403 Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! 100% Chống Hoàn Hảo Bug Chiếm Đoạt Tài Liệu Chéo Người Dùng Sếp Ạ Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Token mang theo số lượng lớn Roles (Bloated Token):** Header HTTP có thể vượt quá giới hạn kích thước nếu JWT chứa quá nhiều claim/roles. Khắc phục bằng cách yêu cầu Token có Scope cụ thể thay vì trả về toàn bộ Roles, hoặc lưu mapping ở DB nội bộ.
+- **Độ trễ cập nhật quyền (Stale Roles):** Khi quản trị viên thay đổi quyền của user trên Keycloak, các Access Token đang còn hạn vẫn chứa quyền cũ. Cần phải thu hồi Token hoặc áp dụng hạn sử dụng Token (TTL) ngắn.
 
----
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+1. **[Junior]** Điểm khác biệt giữa Authentication và Authorization là gì?
+   - *Đáp án:* Authentication là xác minh "bạn là ai" (Identity), còn Authorization là xác minh "bạn được phép làm gì" (Permissions/Roles).
+2. **[Junior]** Authorization Header chuẩn được dùng khi gửi JWT là gì?
+   - *Đáp án:* `Authorization: Bearer <token_string>`
+3. **[Senior]** Làm thế nào Spring Security trích xuất roles từ cấu trúc phức tạp của Keycloak JWT?
+   - *Đáp án:* Bằng cách viết một implement tùy chỉnh cho `Converter<Jwt, Collection<GrantedAuthority>>` và đăng ký nó với `JwtAuthenticationConverter` trong cấu hình `oauth2ResourceServer`.
+4. **[Senior]** Phương thức `hasRole("ADMIN")` và `hasAuthority("ROLE_ADMIN")` khác nhau thế nào trong Spring Security?
+   - *Đáp án:* `hasRole("ADMIN")` ngầm định thêm tiền tố `ROLE_` vào khi kiểm tra, trong khi `hasAuthority("ROLE_ADMIN")` kiểm tra chính xác chuỗi được cung cấp mà không thêm tiền tố.
+5. **[Senior]** Cách triển khai bảo mật cho một endpoint mà yêu cầu người dùng phải có Role 'MANAGER' **VÀ** phải sở hữu tài nguyên đang cố cập nhật?
+   - *Đáp án:* Sử dụng `@PreAuthorize("hasRole('MANAGER') and #resource.ownerId == authentication.name")` để đánh giá biểu thức SpEL, kết hợp RBAC và ABAC (Attribute-Based Access Control).
 
-## 5. Tài liệu tham khảo (References)
-- **Spring Security Docs:** Method Security (PreAuthorize, SPEL).
+## 7. Tài liệu tham khảo (References)
+- [Spring Security Reference: OAuth 2.0 Resource Server](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/jwt.html)
+- [Keycloak Documentation: Server Administration Guide](https://www.keycloak.org/docs/latest/server_admin/)
+- [RFC 7519: JSON Web Token (JWT)](https://datatracker.ietf.org/doc/html/rfc7519)

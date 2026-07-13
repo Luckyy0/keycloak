@@ -1,73 +1,103 @@
-# Lab 1: Giả Kim Thuật (Hợp Thể Composite Roles)
-
 > [!NOTE]
-> Bài Lab này đưa bạn vào vai Giám Đốc An Ninh OIDC. Bạn sẽ tự tay đập tan sự lộn xộn của Cơ sở Dữ liệu bằng cách dùng thuật Giả Kim Hợp Thể: Ép 2 quyền của 2 Ứng dụng khác nhau rải rác chui tọt vào bên trong 1 Realm Role duy nhất. Sau đó Giải Mã JWT để chứng kiến thuật toán Effective Roles chạy ngầm.
+> **Category:** Practical/Lab
+> **Goal:** Thiết lập mô hình phân quyền dựa trên vai trò (RBAC) cơ bản trong Keycloak bằng cách tạo, cấu hình và gán Realm Roles, Client Roles, và Composite Roles cho User.
 
-## Chuẩn bị
-- Máy có Docker và Docker-Compose.
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## Bước 1: Ráp Khung Áo Giáp Lõi Tĩnh OIDC Database
+Giả sử bạn đang quản trị một hệ thống phân quyền cho ứng dụng "Hệ thống Quản lý Bệnh viện" (`hospital-app`). Bạn cần thiết lập quyền cho hai loại nhân viên: Bác sĩ (Doctor) và Quản trị viên IT (IT Admin).
 
-1. Đi vào thư mục `08-Roles/code`. 
-2. Mở file `docker-compose.yml`. Mọi thứ đã được đóng gói Tĩnh Bọc Nhựa Postgres Cấp K8s. 
+Yêu cầu thực tiễn:
+1. **Realm Role (`doctor-role`)**: Là quyền cấp cao toàn cục dành cho Bác sĩ.
+2. **Client Role (`app-manage`)**: Nằm trong Client `hospital-app`, cho phép người dùng quản lý dữ liệu ứng dụng.
+3. **Composite Role (`super-admin`)**: Một vai trò tổng hợp tự động kế thừa (inherit) nhiều vai trò khác để dễ dàng cấp phát cho Quản trị viên IT mà không cần phải gán từng quyền lẻ tẻ.
 
-## Bước 2: Bật Cụm Động Cơ OIDC Kéo Nhựa Giao Mạng
+Nhiệm vụ của bạn là sử dụng Keycloak Admin Console để cấu hình cấu trúc Role này và gán cho các tài khoản người dùng tương ứng.
 
-1. Khởi động OIDC bằng lệnh Thép Tĩnh Nền:
-```bash
-docker-compose up -d
-```
-2. Đăng Nhập Chỉnh Sửa Tại Admin Console: `http://localhost:8080/admin` (admin/admin).
-3. Tạo 1 Lãnh Thổ Realm Mới: `Vingroup_Roles`.
+## 2. Chuẩn bị Môi trường (Prerequisites)
 
-## Bước 3: Tạo 2 Lãnh Thổ Chư Hầu Mạch Rắn Đáy Khống (Client Roles)
+- Một máy chủ Keycloak đang chạy (đã tạo tài khoản quản trị).
+- Có ít nhất một Realm tùy chỉnh (ví dụ: `myrealm`) được tạo thay vì dùng mặc định `master`.
+- Đã tạo một Client tên là `hospital-app` trong Realm `myrealm`.
+- Đã tạo hai Users: `dr_john` (Bác sĩ) và `it_admin_bob` (Quản trị viên IT).
 
-1. Vô Bảng `Clients`. Bấm Vô Tên App Mặc Định OIDC Của Cụm: `account`.
-2. Chạy Tab `Roles`. Bấm Khung Nút Chặn Mạch Giao `Create role`. 
-   - Tạo Mã Tên Là: `manage-profile-vip`. Save Oanh Kẽ.
-3. Quay Ra `Clients`. Bấm Vô Tên App OIDC Khác Nữa Kẽ Đáy: `realm-management`.
-   - Vô Tab `Roles`. Bấm `Create role`.
-   - Tạo Mã Tên Là: `view-users-vip`. Save Lệnh Thép.
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-*(Bây giờ bạn đã có 2 Client Roles nằm lọt thỏm ở 2 Chư hầu khác nhau).*
+### Bước 3.1: Tạo Realm Role
 
-## Bước 4: Chế Tạo Phép Hợp Thể Giả Kim Thuật OIDC Trút Nhanh Sóng (Composite Realm Role)
+1. Truy cập Keycloak Admin Console. Ở góc trên bên trái, chọn Realm `myrealm`.
+2. Trên menu bên trái, nhấp vào **Realm roles** (dưới nhóm Manage).
+3. Nhấp vào nút **Create role** (Tạo vai trò).
+4. Điền các thông tin:
+   - **Role name**: `doctor-role`
+   - **Description**: Quyền hạn chung dành cho các Bác sĩ trong toàn bộ hệ thống bệnh viện.
+5. Nhấp **Save** (Lưu).
 
-1. Vô Mạch Giao Khung `Realm roles`. Nhấn Nút `Create role`.
-2. Tạo Cột Realm Tên Là: `COMP_Super_VIP`. Bấm Save Oanh Khách.
-3. Tĩnh Khung Khớp OIDC Góc Phải Trên Cùng Của Màn Hình Báo Khách Tĩnh Đáy Nhựa. Bấm Nút **`Action -> Add associated roles`**.
-4. Bảng OIDC Cháy Băng Mạch Giao Khung Cửa Sổ Mở Ra:
-   - Dùng Khẩu Lọc API Nút Filter Dropdown Rút Mạch Đáy: Chọn `Filter by clients`.
-   - Gõ Ô Search Chữ OIDC Rỗng Đáy: `vip`.
-   - Tick Vô 2 Ô Box Của Lệnh Rìa Bọc `manage-profile-vip` Và `view-users-vip`. 
-   - Bấm `Assign`.
-*(Cái hộp COMP_Super_VIP giờ đã có 2 thứ vũ khí nhỏ nhét trong bụng).*
+### Bước 3.2: Tạo Client Role
 
-## Bước 5: Cấp Khẩu Lệnh Hợp Thể Cho Vua (Assign Composite)
+Client Roles bị giới hạn trong phạm vi của một Client cụ thể.
 
-1. Tạo 1 Bảng Mạch OIDC Khách Lạ Tên `Sep_Lon` Trong Khung Rỗng `Users`. Save Mạch Oanh Liệt Dập Cụm Trống. Đặt Password Mạch Nhựa Tĩnh Bọt Lệnh `pass`.
-2. Ở Bảng Của `Sep_Lon`, Bấm Sang Tab `Role mapping`. Nhấn `Assign role`. 
-3. Lọc API Kéo Cáp Chọn Ngay Thằng Realm Role Trút Lệnh Đuôi: `COMP_Super_VIP`. Bấm Assign Rút Dòng Khách Chặn.
-4. Bật Tích Chặn Oanh Rìa Lệnh `Hide inherited roles`. 
-   - Đột Nhiên Hiện Ra 2 Cờ Quyền Màu Đỏ Nhạt Mạch OIDC Giao Khung API Ở Bảng Dưới Oanh Liệt Dập Cụm Trống Cắt Lệnh Rỗng Phun Sinh Data Lệnh Client Roles: `manage-profile-vip` và `view-users-vip`. 
-   - Hover Dê Chuột Vô Khung Đỏ Nhạt, Nó Báo Cụm Nhựa Rỗng `Inherited from realm role: COMP_Super_VIP` Đáy Kẽ Lệnh Database UUID Không Gãy Chỗ Trọng Lệnh Đơn Giản Kéo Cáp Oanh Cáp Nhất Lệnh!
+1. Trên menu bên trái, chọn **Clients**.
+2. Tìm và nhấp vào Client tên `hospital-app`.
+3. Chuyển sang tab **Roles** của Client này.
+4. Nhấp vào nút **Create role**.
+5. Điền các thông tin:
+   - **Role name**: `app-manage`
+   - **Description**: Quyền thao tác và chỉnh sửa cấu hình ứng dụng hospital-app.
+6. Nhấp **Save**.
 
-## Bước 6: Phóng Cụm Mạch Giao JWT Khung Tốc Độ Và Khám Nghiệm Tử Thi Token (JWT Decoding)
+### Bước 3.3: Tạo Composite Role (Kế thừa Role)
 
-1. Mở Trình Duyệt Ẩn Danh OIDC Bọc Lệnh API Nhựa Đáy Kéo Dọc Mũi Rỗng Đít Khung: `http://localhost:8080/realms/Vingroup_Roles/account`. Bấm Nút Trút `Sign in`.
-2. Gõ User Mạch Rỗng OIDC Đáy Bọc `Sep_Lon` / Pass Oanh Kẽ Sóng Lọc Oanh Liệt Dập Database `pass`. 
-3. Vô Web Thành Công Bất Diệt Xé Kẽ Lỗi Sụp Tốc! Mở Giao Diện Web Lọc Khung F12 Chrome -> Tab Network -> Tìm Các Request API Đáy Kẽ Lệnh Của Token (Ví dụ Cục API XHR). Lấy Đáy Chữ Header HTTP Authorization Cục Mã Kép Oanh `Bearer eyJ...` Copy Giao Cụt Cửa Khung Mệnh.
-4. Quăng Cục Mã Base64 Vô Trang Web Giải Mã: `https://jwt.io`.
-5. Đọc Thấu Trái Tim Payload Json Kéo Cáp Đáy:
-   - Thấy Dòng `realm_access.roles` Nằm Khung Code Bọc Oanh Cáp Có Lệnh `COMP_Super_VIP` Đáy Rễ Căn Cứ Lọc Đáy.
-   - Thấy Dòng `resource_access.account.roles` Nằm Khung Code Bọc Oanh Có Chữ Cắt Khúc Lệch Mạch `manage-profile-vip` OIDC Cũ Mệnh Ngắn Gọn.
-   - Trút Nhanh Sóng Kẽ Nút Dòng Cũ OIDC Rỗng `resource_access.realm-management.roles` Có `view-users-vip` Rất Kính!
-Cỗ Máy Token Engine Effective Roles Tính Toán Cắt Mảnh Dữ Liệu Hoàn Hảo Tuyệt Đỉnh Kéo Khống Mệnh Hủy Diệt Ảo Bất Rất Sạch Test Mạng Lỗ Trống Mạng!
+Composite Role là tính năng gộp nhiều roles lại với nhau.
 
-## Bước 7: Dọn Lệnh Rác Sóng Lưới Mạng OIDC Khép Kín Cấu Cắt
-```bash
-docker-compose down -v
-```
+1. Quay lại menu **Realm roles**.
+2. Nhấp **Create role**.
+3. Tại **Role name**, điền `super-admin` và nhấp **Save**.
+4. Lúc này bạn đang ở trang chi tiết của Role `super-admin`. Tại tab **Details**, tìm đến mục **Composite roles** (Các vai trò tổng hợp).
+5. Bật công tắc (Toggle) sang trạng thái **ON** ở `Composite roles`. Cửa sổ tìm kiếm role hiện ra bên dưới.
+6. Trong thanh tìm kiếm, tìm role `doctor-role` và nhấp **Assign** (hoặc dấu cộng).
+7. Đổi bộ lọc từ "Filter by realm roles" sang "Filter by clients" hoặc gõ tên `app-manage`. Chọn `hospital-app app-manage` và nhấp **Assign**.
+8. Lúc này, `super-admin` đã chứa cả hai quyền con.
 
-> [!TIP]
-> Việc Nắm Composite Roles Giúp Rút Ngắn OOM Bọc Cháy Đáy Cụm Database 90% Lệnh Code Đáy Bọc API Trút Nhanh Bắn SQL Insert (Thay Vì Insert 100 Quyền Dưới Đáy, Chỉ Tốn 1 Lệnh Insert Realm Role OIDC Phẳng Rỗng). Giữ Cây Role Luôn Sạch Sẽ Tĩnh Bọc Dù Công Ty Lên Tới Hàng Ngàn Web App OIDC Khung Rác Mạng Trễ Đọc Mạch Giao Khung API Lệnh!
+### Bước 3.4: Gán Roles cho Người dùng (Role Mapping)
+
+**Gán quyền cho Bác sĩ John:**
+1. Trở về menu **Users**, tìm và nhấp vào user `dr_john`.
+2. Chuyển sang tab **Role mapping**.
+3. Nhấp vào **Assign role**. Tích chọn hộp kiểm trước `doctor-role`.
+4. Nhấp **Assign**.
+
+**Gán quyền tổng hợp cho IT Admin Bob:**
+1. Quay lại **Users**, nhấp vào user `it_admin_bob`.
+2. Chuyển sang tab **Role mapping**.
+3. Nhấp vào **Assign role**. Tích chọn hộp kiểm trước `super-admin`.
+4. Nhấp **Assign**.
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+### 4.1. Nghiệm thu (Verification)
+
+Để kiểm tra xem Keycloak đã áp dụng cơ chế phân quyền (Role-Based Access Control) chính xác hay chưa:
+
+1. **Kiểm tra Token của Dr. John:**
+   - Sử dụng Postman hoặc Terminal gửi một yêu cầu `POST` tới endpoint `/realms/myrealm/protocol/openid-connect/token` sử dụng `grant_type=password` với thông tin đăng nhập của `dr_john`.
+   - Copy mã Access Token trả về, dán vào trang web [jwt.io](https://jwt.io).
+   - Trong phần payload (màu tím), tìm claim `realm_access.roles`. Bạn phải thấy chuỗi `"doctor-role"`. Nó sẽ không có role nào của client `hospital-app`.
+
+2. **Kiểm tra Kế thừa của Bob:**
+   - Lặp lại bước lấy token nhưng với thông tin đăng nhập của `it_admin_bob`.
+   - Phân tích Access Token trên jwt.io. Mặc dù bạn chỉ gán trực tiếp quyền `super-admin`, Token của Bob PHẢI hiển thị:
+     - Trong claim `realm_access.roles`: có chứa `"super-admin"` và `"doctor-role"`.
+     - Trong claim `resource_access.hospital-app.roles`: có chứa `"app-manage"`.
+   - Điều này chứng minh quá trình mở rộng quyền (Role Expansion) của Composite Role đã hoạt động thành công.
+
+### 4.2. Khắc phục sự cố (Troubleshooting)
+
+- **Không tìm thấy Client Roles khi tạo Composite Role:**
+  - *Nguyên nhân:* Mặc định giao diện tìm kiếm chỉ lọc các Realm Roles.
+  - *Khắc phục:* Chú ý thả danh sách xổ xuống (Dropdown filter) ngay cạnh ô tìm kiếm và chọn "Filter by clients" để thấy các role thuộc về client.
+- **Access Token không chứa `client_roles` hoặc `realm_roles`:**
+  - *Nguyên nhân:* Client Scopes mặc định (`roles`) đã bị xóa khỏi Client hoặc bị vô hiệu hóa cấu hình ánh xạ (Mapper).
+  - *Khắc phục:* Vào Client `hospital-app` -> tab **Client scopes** -> Đảm bảo scope `roles` đang ở trạng thái Assigned type là `Default`.
+- **Lỗi nhầm lẫn khái niệm Group và Role:**
+  - *Sự cố:* Bạn tạo một Group có tên `doctor-role` thay vì Role.
+  - *Khắc phục:* Group (Nhóm) dùng để gộp User. Role (Vai trò) dùng để gán Quyền. Hãy xóa group và tạo lại đúng ở mục Realm roles.

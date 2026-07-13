@@ -1,82 +1,114 @@
-# Lesson 3: Đỉnh Cao Bất Đối Xứng Ngân Hàng (Private Key JWT)
-
 > [!NOTE]
 > **Category:** Theory (Lý thuyết)
-> **Goal:** Trong Lesson 1 & 2, thằng Spring Boot App của bạn bắt buộc phải Chia Sẻ Cùng 1 Két Sắt Mật Khẩu với Lãnh chúa Keycloak. Điều này tạo ra rủi ro "Zero-Trust": Nếu Admin Keycloak xấu xa ăn cắp cái Két Sắt đó, anh ta có thể giả mạo thằng App của bạn để gọi API. Vũ Khí Vingroup Đỉnh Chóp Cắt Đáy **Private Key JWT** ra đời: Giữ Chìa Khóa Ở Chóp Đáy Duy Nhất Không Cho Bố Con Thằng Nào Cầm Chung!
+> **Goal:** Hiểu sâu cơ chế xác thực Private Key JWT cho Client theo chuẩn OAuth2, lợi ích bảo mật so với Client Secret và luồng hoạt động nội bộ trên Keycloak.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+**Private Key JWT** (được định nghĩa trong RFC 7523) là một phương thức xác thực Client an toàn cao, trong đó Client chứng minh danh tính của mình với Authorization Server (Keycloak) bằng cách sử dụng một JSON Web Token (JWT) được ký tự động.
 
-### 1.1. Kiến Trúc Không Chia Sẻ (Zero-Trust) Của Private Key JWT
-Luồng Private Key JWT Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Dùng Thuật Toán Ký **Bất Đối Xứng (Asymmetric RS256 hoặc ES256)**.
-- **Bước 1 (DevOps Tạo Khóa):** Dùng lệnh OpenSSL đẻ ra 1 cặp Khóa (Private Key và Public Key) Oanh Cáp Trọng Lõi Tự Trị.
-- **Bước 2 (Chôn Giấu):** Cục Private Key (Cực Kỳ Nhạy Cảm Trút Lụa Bọt Cắt Kẽ) Đem Nhét Thật Sâu Xuống Đáy Code Ổ Cứng Của Thằng Spring Boot App Kế Toán Oanh Tĩnh Lụa Thép.
-- **Bước 3 (Đăng Ký):** Lên Bảng Admin Console Của Keycloak. Upload Cái Khóa Public Key Cắt Khung Lệnh Rỗng Cho Keycloak Cầm. Lệnh Rút Lụa Keycloak CHỈ CẦM CHÌA KHÓA CÔNG KHAI Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh.
+Thay vì gửi một `client_secret` cố định qua mạng ở mỗi Request, Client sẽ sử dụng một Private Key (khóa bí mật) mà chỉ nó biết để ký (Sign) một JWT. Keycloak, giữ Public Key tương ứng (được cấu hình sẵn hoặc tải qua JWKS), sẽ giải mã chữ ký này để xác minh nguồn gốc của Request.
 
-### 1.2. Mạch Đập API Đổi Token Đỉnh Đáy Oanh Mạng Bắt Lụa
-- Lúc Cần Đi Đổi Access Token Oanh Rỗng Chóp Khớp Lệnh, Thằng Kế Toán Lôi Cục Private Key Ở Đáy Lên Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp!
-- Ký 1 Cục Thẻ JWT Oanh Cáp Giao Diện Chặt Mạch Bằng Private Key Đó Lệnh Oanh Rút.
-- Bắn JWT Bọt Mạch Kéo API Dữ Lụa Lên /token Của Keycloak Kẽ Lụa Oanh Bọc Khớp Lệnh Cũ Rích.
-- Keycloak Thấy Cục Thẻ Bay Lên Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt. Nó Lôi Khóa Public Key (Do Bạn Upload Lúc Đầu Trượt Khung) Ra So Dò Chữ Ký XML Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch! Chữ Ký Hợp Lệ -> Cấp Khối Vàng Token Trút Cáp Mạch Máu Cắt Lệnh Đáy!
-
----
+**Tại sao tính năng này tồn tại?**
+- **Loại bỏ rủi ro lộ Secret:** `client_secret` thường bị hardcode hoặc lưu trữ không an toàn, nếu bị chặn trên đường truyền hoặc lộ lọt, kẻ gian có thể mạo danh Client vĩnh viễn.
+- **Tính toán thay vì truyền tải:** Private Key không bao giờ rời khỏi máy chủ của Client. JWT được tạo ra chỉ có hiệu lực rất ngắn (ví dụ: 60 giây) và chỉ dùng được một lần nhờ cơ chế `jti` (JWT ID).
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Giao Diện Bọt Lõi Trút Code JWT Private Key Thép Mạch Lụa:
-
 ```mermaid
 sequenceDiagram
-    participant App as App Chuyển Tiền CoreBank (Client)
-    participant KC as Keycloak (/token)
+    participant Client
+    participant Keycloak as Keycloak Server
 
-    Note over App, KC: Lệnh Trút Lụa Ký Chữ RS256 Chống Mũi Đục Rò
-    App->>App: Code Backend Móc Vault Lấy RSA Private Key Đáy Oanh Mạng Bọc Thép!
-    App->>App: Sinh JWT = {iss: 'CoreBank', aud: 'http://kc', exp: Thời_Hạn}
-    App->>App: Ký Khối: RS256(Header.Payload, Cục Private Key Bí Mật Đỉnh Đáy) => Token_Rác_Vàng Oanh Dữ Lụa.
+    Note over Client: Tự sinh ra JWT với claims (iss, sub, aud, exp, jti)<br/>và Ký (Sign) bằng Private Key (RS256)
     
-    App->>KC: POST /token <br/> client_assertion_type=jwt-bearer <br/> client_assertion=Token_Rác_Vàng
+    Client->>Keycloak: POST /token<br/>client_assertion_type=urn:ietf...:jwt-bearer<br/>client_assertion=<JWT>
     
-    KC-->>KC: Tìm Mạch DB Thấy Public Key Của CoreBank Đã Nạp Từ Trước.
-    KC-->>KC: Code Lệnh Đáy Oanh Mạch Giải Mã Chữ Ký JWT Bằng Lệnh RS256 Dịch Tễ Lạ Trượt Bọt Rỗng Đáy Chóp. Khớp Chuẩn Tuyệt Đối Oanh Tĩnh Lụa Thép!
-    KC-->>App: Xả Khối Vàng Access Token Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Đỉnh Cao Bảo Mật Oanh Mạng!
+    Keycloak->>Keycloak: Lấy Public Key của Client (từ JWKS hoặc DB)
+    Keycloak->>Keycloak: Xác minh Signature của JWT
+    Keycloak->>Keycloak: Kiểm tra các Claims (Hạn exp, Đối tượng aud)
+    Keycloak->>Keycloak: Kiểm tra jti (để chống Replay Attack)
+    
+    alt Nếu xác minh thành công
+        Keycloak-->>Client: HTTP 200 OK kèm Access Token
+    else Nếu thất bại
+        Keycloak-->>Client: HTTP 401 Unauthorized (invalid_client)
+    end
 ```
 
----
+**Các Claims bắt buộc trong JWT (Client Assertion):**
+- `iss` (Issuer): ID của Client (ví dụ: `my-client`).
+- `sub` (Subject): ID của Client (giống Issuer).
+- `aud` (Audience): URL của Token Endpoint của Keycloak.
+- `exp` (Expiration): Thời điểm JWT hết hạn (Nên cấu hình rất ngắn, < 5 phút).
+- `jti` (JWT ID): Một chuỗi ngẫu nhiên duy nhất để Keycloak ghi nhớ và chống tấn công phát lại (Replay Attack).
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
 > [!IMPORTANT]
-> **Tuyệt Đỉnh An Toàn Cấp Kiến Trúc Oanh Khung Dịch Lụa Mạch Lệnh (Xoay Vòng Khóa Không Mất Downtime Bọt Khung Oanh Cáp)**
-> **Tội Ác Thiết Kế Giao Thức Mạch Rỗng Báo CSRF:** Bạn Dùng Chuẩn Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Xịn Nhất Thế Giới RS256. Nhưng Cái Cục Khóa RSA Của Bạn Tạo Ra Bạn Upload Lên Tab Keys Của Keycloak Và ĐỂ CHẾT CỨNG NÓ TRONG 5 NĂM Lỗ Lủng Bọt! Không Thèm Sinh Cặp Khóa Mới Oanh Lõi Bị Lộ Trắng Lệnh Kẽ. Hacker Bằng Siêu Máy Tính Tính Toán Xuyên Rỗng Đáy Mạch Máu Cắt Mất 3 Năm Là Dò Ra Private Key Của Bạn!
-> **Biện Pháp Sống Còn Lớp Trọng Lực Thép Mạch Lụa Oanh Rác Bọt Mạch Kéo (JWKS URL):**
-> 1. Chuẩn FAPI (Ngân Hàng Mở Mạch Kẽ Trút Lụa Bọt Cắt Mạch Đứt Kẽ Mã Đáy) Ép Mọi Ứng Dụng Phải Thay Cặp Khóa RSA Định Kỳ (VD 90 Ngày 1 Lần Trút Cáp Mạch).
-> 2. Đừng Ngu Ngốc Upload Bằng Tay Public Key Lên Bảng Admin Console Trượt Nhựa Khúc Tới Ngay Mạch. Hãy Cấu Hình Trên Bề Mặt Tab Keys Của Keycloak Dùng Phương Thức: **`JWKS URL`**.
-> 3. Cung Cấp 1 Cửa Link API Lệnh Tĩnh Cáp Mạch (VD: `https://app-chuyen-tien.com/.well-known/jwks.json`).
-> 4. Thằng App Ở Dưới Tự Sinh Khóa Mới Oanh Mạng Bắt Lụa Đáy DB Lệnh Chữ Nghĩa Cũ Cắt Cáp Lệnh, Nó Cứ Nhả Khóa Public Mới Lên Cái Cửa Link JWKS Đó Lệnh Rút Lụa. Keycloak Trên Đỉnh Chóp Mỗi Lần Cần Check Ký Sẽ Tự Chạy Xuống Đáy Bọt Nhựa Cắn Cái File JSON Đó Cập Nhật Khóa Mới. Server Chạy Bất Tử 100 Năm Không Hề Downtime Rách Đáy Lỗ Bọt Cắt Trắng Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép!
+> Nên sử dụng JWKS (JSON Web Key Set) URL thay vì hardcode Public Key vào Keycloak. Khi Client tự host một endpoint JWKS, nó có thể tự động xoay vòng khóa (Key Rotation) mà không cần admin vào cấu hình lại Keycloak.
 
----
+> [!WARNING]
+> Thuật toán ký mặc định thường là `RS256` (RSA-SHA256). Không bao giờ được phép cấu hình thuật toán `none` trong header của JWT. Keycloak mặc định chặn điều này, nhưng một số thư viện có thể bị lỗi cấu hình.
+
+- **Độ dài khóa:** Sử dụng RSA với độ dài ít nhất là 2048-bit hoặc chuyển sang thuật toán ECDSA (ví dụ: `ES256`) để có hiệu năng tốt hơn và kích thước token nhỏ hơn.
 
 ## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
-Lắp Ráp Cấu Hình Client Lõi Ngân Hàng Authentication Private Key JWT Trên Keycloak:
-1. Vào Mạch Client Oanh Cáp `core-bank-api` (Confidential OIDC Mạch Nhựa Dữ Cốt).
-2. Tab **Credentials** (Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Khớp Lệnh).
-3. Đổi Chóp **Client Authenticator** Sang **`Client Jwt`**. Keycloak Lập Tức Chặt Lệnh Không Cho Xài Mật Khẩu Băm Tĩnh Nữa Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống!
-4. Tiếp Tục Vào Tab **Keys** Của Client Mạch Kẽ.
-   - Bạn Bấm Nút **`Generate new keys`**. Keycloak Sẽ Tự Chạy Code Sinh Giúp Bạn 1 Cặp RSA Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ. (Cái Private Key Sinh Ra Nó Sẽ Nhả Vào Trình Duyệt Bắt Bạn Save Vào Máy Ổ Cứng Và Chôn Nó Trong Code Spring Boot Đỉnh Đáy Oanh Mạng Bắt Lụa). Keycloak Tự Giữ Lại Cục Public Key Cho Nó Lệnh Đáy Khung Cắt!
-   - Hoặc Đỉnh Hơn Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch, Ở Tab **Keys** Bạn Chọn **`Use JWKS URL`** = ON Lệnh Chóp Rút. Rồi Dán API Chóp Lệnh Trút Lụa Code Của Thằng Spring Nhả Key Vô. Hoàn Mỹ Giao Dịch Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt!
+**Cấu hình trên Keycloak Admin Console:**
+1. Chọn Client -> Tab **Credentials**.
+2. Client Authenticator: `Signed Jwt`.
+3. Tab **Keys**: Bật `Use JWKS URL` và nhập URL của Client cung cấp Public Key (ví dụ: `https://my-client.com/.well-known/jwks.json`).
 
----
+**Mã giả tạo Client Assertion (bằng Java/Nimbus JOSE):**
 
-## 5. Câu hỏi Phỏng vấn (Interview Questions)
+```java
+import com.nimbusds.jose.*;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jwt.*;
+import java.util.Date;
+import java.util.UUID;
 
-**1. Trong Giao Thức FAPI Chuẩn OIDC Bọc Mạch Nhựa Trút Khung. Tại Sao Mọi Khách Hàng Ngân Hàng Lệnh Tĩnh Bọt Mạch Cáp 1 Phiên Bắt Buộc Phải Dùng 'Private Key JWT' Hoặc 'MTLS' Để Xác Thực Máy Chủ Giao Diện Chặt Mạch Lụa Mà Không Được Dùng Lệnh 'Client Secret Basic' Đáy Oanh Mạch Rút Trọng Mạch Lệnh Cũ Rích Oanh Khung Dịch Lụa?**
-- **Senior:** Dạ thưa sếp, Chỗ Này Chạm Thẳng Vào Cốt Lõi Kiến Trúc OIDC Lệnh JSON Xưa Khó Làm Đáy Oanh Mạng Trượt Mạng Bọt Đỉnh Chóp Chống Lừa Đảo Phishing Lệnh Khớp Oanh Rỗng:
-  - Tất Cả Các Chuẩn Mật Khẩu Chia Sẻ (Shared-Secret Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Như Lesson 1 & 2) Mang Rủi Ro Lộ Bọt Khung Oanh Lụa Ở Phía Máy Chủ Auth Server Đỉnh Lỗ Lệnh Cắt Băng Tần Khung Oanh Mạng. Nếu Cơ Sở Dữ Liệu Keycloak Bị Đục Thủng Trút Lụa Bọt Kẽ Mã Đáy, Hacker Sẽ Dùng Các Chuỗi Secret Đó Giả Mạo App Khách Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
-  - Luồng Asymmetric Mạch Kẽ Oanh Bọc Khớp Lệnh Bất Đối Xứng Cắt Đứt Nối Dòng Khách Hàng Oanh Lõi Trọng Điểm Của Lesson 3 Mang Quyền Lực Đỉnh Cao Mạch Oanh Giao Dịch: Lãnh Chúa Keycloak Trút Code Lỗ Bọt Cắt Trắng Chỉ Giữ Public Key Đáy DB Lụa Mạng Mạch. Kể Cả CSDL Keycloak Bị Hack Nát Tương Bần Lệnh Chóp Cắt Bọt Khung Oanh Cáp, Hacker Cũng Chỉ Ăn Cấp Được Rác Công Khai (Public Key Dịch Tễ Oanh Khung). Kẻ Địch Cướp Mạng KHÔNG TÀI NÀO Mô Phỏng Lại Được Chữ Ký Để Đục App Ngân Hàng Lệnh Đáy Oanh Lụa Vì Private Key Thép Nằm Trọng Két Chôn Dưới Đất Của Trụ Sở Ngân Hàng Bọc Lệnh Cũ Đỉnh Chóp! Đẳng Cấp Thượng Thừa Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ!
+// Tải Private Key của Client
+JWK jwk = JWK.parseFromPEMEncodedObjects(privateKeyPemString);
+RSAKey rsaKey = jwk.toRSAKey();
+JWSSigner signer = new RSASSASigner(rsaKey);
 
----
+// Tạo Claims
+JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+    .issuer("my-client")
+    .subject("my-client")
+    .audience("http://keycloak:8080/realms/myrealm/protocol/openid-connect/token")
+    .expirationTime(new Date(new Date().getTime() + 60 * 1000)) // 60 giây
+    .jwtID(UUID.randomUUID().toString()) // jti ngẫu nhiên
+    .build();
 
-## 6. Tài liệu tham khảo (References)
-- **RFC 7523:** JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication (Private Key).
-- **Keycloak Documentation:** Private Key JWT Authentication.
+SignedJWT signedJWT = new SignedJWT(
+    new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(rsaKey.getKeyID()).build(),
+    claimsSet
+);
+
+// Ký JWT
+signedJWT.sign(signer);
+String clientAssertion = signedJWT.serialize();
+
+// clientAssertion này sẽ được gửi kèm trong POST request tới Keycloak.
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Lệch thời gian (Clock Skew):** Nếu máy chủ Client chạy nhanh hơn máy chủ Keycloak, claim `nbf` (Not Before) hoặc `exp` có thể bị đánh giá sai. Keycloak có dung sai nhỏ, nhưng cần cài đặt NTP trên tất cả các server.
+- **Cache JWKS bị cũ (Stale Cache):** Keycloak cache cấu hình JWKS của Client để tăng tốc. Nếu Client thực hiện Key Rotation (đổi khóa mới) nhưng Keycloak chưa hết TTL cache, request sẽ bị từ chối với lỗi Invalid Signature.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+1. **[Junior]** Private Key JWT khác với Client Secret cơ bản ở điểm nào?
+   - *Đáp án:* Private Key JWT không gửi Secret qua mạng; thay vào đó nó gửi một Token được ký bằng Private Key. Keycloak dùng Public Key để xác minh.
+2. **[Junior]** Giao thức OAuth2 gọi tham số dùng để truyền JWT của client là gì?
+   - *Đáp án:* `client_assertion` với `client_assertion_type` là `urn:ietf:params:oauth:client-assertion-type:jwt-bearer`.
+3. **[Senior]** Làm thế nào Keycloak chống lại tấn công Replay Attack khi dùng Private Key JWT?
+   - *Đáp án:* Keycloak kiểm tra claim `jti` (JWT ID). Nếu Keycloak nhận được một Token với `jti` đã từng được xử lý (và chưa hết hạn), nó sẽ từ chối Request.
+4. **[Senior]** Nếu bạn phải chọn giữa mTLS và Private Key JWT cho Server-to-Server communication, bạn chọn cái nào?
+   - *Đáp án:* mTLS thường được chọn khi cần bảo mật ở tầng Transport và có PKI nội bộ mạnh mẽ (như Service Mesh). Private Key JWT linh hoạt hơn cho tầng Application và không yêu cầu cấu hình proxy/load-balancer phức tạp.
+5. **[Senior]** Quá trình Key Rotation diễn ra tự động như thế nào với Private Key JWT?
+   - *Đáp án:* Client tạo cặp khóa mới, update JWKS endpoint với Public Key mới (kèm `kid` mới). Client bắt đầu ký JWT với Private key mới và để `kid` mới trong Header. Khi Keycloak thấy `kid` không có trong cache, nó sẽ tự động fetch lại JWKS từ Client.
+
+## 7. Tài liệu tham khảo (References)
+- [RFC 7523: JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication](https://datatracker.ietf.org/doc/html/rfc7523)
+- [Keycloak Official Docs: Client Authentication](https://www.keycloak.org/docs/latest/server_admin/#_client-auth-signed-jwt)

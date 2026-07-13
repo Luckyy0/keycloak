@@ -1,66 +1,94 @@
-# Lesson 2: Tự Chế API Trong Lòng Địch (Custom REST Endpoint)
-
 > [!NOTE]
-> **Category:** Theory & Practical (Lý thuyết & Thực hành)
-> **Goal:** Lõi Keycloak đã có sẵn Admin REST API Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Nhưng nếu nghiệp vụ của bạn đòi hỏi 1 đường dẫn API đặc thù (VD: Lấy danh sách bạn bè của user Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) mà Keycloak không có? Bài này hướng dẫn cách đẻ thêm API "nhà làm" trực tiếp vào bụng hệ thống Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
+> **Category:** Theory (Lý thuyết)
+> **Goal:** Nghiên cứu về kiến trúc RealmResourceProvider SPI, cách thức mở rộng API mặc định của Keycloak bằng cách tạo các Custom REST Endpoints để phục vụ nghiệp vụ chuyên biệt.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Keycloak cung cấp một bộ Admin REST API vô cùng mạnh mẽ cho việc quản lý (CRUD users, clients, roles). Tuy nhiên, có những bài toán nghiệp vụ đặc thù mà API mặc định không thể đáp ứng một cách hiệu quả, ví dụ:
+- Xóa hàng loạt dữ liệu rác (Bulk operations) trong một thao tác duy nhất.
+- Truy vấn dữ liệu thống kê tùy biến (như lấy số lượng người dùng đã kích hoạt MFA trong vòng 30 ngày qua).
+- Expose một endpoint không xác thực (public) cho một microservice khác gọi vào webhook.
 
-### 1.1. SPI Huyền Thoại: `RealmResourceProvider` Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-Bất cứ khi nào bạn muốn móc một đường link URL hoàn toàn mới tinh vào Keycloak Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, bạn bắt buộc phải cắm mạch điện vào cái Lỗ (SPI) có tên là `RealmResourceProvider`.
-- Nó cho phép bạn đăng ký 1 Cây Thư Mục API nương tựa bên dưới URL của Realm hiện tại Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh.
-- Gốc URL của bạn sẽ luôn luôn là Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy: `http://localhost:8080/realms/{realm_name}/{id_của_bạn}/...` Oanh Khung Dịch Lụa Mạch Lệnh
-- Bản thân Lõi Quarkus tích hợp sẵn công nghệ **JAX-RS (Java API for RESTful Web Services Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa)** Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Nghĩa là bạn tha hồ dùng các thẻ Annotations thân thuộc để dựng HTTP Method như `@GET`, `@POST` Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, `@Path("/hello")` giống hệt như đang làm Spring Boot Controller Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh.
-
-### 1.2. Quyền Năng Của Việc Đứng Cùng Não Với Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Keycloak
-Tại sao không tạo 1 cái App Spring Boot bên ngoài mà hứng API Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, mà lại nhét vào bụng Keycloak Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa?
-Lợi thế Tuyệt Đỉnh Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp: API được nhúng bên trong lõi có Quyền Truy Cập TRỰC TIẾP Vào **Tất Cả Các Bảng Database (JPA Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh)** và Bộ Nhớ Cache Của Keycloak Thông Qua Đối Tượng Quyền Lực Nhất `KeycloakSession` Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy.
-Bạn muốn lôi ra danh sách User Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy? Chạm Ngay Một Hàm Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Bạn Muốn Reset Password Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề? Xong Ngay Lập Tức Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị! Không Phải Gọi Qua Lớp Admin REST Nào Nữa Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Tốc độ ánh sáng Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần!
-
----
+Để giải quyết vấn đề này, Keycloak cung cấp **RealmResourceProvider SPI**. Đây là cơ chế cho phép nhà phát triển nhúng trực tiếp các điểm cuối RESTful (REST endpoints) dựa trên tiêu chuẩn JAX-RS (Java API for RESTful Web Services) vào bên trong hệ sinh thái của Keycloak. Endpoint mới này sẽ thừa hưởng cơ sở dữ liệu, các config, và cơ chế bảo mật của Realm hiện tại.
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
-
-Hành Trình Oanh Cáp Bọc Thép Định Tuyến URL Thần Sầu Từ Ngoài Vào Bụng Quái Vật Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:
+Mọi Custom REST Endpoint sẽ được mount (gắn) dưới base URL:
+`http://{host}:{port}/realms/{realm-name}/apis/{provider-id}`
 
 ```mermaid
-graph TD
-    A[Khách Gửi Yêu Cầu GET /realms/master/my-company-api/users/123 Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa] -->|Tomcat/Undertow/Quarkus Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy| B{Bộ Định Tuyến Gốc RESTEasy Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh}
+sequenceDiagram
+    participant Client
+    participant KCRouter as Keycloak JAX-RS Router
+    participant Provider as RealmResourceProvider
+    participant KCSession as KeycloakSession
+    participant DB as Infinispan/Database
     
-    B -->|Bóc Tách URL Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh| C[Nhận Dạng Realm: Master Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp]
-    C -->|Thấy Từ Khóa Lạ `my-company-api` Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa| D[Dò Trong Map Factory Xem Thằng Khứa Nào Đăng Ký ID Này Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh]
-    
-    D -->|Khớp Mã Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh| E(MyCompanyResourceProviderFactory Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa)
-    E -->|Ép Đẻ Cục Nhựa Mới Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh| F[MyCompanyResourceProvider]
-    
-    F -->|Được Tiêm Máu `KeycloakSession` Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng| G[Chạy Hàm Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh `@GET @Path("/users/{id}")`]
-    G -->|Tự Xử Lý Nghiệp Vụ Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần| H(Lôi Dữ Liệu Trong Cục DB Gốc Của Keycloak Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Ra)
-    H -->|Đẩy Qua HTTP Response Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề| I[Trả Lại Chuỗi Json Cho Khách Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy]
+    Client->>KCRouter: GET /realms/myrealm/apis/my-custom-api/stats
+    KCRouter->>KCRouter: Phân tích đường dẫn (Path Analysis)
+    KCRouter->>Provider: Điều hướng đến hàm getStats() (đánh dấu @GET)
+    Provider->>Provider: Validate Auth Token (nếu yêu cầu bảo mật)
+    Provider->>KCSession: Lấy EntityManager hoặc các API nội bộ
+    KCSession->>DB: Truy vấn dữ liệu thống kê
+    DB-->>KCSession: Kết quả ResultSet
+    KCSession-->>Provider: Domain Objects
+    Provider->>Provider: Build JSON Response
+    Provider-->>KCRouter: HTTP 200 OK (JSON Payload)
+    KCRouter-->>Client: Trả về Response cho Client
 ```
 
----
+Cơ chế cấp thấp:
+- Khởi chạy bởi `RealmResourceProviderFactory`.
+- Interface chính là `RealmResourceProvider` có duy nhất một hàm `Object getResource()`. Hàm này trả về một JAX-RS Controller (chứa các annotation `@GET`, `@POST`, `@Path`, `@Produces`).
+- Bản thân class trả về sẽ nhận đối tượng siêu quan trọng là `KeycloakSession`, từ đó có thể lấy được toàn bộ trạng thái hệ thống.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Mở Toang Cửa Hậu Lỗ Hổng Bảo Mật Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị)**
-> **Tội Ác Viết API Mà Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Quên Gác Cổng (No Authentication Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa):** Lập Trình Viên Hớn Hở Viết 1 Cái API Bằng `@GET @Path("/users")` Trả Về Toàn Bộ Email Và SĐT Của Khách. Build Xong Đẩy Lên Chạy Ầm Ầm. Đem Cái URL Đó Vào Trình Duyệt Gõ Một Phát Oanh Khung Dịch Lụa Mạch Lệnh Nó Ói Ra Toàn Bộ Data JSON Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! 
-> **Hậu Quả Chết Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp:** 
-> Bất Cứ URL Nào Bạn Đẻ Ra Bằng `RealmResourceProvider` Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề ĐỀU NẰM TRONG VÙNG ĐẤT TỰ DO (Public / Unauthenticated Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) THEO MẶC ĐỊNH! Không Hề Có Sự Kiểm Duyệt Token Của Keycloak Nào Gác Cổng Cho Bạn Cả Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Bạn Vừa Vô Tình Cống Nạp Toàn Bộ Dữ Liệu Ngân Hàng Cho Hacker Xem Chùa Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-> **Biện Pháp Sống Còn Lớp Trọng Lực OIDC Đáy Lụa:** NẾU API Trả Về Dữ Liệu Nhạy Cảm Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, BẠN BẮT BUỘC Phải Tự Tay Viết Lệnh Giải Mã Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh Bắt Ép HTTP Header `Authorization: Bearer <Token>` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Và Ném Vào Bộ Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh `AppAuthManager` Của Keycloak Để Xác Thực Chữ Ký Token Ngay Tại Dòng Đầu Tiên Của Hàm `@GET` Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Cấm Tuyệt Đối Viết Hàm "Thả Truồng" Nhé Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa!
+> [!WARNING]
+> Mặc định các Custom REST Endpoint tự tạo ra là hoàn toàn **Công khai (Public)**. Không có cơ chế bảo vệ tự động nào được áp dụng. Nếu endpoint trả về thông tin nhạy cảm, bạn BẮT BUỘC phải lập trình thủ công việc kiểm tra Bearer Token ở đầu hàm.
 
----
+> [!IMPORTANT]
+> Cần thận trọng khi thao tác ghi (Write) trực tiếp vào Database thông qua Hibernate/JPA bên trong Custom Endpoint mà bỏ qua các API Event của Keycloak. Điều này có thể làm Cache của Keycloak bị sai lệch (Stale Cache) và không kích hoạt được các trigger. Hãy sử dụng các phương thức có sẵn như `session.users().addUser()` thay vì tự viết SQL Insert.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+Bảo vệ một Custom Endpoint:
+```java
+@GET
+@Path("/hello")
+@Produces(MediaType.APPLICATION_JSON)
+public Response getHello() {
+    // 1. Lấy context và check auth
+    AuthResult auth = new AppAuthManager.BearerTokenAuthenticator(session)
+            .setRealm(session.getContext().getRealm())
+            .setConnection(session.getContext().getConnection())
+            .setHeaders(session.getContext().getRequestHeaders())
+            .authenticate();
 
-**1. Sếp Dev Nói Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy: "Anh Thấy Viết API Trực Tiếp Trong Bụng Keycloak Chạy Nhanh Quá Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Vậy Có Cần Đẻ Ra Mấy Thằng Spring Boot Nữa Không Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh? Mình Đem Nguyên Cái Ứng Dụng Bán Hàng Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần, App Ngân Hàng Viết Code Tất Cả Vào Trong RealmResourceProvider Này Chạy Có Phải Bá Đạo Không Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy? Em Nghĩ Sao Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng?"**
-- **Senior:** Dạ Thưa Sếp Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Đây Là Lối Suy Nghĩ Đi Ngược Với Triết Lý Microservices Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! 
-  - Nhiệm vụ tối thượng của Keycloak là CẤP PHÁT DANH TÍNH (IAM Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp). Nó Phải Là Thành Trì Bất Khả Xâm Phạm Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. 
-  - Việc Nhồi Nhét Cái Đống API Liên Quan Đến "Tạo Chuyển Tiền" Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, "Mua Hàng" Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Bằng Việc Ép Chặt Code Vào RealmResource Sẽ Biến Máy Chủ Bảo Mật Thành 1 Cục Rác Mono-lith Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! 
-  - Chỉ Cần 1 Dòng Code Tính Toán Vòng Lặp Vô Hạn Của Thằng Mua Hàng Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cũng Đủ Đóng Băng Cột CPU Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy Đánh Sập Toàn Bộ Hệ Thống Đăng Nhập Của Hàng Trăm Dịch Vụ Khác Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! 
-  - Lời Khuyên Là Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: Chỉ Viết Custom API Cho Các Nghiệp Vụ Có Tính Chất BỔ TRỢ TRỰC TIẾP Vào Dòng Chảy Của IAM (Ví Dụ Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị: Cung Cấp Thông Tin Thống Kê Session User Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Endpoint Xác Thực MFA Dị Bản Oanh Khung Dịch Lụa Mạch Lệnh). Tuyệt Đối Không Dùng Để Code Business Bán Hàng Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp!
+    if (auth == null || auth.getToken() == null) {
+        return Response.status(Response.Status.UNAUTHORIZED).build();
+    }
 
----
+    // 2. Xử lý nghiệp vụ nếu token hợp lệ
+    String username = auth.getUser().getUsername();
+    return Response.ok("{\"message\": \"Hello " + username + "\"}").build();
+}
+```
+Đoạn code trên trình bày chuẩn mực việc kiểm tra token hợp lệ trong Custom Endpoint.
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Documentation:** Server Developer Guide - REST API SPI.
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **CORS Error:** JAX-RS của Keycloak hỗ trợ cấu hình CORS mặc định, nhưng đối với các Custom Endpoints, đôi khi trình duyệt sẽ ném lỗi CORS vì request `OPTIONS` (Preflight) không được xử lý chính xác. Bạn cần tự thiết kế một phương thức với annotation `@OPTIONS` trên cùng Path để trả về Header `Access-Control-Allow-Origin` phù hợp.
+- **Transaction Rollback:** Nếu nghiệp vụ trong endpoint thay đổi 10 users mà bị lỗi ở user thứ 9, bạn cần quản lý Transaction một cách cẩn thận, đảm bảo catch Exception và gọi `session.getTransactionManager().setRollbackOnly()` để tránh lưu dữ liệu rác.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+- **Câu hỏi 1 (Junior):** Tại sao lại cần viết Custom REST Endpoint trong Keycloak?
+  - *Đáp án Junior:* Để tạo ra các API trả về dữ liệu riêng biệt theo yêu cầu của ứng dụng mà API chuẩn của Keycloak (Admin API) không hỗ trợ.
+- **Câu hỏi 2 (Junior):** Các thư viện nào được sử dụng để xây dựng các REST endpoint này?
+  - *Đáp án Junior:* Dùng JAX-RS API (với các annotation như `@GET`, `@Path`, `@Produces` của thư viện `javax.ws.rs` hoặc `jakarta.ws.rs` ở bản mới).
+- **Câu hỏi 3 (Senior):** Làm thế nào để giải quyết vấn đề bảo mật (Authentication) khi gọi vào một Custom REST Endpoint?
+  - *Đáp án Senior:* Custom Endpoint mặc định là không bảo mật. Ta cần dùng `AppAuthManager.BearerTokenAuthenticator` để xác thực Access Token trong context request. Sau đó có thể kiểm tra tiếp Role của user (Authorization) trước khi trả dữ liệu.
+- **Câu hỏi 4 (Senior):** Sự khác nhau giữa RealmResourceProvider và AdminRealmResourceProvider?
+  - *Đáp án Senior:* `RealmResourceProvider` mount endpoint dưới `/realms/{realm}/apis/{provider-id}`, không yêu cầu tài khoản Admin. `AdminRealmResourceProvider` mount API dưới nhánh Admin console (đã xác thực và yêu cầu quyền Admin của realm).
+- **Câu hỏi 5 (Senior):** KeycloakSession đóng vai trò gì khi viết plugin Custom Endpoint?
+  - *Đáp án Senior:* Nó là God object (Context trung tâm) của Keycloak, cấp cho developer quyền truy cập vào Entity Manager, Cache provider, cấu hình hiện hành của Realm, và thông tin User request hiện tại.
+
+## 7. Tài liệu tham khảo (References)
+- [Keycloak SPI - Server Development (Custom REST Endpoints)](https://www.keycloak.org/docs/latest/server_development/#_extensions_rest)
+- [Jakarta RESTful Web Services Specification](https://jakarta.ee/specifications/restful-ws/)

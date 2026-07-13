@@ -1,75 +1,134 @@
-# Lesson 3: Phân Luồng Rẽ Nhánh (Conditional Logic)
-
 > [!NOTE]
-> **Category:** Theory & Practical (Lý thuyết & Thực hành)
-> **Goal:** Trong chương 13 (Authentication Flows) Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, bạn đã học cách dùng Giao Diện Admin để cài đặt luồng Conditional (Condition - User Configured Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Condition - User Role Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Nhưng ở mức độ Enterprise Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Khách hàng đòi hỏi một luật rẽ nhánh Cực Kỳ Quái Đản Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Ví dụ: *"Nếu ông này đăng nhập từ Mạng Công Ty (IP = 10.0.0.x) VÀ Hết Tiền Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy VÀ Ngày Sinh Của Ổng Thuộc Cung Bọ Cạp -> Cho Qua Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Còn Lại Ép Nhập OTP!"* Keycloak Giao Diện Không Thể Làm Nổi Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. Bài này hướng dẫn đẻ ra 1 cục Conditional Authenticator Bằng Java!
+> **Category:** Theory
+> **Goal:** Hiểu sâu về luồng xác thực có điều kiện (Conditional Authentication) trong Keycloak. Nắm rõ cách hoạt động của `ConditionalAuthenticator` và các cơ chế can thiệp linh hoạt (bypass, require) dựa trên ngữ cảnh (context) của người dùng như địa chỉ IP, vai trò (role) hay tiêu đề HTTP.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
 
-### 1.1. Bản Chất Của Conditional Authenticator Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-Bản chất của các cục Condition (Cục có biểu tượng Rẽ Nhánh trong Giao diện Admin Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh) nó không Render HTML Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, cũng không bắt User nhập POST HTTP cái gì cả Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. 
-Nó Đóng Vai Trò Là **NGƯỜI GÁC CỔNG VÔ HÌNH Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa**.
-Để code một Cục Rẽ Nhánh bằng Java Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, bạn không implements Interface `Authenticator` thông thường nữa Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, mà phải Implements cái Giao Diện Tối Thượng Này Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy: `ConditionalAuthenticator` (Thuộc package `org.keycloak.authentication.authenticators.conditional`).
+Trong các hệ thống Enterprise, xác thực tĩnh (luôn bắt buộc một quy trình cố định) thường gây khó chịu cho người dùng (friction) và làm giảm trải nghiệm UI/UX (ví dụ: bắt nhập OTP mọi lúc mọi nơi).
 
-Interface này cung cấp cho bạn 1 hàm duy nhất mang tính Quyết Định Mệnh Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh:
-```java
-boolean matchCondition(AuthenticationFlowContext context);
-```
-- Nếu hàm này `return true;` Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp -> Luồng đi qua trót lọt Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Những khối Authenticator nằm ngang hàng với nó (Hoặc nằm con của Sub-Flow) sẽ được kích hoạt!
-- Nếu hàm này `return false;` Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa -> Cánh Cửa Đóng Sập Lại Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Tất cả các khối xác thực con đính kèm với nó sẽ BỊ BỎ QUA HOÀN TOÀN (Bypass Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề).
+**Conditional Logic (Xác thực có điều kiện)** là khả năng cấu hình một luồng Authentication Flow sao cho một bước xác thực (Authenticator) cụ thể chỉ được kích hoạt (Executed) khi một tập hợp các điều kiện nhất định được thỏa mãn.
 
-### 1.2. Ứng Dụng Đọc Ngữ Cảnh Xâm Nhập (Context Introspection)
-Trong hàm `matchCondition` Oanh Khung Dịch Lụa Mạch Lệnh, Bạn Nắm Trong Tay Biến `context` Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. Nhờ biến này bạn soi được mọi ngóc ngách của Khách Hàng Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng:
-- **Soi IP Khách Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp:** `context.getConnection().getRemoteAddr()` (Biết được khách dùng Wifi Công Ty hay Quán Cafe Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa).
-- **Soi HTTP Header Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:** `context.getHttpRequest().getHttpHeaders().getHeaderString("User-Agent")` (Biết được khách xài Android App hay Trình Duyệt Chrome Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. Nếu Android App thì Bắt Điền Số Điện Thoại Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh).
-- **Soi Role User Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề:** `context.getUser().hasRole(myRole)` (Chỉ Sếp Tổng Mới Cần Phải Xác Thực Bằng SMS Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Nhân Viên Lèn Phèn Cho Qua).
+Trong Keycloak, để thực hiện tính năng này, framework cung cấp một Interface đặc biệt là `ConditionalAuthenticator`. Nó không trực tiếp xác thực mật khẩu hay OTP, mà đóng vai trò như một **bộ lọc (Filter / Gatekeeper)**. Nó kiểm tra Context (thông tin User, Headers, IP, Request) và đưa ra quyết định Boolean:
+- **True (Thỏa mãn)**: Hệ thống sẽ tiến hành thực thi (Execute) Authenticator liền kề phía sau nó trong luồng xác thực.
+- **False (Không thỏa mãn)**: Hệ thống sẽ bỏ qua (Bypass) Authenticator đó và đi tới bước tiếp theo.
 
----
+Việc thiết kế hệ thống có điều kiện giải quyết bài toán: **Cân bằng giữa Bảo mật (Security) và Trải nghiệm người dùng (Usability)**. Ví dụ: "Nếu IP là mạng nội bộ công ty (Intranet), không cần hỏi OTP; nếu là mạng Public, bắt buộc hỏi OTP".
 
 ## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
 
-Hành Trình Oanh Cáp Bọc Thép Kiểm Soát Lưu Lượng Mạng Bằng Điều Kiện Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:
+Khi một Authentication Flow (có chứa Sub-Flow dạng Conditional) được kích hoạt, máy trạng thái (State Machine) của Keycloak sẽ duyệt qua các execution steps.
 
 ```mermaid
-graph TD
-    A[Khách Hàng Đăng Nhập Thành Công Username/Pass Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh] --> B{Bắt Đầu Cụm Sub-Flow: Đánh Giá Rủi Ro Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh}
+sequenceDiagram
+    participant Browser
+    participant Flow as Authentication Flow Manager
+    participant CondAuth as Conditional Authenticator
+    participant RealAuth as OTP Authenticator (Required if true)
+
+    Browser->>Flow: Request Đăng nhập (với User & Pass)
+    Flow->>Flow: Xác thực thành công mật khẩu
+    Flow->>CondAuth: matchCondition(AuthenticationExecutionModel)
+    Note over CondAuth: Phân tích AuthenticationFlowContext (ví dụ: lấy IP, kiểm tra Role)
     
-    B --> C[Custom Conditional IP Authenticator Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh]
+    alt Điều kiện thỏa mãn (Ví dụ: IP ngoài công ty)
+        CondAuth-->>Flow: Trả về TRUE
+        Flow->>RealAuth: action() / authenticate()
+        RealAuth-->>Browser: Trả về Form nhập OTP
+        Browser->>RealAuth: Nhập OTP
+        RealAuth-->>Flow: Trả về SUCCESS
+    else Điều kiện KHÔNG thỏa mãn (Ví dụ: IP nội bộ)
+        CondAuth-->>Flow: Trả về FALSE
+        Note over Flow: Bỏ qua (Bypass) RealAuth
+    end
     
-    C -->|Chạy Hàm matchCondition() Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh| D{IP Có Phải Là 10.0.0.x Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề?}
-    
-    D -->|True (IP Công Ty Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa)| E[Cục Điều Kiện Báo Cáo Thành Công Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy]
-    E --> F[Luồng SMS Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần OTP Bị KÍCH HOẠT Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa - Quái Lạ Nhỉ Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh?] 
-    
-    D -->|False (Đang Ngồi Quán Cafe Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa)| G[Cục Điều Kiện Báo Cáo Fail Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa]
-    G --> H[Luồng SMS OTP Bị BỎ QUA - Bỏ Qua Cái Gì Vậy Oanh Khung Dịch Lụa Mạch Lệnh?]
+    Flow-->>Browser: Trả về Access Token (Đăng nhập thành công)
 ```
 
-> **Ghi Chú Rất Căng Thẳng (Very Tricky Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa):** Bạn hãy đọc kỹ luồng trên Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp. Nếu "IP Công Ty" mà sinh ra "True" Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, thì Lệnh Tiếp Theo Của Luồng Lại Là CHẠY HÀM SMS OTP Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp. (Thế Nghĩa là IP CÔNG TY Phải Nhập OTP À Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy?). 
-> **Đúng! Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa** Logic Mặc định của Condition là ĐÚNG THÌ VÀO Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, SAI THÌ LƯỚT Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Nên nếu bạn muốn làm Ngược Lại (Ở quán cafe mới đòi OTP Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần), bạn phải dùng Cơ Chế Phủ Định (Negation Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề) do Keycloak hỗ trợ sẵn hoặc code Logic `!matchCondition()` Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
-
----
+**Cơ chế đánh giá cấp thấp:**
+1. Một Execution (Bước thực thi) trong Keycloak Admin Console phải được thiết lập là `CONDITIONAL` thay vì `REQUIRED` hay `ALTERNATIVE`.
+2. Phương thức trung tâm là `boolean matchCondition(AuthenticationFlowContext context)`. Keycloak cung cấp toàn bộ context của HTTP request và Session của user thông qua tham số này.
+3. Nếu `matchCondition` trả về `true`, Keycloak sẽ tìm tất cả các Authenticators được thiết lập chung trong Sub-flow đó (cùng cấp bậc) và thực thi chúng.
 
 ## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-> [!CAUTION]
-> **Tuyệt Đỉnh Tẩy Khách Mạng Bọc Thép (Thảm Họa Rò Rỉ Biến Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề)**
-> **Tội Ác Ném Lỗi (Throw Exception) Trong Hàm Của Cục Gác Cổng Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh:** Có Lập Trình Viên Viết Cục Gác Cổng Kiểm Tra Xem Người Dùng Có Bị Cấm Bay Không Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Cậu ta gọi API sang Cục Quản Lý Xuất Nhập Cảnh Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. API Lỗi 500 Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Thế là Cậu ném luôn Lệnh `throw new RuntimeException("API Cục XNC Sập Rồi")` Oanh Khung Dịch Lụa Mạch Lệnh Ra Khỏi Hàm `matchCondition`. 
-> **Hậu Quả Chết Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp:** 
-> Interface này bắt buộc phải trả về Biến Boolean (True/False Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy) Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị. Nếu bạn Ném Exception Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Toàn Bộ Luồng Đăng Nhập Của Keycloak Sẽ Nổ Tung Kèm Theo 1 Trang Màn Hình HTTP 500 Xấu Xí Đập Thẳng Vào Mặt Người Dùng Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
-> **Biện Pháp Sống Còn Lớp Trọng Lực OIDC Đáy Lụa:** Trong Bất Cứ Hàm Nào Của `ConditionalAuthenticator` Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Phải Dùng Khối Lệnh `try-catch` Ôm Trọn Vòng Đời Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Nếu Lỗi Gọi DB Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Hãy Chủ Động Nuốt Lỗi Đó Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Ghi Log File Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh, Và Return Theo Chế Độ Fallback (Mặc Định Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp). (Ví Dụ Nếu Lỗi API Thì Fallback Về False Để Bỏ Qua Luồng Nhập Mã Đó Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa - Cho Khách Chạy Thẳng Vào App Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Tránh Gây Ức Chế Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh).
+> [!TIP]
+> Hãy tận dụng các Conditional Authenticators có sẵn của Keycloak trước khi tự viết (như Condition - User Role, Condition - User configured OTP). Chỉ tự viết khi cần logic kinh doanh rất đặc thù (như gọi API phân tích rủi ro của bên thứ ba).
 
----
+> [!WARNING]
+> Không nên thực hiện các tác vụ chặn I/O quá lâu (như truy vấn Database nặng hoặc gọi API đồng bộ) bên trong hàm `matchCondition()`. Vì đây là bước kiểm tra đồng bộ trong chuỗi luồng xử lý chính, làm như vậy sẽ gây hiện tượng cổ chai (bottleneck) làm giảm Throughput của hệ thống.
 
-## 4. Câu hỏi Phỏng vấn (Interview Questions)
+- **Thứ tự thực thi (Execution Order)**: Hãy luôn đặt các Conditional Authenticators lên TRƯỚC (vị trí đầu tiên) trong Sub-Flow, nếu không logic điều kiện sẽ không được đánh giá kịp thời để quyết định cho các bước phía dưới.
+- **Tính trích xuất (Decoupling)**: Mỗi Condition nên kiểm tra một điều kiện duy nhất (Single Responsibility). Ví dụ: Không gộp kiểm tra IP và kiểm tra Role vào cùng một class. Hãy tách thành 2 Conditions và dùng cấu hình `AND`/`OR` trên giao diện Keycloak.
 
-**1. Em Hiểu Thế Nào Về Tùy Chọn "Negate Condition" Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng (Phủ Định Logic Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) Của Các Khối Điều Kiện (Condition Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh)? Có Phải Mình Phải Viết Thêm Code Java Để Làm Chuyện Đó Không Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa?**
-- **Senior:** Dạ Thưa Sếp Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Không Cần Viết Thêm Code Gì Cả Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy.
-  - "Negate Condition" Là Một Nút Gạt Cấu Hình Rất Thần Thánh Ở Trong Giao Diện Admin Của Cái Luồng Đăng Nhập Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp.
-  - Bản Thân Mỗi Khối Điều Kiện Khi Mình Viết Bằng Java Xong (Trả Về True Hoặc False Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) Oanh Khung Dịch Lụa Mạch Lệnh Khi Gắn Nó Lên Giao Diện Web Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Mình Bật Nút "Negate" Lên Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Thì Lõi Keycloak Sẽ Tự Động Biến Giá Trị Trả Về Của Mình Thành Phủ Định Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh (Nghĩa Là Nếu Code Java Mình Return True Thì Lõi Keycloak Tính Là False Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Chặn Cửa Luôn Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh).
-  - Điều Này Giúp Mình Chỉ Cần Viết Code Duy Nhất 1 Lần Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa (Ví Dụ Cục CheckIPCôngTy Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề). Nếu Khách Muốn "IP Công Ty Thì Ép Nhập SMS" -> Không Bật Negate Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Nếu Khách Muốn "Không Phải IP Công Ty Thì Ép Nhập SMS" -> Bật Negate Lên Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Siêu Tái Sử Dụng Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
 
----
+Dưới đây là một ví dụ viết Custom Conditional Authenticator kiểm tra xem User có địa chỉ email kết thúc bằng đuôi doanh nghiệp cụ thể không.
 
-## 5. Tài liệu tham khảo (References)
-- **Keycloak Source Code:** Search Class `org.keycloak.authentication.authenticators.conditional.ConditionalRoleAuthenticator` trên Github để xem một Ví dụ mẫu xuất sắc Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa!
+**Lớp Condition: `DomainConditionalAuthenticator.java`**
+
+```java
+import org.keycloak.authentication.AuthenticationFlowContext;
+import org.keycloak.authentication.authenticators.conditional.ConditionalAuthenticator;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
+
+public class DomainConditionalAuthenticator implements ConditionalAuthenticator {
+
+    public static final String SINGLETON_ID = "cond-domain-check";
+    
+    @Override
+    public boolean matchCondition(AuthenticationFlowContext context) {
+        UserModel user = context.getUser();
+        if (user == null || user.getEmail() == null) {
+            return false;
+        }
+        
+        // Lấy cấu hình (nếu có định nghĩa từ ProviderFactory)
+        // Trong ví dụ này ta hardcode để dễ hiểu
+        String requiredDomain = "@mycompany.com";
+        
+        // Nếu email là của công ty -> Trả về TRUE để kích hoạt bước tiếp theo (ví dụ: Yêu cầu cập nhật Profile)
+        return user.getEmail().toLowerCase().endsWith(requiredDomain);
+    }
+
+    @Override
+    public void action(AuthenticationFlowContext context) {
+        // Không dùng trong Conditional Authenticator
+    }
+
+    @Override
+    public boolean requiresUser() {
+        // Cần User Model để lấy email
+        return true; 
+    }
+
+    @Override
+    public void setRequiredActions(KeycloakSession session, RealmModel realm, UserModel user) {}
+
+    @Override
+    public void close() {}
+}
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+
+- **User Model là null**: Trong một số luồng (như luồng Reset Password bước đầu tiên), người dùng chưa được định danh. Nếu bạn cấu hình hàm `requiresUser()` trả về `true`, Keycloak sẽ tự động bypass Condition nếu context chưa có User thay vì ném ra Exception (Lỗi Null Pointer).
+- **Lừa đảo IP (IP Spoofing) khi kiểm tra Condition**: Nếu hệ thống của bạn dựa vào `context.getConnection().getRemoteAddr()` để quyết định bypass OTP, kẻ tấn công có thể làm giả IP nội bộ thông qua tiêu đề `X-Forwarded-For`. Giải pháp: Cần thiết lập đúng Reverse Proxy configuration (ví dụ: `PROXY_ADDRESS_FORWARDING=true` trong môi trường JBoss/Quarkus) để Keycloak chỉ tin tưởng header từ Proxy đã được xác thực, tránh bị bypass OTP trái phép.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+
+1. **Junior**: Chức năng chính của Conditional Authenticator trong Keycloak là gì?
+   - *Đáp án*: Nó là một loại bộ lọc xác định xem liệu một bước xác thực cụ thể (như OTP) có cần được thực thi hay không, dựa trên các điều kiện của request, user hoặc cấu hình.
+2. **Junior**: Sub-Flow chứa điều kiện phải được cấu hình loại (Requirement) nào trên Admin Console?
+   - *Đáp án*: Phải được cấu hình là `CONDITIONAL`.
+3. **Senior**: Tại sao phương thức `requiresUser()` trong `ConditionalAuthenticator` lại quan trọng?
+   - *Đáp án*: Nó báo cho Authentication engine của Keycloak biết logic điều kiện này có phụ thuộc vào thông tin người dùng hay không. Nếu `true`, và luồng xác thực lúc đó chưa xác định được danh tính (VD: chưa nhập user/pass), Keycloak sẽ hoãn hoặc bỏ qua điều kiện đó một cách an toàn mà không gây sập hệ thống (NPE).
+4. **Senior**: Nếu có hai Condition (A và B) trong cùng một Conditional Sub-Flow, Keycloak xử lý toán tử Logic giữa chúng như thế nào?
+   - *Đáp án*: Theo mặc định, Keycloak sẽ coi chúng là điều kiện **AND** (tất cả các điều kiện phải thỏa mãn/trả về true). Tuy nhiên, bạn có thể thay đổi thuộc tính `Condition evaluation` thành **OR** nếu cần trên Admin Console đối với cấp độ Sub-Flow.
+
+## 7. Tài liệu tham khảo (References)
+
+- [Keycloak Authentication Flow Documentation](https://www.keycloak.org/docs/latest/server_admin/#_authentication_flows)
+- [Keycloak Server Developer Guide - Custom Conditional Authenticator](https://www.keycloak.org/docs/latest/server_development/#_conditional_authenticators)
+- [RFC 7239: Forwarded HTTP Extension (Security considerations for IP context)](https://datatracker.ietf.org/doc/html/rfc7239)

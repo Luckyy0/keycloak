@@ -1,131 +1,160 @@
-# Lab 1: Nhúng API Đếm User Bằng Java JAX-RS 
-
 > [!NOTE]
 > **Category:** Practical/Lab (Thực hành)
-> **Goal:** Tự tay viết một Giao Diện SPI API tên là `RealmResourceProvider` Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Bạn sẽ móc 1 API có tên đường dẫn `/hello` Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, khi gọi vào API đó nó sẽ trực tiếp chọc vào Session của Keycloak để đếm số người dùng đang tồn tại trong Realm Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
+> **Goal:** Xây dựng, biên dịch và triển khai (deploy) một Custom REST Endpoint SPI vào hệ thống Keycloak. Học cách viết Java Provider và nạp vào máy chủ Quarkus.
 
-## 1. Yêu cầu (Prerequisites)
-- Đã hoàn thành Lab 1 của Chương 24 (Biết cách dùng Maven và tạo Thư mục META-INF Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh).
+## 1. Kịch bản Thực hành (Lab Scenario)
+Doanh nghiệp yêu cầu một Endpoint công khai trả về trạng thái "Ping" nội bộ và thông tin của Realm hiện hành để hệ thống Monitoring sức khỏe (Health Check) bên ngoài có thể gọi liên tục mà không cần xác thực. Bạn cần tạo một `RealmResourceProvider` thực hiện nhiệm vụ này và nhúng vào Keycloak.
 
-## 2. Các bước thực hiện (Step-by-step)
+## 2. Chuẩn bị Môi trường (Prerequisites)
+- Đã cài đặt JDK 17 (hoặc mới nhất).
+- Đã cài đặt Maven 3.x.
+- Đã cài đặt Keycloak dựa trên Quarkus.
+- Bất kỳ Java IDE nào (IntelliJ IDEA, Eclipse, VSCode).
 
-### Bước 1: Khởi Tạo File POM.xml Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Lệnh Mạch Bọt Lõi Trút Code Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-Giữ nguyên file POM như Chương 24 Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Bổ sung thêm JAX-RS API Để Có Thẻ `@GET`:
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-```xml
-        <dependency>
-            <groupId>jakarta.ws.rs</groupId>
-            <artifactId>jakarta.ws.rs-api</artifactId>
-            <version>3.1.0</version>
-            <scope>provided</scope>
-        </dependency>
-```
+### Bước 3.1: Khởi tạo Project Maven
+1. Mở Terminal và tạo thư mục project `kc-custom-rest`.
+2. Tạo file `pom.xml` với nội dung khai báo các phụ thuộc của Keycloak (Lưu ý thay version Keycloak trùng với server đang dùng):
+   ```xml
+   <project xmlns="http://maven.apache.org/POM/4.0.0" ...>
+       <modelVersion>4.0.0</modelVersion>
+       <groupId>com.company.keycloak</groupId>
+       <artifactId>custom-rest-endpoint</artifactId>
+       <version>1.0.0</version>
+       <dependencies>
+           <dependency>
+               <groupId>org.keycloak</groupId>
+               <artifactId>keycloak-core</artifactId>
+               <version>22.0.0</version> <!-- Chỉnh theo thực tế -->
+               <scope>provided</scope>
+           </dependency>
+           <dependency>
+               <groupId>org.keycloak</groupId>
+               <artifactId>keycloak-server-spi</artifactId>
+               <version>22.0.0</version>
+               <scope>provided</scope>
+           </dependency>
+           <dependency>
+               <groupId>org.keycloak</groupId>
+               <artifactId>keycloak-services</artifactId>
+               <version>22.0.0</version>
+               <scope>provided</scope>
+           </dependency>
+       </dependencies>
+   </project>
+   ```
 
-### Bước 2: Viết Cục Nhựa API Tùy Chỉnh (Custom Resource Provider Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa)
-Tạo file: `src/main/java/com/mycompany/MyApiProvider.java` Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
+### Bước 3.2: Viết mã nguồn Provider
+1. Tạo class `MyRestResource.java`:
+   ```java
+   package com.company.keycloak.rest;
 
-```java
-package com.mycompany;
+   import org.keycloak.models.KeycloakSession;
+   import jakarta.ws.rs.GET;
+   import jakarta.ws.rs.Path;
+   import jakarta.ws.rs.Produces;
+   import jakarta.ws.rs.core.MediaType;
+   import jakarta.ws.rs.core.Response;
 
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.MediaType;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.services.resource.RealmResourceProvider;
+   public class MyRestResource {
+       private final KeycloakSession session;
 
-import java.util.HashMap;
-import java.util.Map;
+       public MyRestResource(KeycloakSession session) {
+           this.session = session;
+       }
 
-public class MyApiProvider implements RealmResourceProvider {
+       @GET
+       @Path("/ping")
+       @Produces(MediaType.APPLICATION_JSON)
+       public Response ping() {
+           String realmName = session.getContext().getRealm().getName();
+           String json = "{\"status\":\"ok\", \"realm\":\"" + realmName + "\"}";
+           return Response.ok(json).build();
+       }
+   }
+   ```
 
-    private final KeycloakSession session;
+2. Tạo class `MyRestResourceProvider.java`:
+   ```java
+   package com.company.keycloak.rest;
 
-    public MyApiProvider(KeycloakSession session) {
-        // Factory đẻ ra cục nhựa này sẽ bơm cho mình Trái Tim Session Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp
-        this.session = session;
-    }
+   import org.keycloak.models.KeycloakSession;
+   import org.keycloak.services.resource.RealmResourceProvider;
 
-    @Override
-    public Object getResource() {
-        // Trả về chính bản thân class này để Quarkus nhận diện URL Định Tuyến Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
-        return this;
-    }
+   public class MyRestResourceProvider implements RealmResourceProvider {
+       private KeycloakSession session;
 
-    @GET
-    @Path("hello")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, Object> sayHello() {
-        Map<String, Object> response = new HashMap<>();
-        
-        // Gọi thẳng lệnh cấm thuật vào Não Keycloak để đếm số User Trong Realm Hiện Tại Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-        int userCount = session.users().getUsersCount(session.getContext().getRealm());
-        
-        response.put("message", "API Nhà Làm Chào Khách Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh!");
-        response.put("realm_name", session.getContext().getRealm().getName());
-        response.put("total_users_in_db", userCount);
-        
-        return response;
-    }
+       public MyRestResourceProvider(KeycloakSession session) {
+           this.session = session;
+       }
 
-    @Override
-    public void close() {
-        // Kệ Xác Nó Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh
-    }
-}
-```
+       @Override
+       public Object getResource() {
+           return new MyRestResource(session);
+       }
 
-### Bước 3: Viết Nhà Máy Sản Xuất API Oanh Khung Dịch Lụa Mạch Lệnh
-Tạo file: `src/main/java/com/mycompany/MyApiProviderFactory.java` Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+       @Override
+       public void close() { }
+   }
+   ```
 
-```java
-package com.mycompany;
+3. Tạo class `MyRestResourceProviderFactory.java`:
+   ```java
+   package com.company.keycloak.rest;
 
-import org.keycloak.Config;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.services.resource.RealmResourceProvider;
-import org.keycloak.services.resource.RealmResourceProviderFactory;
+   import org.keycloak.Config;
+   import org.keycloak.models.KeycloakSession;
+   import org.keycloak.models.KeycloakSessionFactory;
+   import org.keycloak.services.resource.RealmResourceProvider;
+   import org.keycloak.services.resource.RealmResourceProviderFactory;
 
-public class MyApiProviderFactory implements RealmResourceProviderFactory {
+   public class MyRestResourceProviderFactory implements RealmResourceProviderFactory {
 
-    public static final String ID = "my-custom-api";
+       public static final String ID = "health-check";
 
-    @Override
-    public RealmResourceProvider create(KeycloakSession session) {
-        // Cấp phát API cho từng Request Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề
-        return new MyApiProvider(session);
-    }
+       @Override
+       public RealmResourceProvider create(KeycloakSession session) {
+           return new MyRestResourceProvider(session);
+       }
 
-    @Override
-    public void init(Config.Scope config) {}
+       @Override
+       public void init(Config.Scope config) { }
 
-    @Override
-    public void postInit(KeycloakSessionFactory factory) {}
+       @Override
+       public void postInit(KeycloakSessionFactory factory) { }
 
-    @Override
-    public void close() {}
+       @Override
+       public void close() { }
 
-    @Override
-    public String getId() {
-        // Ghi Nhớ ID Của Gốc Định Tuyến Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-        return ID;
-    }
-}
-```
+       @Override
+       public String getId() {
+           return ID;
+       }
+   }
+   ```
 
-### Bước 4: Khai Báo Giấy Phép Cho ServiceLoader Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần
-Tạo file Text Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng: `src/main/resources/META-INF/services/org.keycloak.services.resource.RealmResourceProviderFactory`
-Nội Dung Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị:
-```text
-com.mycompany.MyApiProviderFactory
-```
+### Bước 3.3: Khai báo SPI và Build JAR
+1. Trong cấu trúc thư mục Maven, tạo folder: `src/main/resources/META-INF/services/`.
+2. Tạo file có tên chính xác là: `org.keycloak.services.resource.RealmResourceProviderFactory`.
+3. Điền nội dung duy nhất vào file đó (là đường dẫn đầy đủ đến class Factory):
+   `com.company.keycloak.rest.MyRestResourceProviderFactory`
+4. Chạy lệnh: `mvn clean package`. File JAR sẽ được tạo ra tại thư mục `target/`.
 
-### Bước 5: Build Ra Cục Nhựa Lệnh Oanh Rút Mạch Máu Cắt Đáy Oanh Mạng Bọc Thép Dịch Tễ Lạ Trượt Khung Khớp Lệnh Oanh Rỗng Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh
-Mở terminal gõ: `mvn clean package` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh
+### Bước 3.4: Triển khai vào Keycloak
+1. Copy file `custom-rest-endpoint-1.0.0.jar` vào thư mục `/opt/keycloak/providers/`.
+2. Build lại cấu trúc Quarkus:
+   `bin/kc.sh build`
+3. Khởi động Keycloak:
+   `bin/kc.sh start`
 
-### Bước 6: Test Thành Quả Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề
-1. Chép Gói Jar vào `providers/` Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp và Chạy Lại Docker (Nhớ chạy lẹnh `build` của Keycloak trước Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh).
-2. Sau khi Keycloak khởi động xong Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Mở Postman Hoặc Trình Duyệt Gõ URL Sau Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy:
-`http://localhost:8080/realms/master/my-custom-api/hello`
-3. Tận hưởng cảm giác Giật Sét Đỉnh Cao khi nhận được JSON trả về cực mượt mà Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Chú ý đường dẫn của bạn được ráp nối từ `{Gốc}/realms/{Tên-Realm}/{ID-Của-Factory}/{Tên-Đường-Dẫn-Hàm}` Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+**Nghiệm thu:**
+- Mở trình duyệt hoặc dùng Postman.
+- Gọi vào API: `http://localhost:8080/realms/master/apis/health-check/ping`
+- Kết quả nhận được phải là HTTP 200 OK với body JSON: `{"status":"ok", "realm":"master"}`
+
+**Troubleshooting (Khắc phục sự cố):**
+- Lỗi 404 Not Found khi gọi API: Keycloak không nhận dạng được Provider. Nguyên nhân hàng đầu là sai tên package trong file cấu hình `META-INF/services/` hoặc quên chưa chạy lệnh `kc.sh build` sau khi copy file JAR.
+- Lỗi ClassNotFoundException khi deploy: Có thể bạn đã compile code với version thư viện không đúng với version server Keycloak đang chạy, hoặc dùng scope `compile` làm Maven nhúng lồng các thư viện core của Keycloak vào file JAR. Luôn dùng `<scope>provided</scope>` với các core deps.

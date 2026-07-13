@@ -1,73 +1,125 @@
-# Lab 1: Thực Hành Nâng Cấp Sinh Tử (Migration Lab)
-
 > [!NOTE]
-> **Category:** Practical/Lab (Thực hành)
-> **Goal:** Giả lập trường hợp bạn đang vận hành một Keycloak bản Cũ (v23.0.0). Bạn sẽ tạo dữ liệu, sau đó thực hiện quá trình Dừng Máy, Backup, đổi Image sang Bản Mới (v24.0.1) và theo dõi log để thấy quá trình Database được nâng cấp tự động bởi Liquibase.
+> **Category:** Practical/Lab
+> **Goal:** Hướng dẫn thực hành nâng cấp hệ thống Keycloak từ một phiên bản cũ lên phiên bản mới an toàn, thực hiện sao lưu (backup) cơ sở dữ liệu và xử lý các vấn đề phát sinh trong quá trình di chuyển dữ liệu (migration).
 
-## 1. Yêu cầu (Prerequisites)
-- Docker Compose.
+## 1. Kịch bản Thực hành (Lab Scenario)
 
-## 2. Các bước thực hiện (Step-by-step)
+Trong bài lab này, chúng ta sẽ mô phỏng một môi trường doanh nghiệp đang sử dụng Keycloak ở phiên bản cũ (ví dụ: `21.1.2`) với cơ sở dữ liệu PostgreSQL. Yêu cầu đặt ra là phải nâng cấp hệ thống lên một phiên bản mới hơn (ví dụ: `24.0.2`). 
 
-### Bước 1: Khởi động Quá Khứ (Bản 23.0.0)
-Tạo file `code/docker-compose.yml` (Đã được chuẩn bị sẵn ở thư mục `code/`). Chú ý dòng Image đang trỏ tới bản 23:
+Quá trình nâng cấp (Upgrade) trong Keycloak không chỉ đơn thuần là thay đổi phiên bản phần mềm (binary/container image) mà còn bao gồm quá trình di chuyển dữ liệu (Database Migration). Nếu không thực hiện đúng quy trình, cơ sở dữ liệu có thể bị hỏng và gây ra gián đoạn hệ thống. Bài lab sẽ trang bị cho bạn kỹ năng sao lưu, thử nghiệm và cập nhật an toàn.
+
+## 2. Chuẩn bị Môi trường (Prerequisites)
+
+- Một máy chủ Linux (Ubuntu/CentOS) hoặc WSL trên Windows.
+- **Docker** và **Docker Compose** đã được cài đặt.
+- Cấu trúc thư mục Lab như sau:
+```text
+keycloak-upgrade-lab/
+├── docker-compose.yml
+└── data/
+```
+
+- Khởi tạo hệ thống hiện tại (phiên bản cũ) bằng file `docker-compose.yml`:
+
 ```yaml
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0.0
+    image: quay.io/keycloak/keycloak:21.1.2
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
 ```
-Khởi động hệ thống:
-```bash
-docker-compose up -d
-```
-Đăng nhập vào `http://localhost:8080/` bằng `admin`/`admin`. 
-Tạo một Realm tên là `V23-Realm`.
-Tạo một User tên là `old-user`. 
-(Đây chính là dữ liệu vàng của bạn).
 
-### Bước 2: Chuẩn Bị Backup (Đừng bao giờ quên bước này)
-Trái Tim DB Đang Chạy, Bạn phải Rút Dữ Liệu Ra Cất Vào Két Sắt!
-Mở terminal, chạy lệnh DUMP trực tiếp vào container Postgres để lấy file backup:
-```bash
-docker exec -t code-db-1 pg_dump -U keycloak -d keycloak_db -F c -f /tmp/backup.dump
-docker cp code-db-1:/tmp/backup.dump ./backup.dump
-```
-Bây giờ ở máy bạn đã có file `backup.dump`. 
+Khởi chạy hệ thống cũ bằng lệnh: `docker-compose up -d`. Đợi hệ thống chạy và tạo một vài người dùng ảo trong Admin Console để có dữ liệu thực hiện nâng cấp.
 
-### Bước 3: Đưa Hệ Thống Vào Trạng Thái Gây Mê (Tắt Máy)
-Dừng Keycloak để chuẩn bị Phẫu Thuật (Không được tắt Postgres nhé):
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
+
+### Bước 1: Đọc Release Notes và Migration Guide
+Trước bất kỳ quy trình nâng cấp nào, bạn BẮT BUỘC phải đọc tài liệu [Keycloak Upgrading Guide](https://www.keycloak.org/docs/latest/upgrading/). Keycloak thường có những thay đổi đột phá (Breaking Changes) giữa các phiên bản lớn (Major versions). Hãy ghi chú lại nếu phiên bản mới yêu cầu cấu hình mới hoặc thay thế (Deprecated) tính năng cũ.
+
+### Bước 2: Sao lưu (Backup) Database
+Tuyệt đối không nâng cấp mà không sao lưu cơ sở dữ liệu.
+Sử dụng công cụ `pg_dump` để sao lưu dữ liệu từ container PostgreSQL:
+
+```bash
+docker exec -t keycloak-upgrade-lab-postgres-1 pg_dump -U keycloak -F c keycloak > keycloak_backup.dump
+```
+> [!IMPORTANT]
+> File `keycloak_backup.dump` chính là phao cứu sinh của bạn. Trong môi trường Production, bạn cũng nên sao lưu cả thư mục cấu hình và các custom Provider (file `.jar`).
+
+### Bước 3: Dừng hệ thống hiện tại (Downtime)
+Để tránh dữ liệu mới được ghi vào trong quá trình nâng cấp, hãy dừng container Keycloak:
+
 ```bash
 docker-compose stop keycloak
 ```
 
-### Bước 4: Đánh Thức Tương Lai (Sửa Code Sang Bản 24.0.1)
-Mở file `code/docker-compose.yml`. Sửa dòng Image của Keycloak:
-```yaml
-  keycloak:
-    # Đổi chữ 23.0.0 thành 24.0.1
-    image: quay.io/keycloak/keycloak:24.0.1 
+### Bước 4: Cập nhật cấu hình và Khởi chạy phiên bản mới
+Sửa file `docker-compose.yml`, thay đổi thẻ (tag) của image Keycloak sang phiên bản mới:
+
+```diff
+-   image: quay.io/keycloak/keycloak:21.1.2
++   image: quay.io/keycloak/keycloak:24.0.2
 ```
-Bật lại Keycloak Mới lên:
+
+Lưu ý: Đối với môi trường Production, Keycloak không khuyến khích tự động migration khi khởi động để tránh rủi ro. Bạn nên thiết lập tham số môi trường `--spi-connections-jpa-default-migration-strategy=manual` để sinh ra file SQL script và review bằng tay, hoặc giữ mặc định `update` trong môi trường phát triển (mặc định của `start-dev`).
+
+Khởi chạy lại hệ thống:
 ```bash
 docker-compose up -d keycloak
 ```
 
-### Bước 5: Xem Liquibase Mổ Xẻ DB
-Ngay sau khi bật lên, HÃY NHANH TAY XEM LOG CỦA NÓ:
+Kiểm tra log theo thời gian thực để quan sát quá trình Database Migration:
 ```bash
-docker logs -f code-keycloak-1
+docker logs -f keycloak-upgrade-lab-keycloak-1
 ```
-Bạn sẽ thấy màn hình chạy chữ Vàng khét lẹt:
-```text
-Updating database. This may take a while.
-[org.keycloak.connections.jpa.updater.liquibase.LiquibaseJpaUpdaterProvider] (main) Initializing database schema. Using changelog META-INF/jpa-changelog-master.xml
-```
-Và sau vài giây:
-```text
-[org.keycloak.connections.jpa.updater.liquibase.LiquibaseJpaUpdaterProvider] (main) Database upgrade is complete.
-```
-Liquibase đã làm xong việc của nó!
 
-### Bước 6: Kiểm tra Sự Sống
-Truy cập lại `http://localhost:8080/`. Đăng nhập `admin`/`admin`.
-Mở danh sách Realm. Bạn sẽ Thấy cái `V23-Realm` vẫn Nằm Chình Ình Ở Đó Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp! User `old-user` vẫn sống nhăn răng!
-Bạn đã Thực Hiện Cuộc Đại Phẫu Thuật Thay Máu Nâng Đời Keycloak Thành Công Mỹ Mãn! Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp!
+Bạn sẽ thấy các dòng log liên quan đến Liquibase thực thi cập nhật các bảng:
+`Updating database...`
+`Successfully acquired change log lock...`
+`Reading from database...`
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+### Nghiệm thu hệ thống
+1. Truy cập vào giao diện quản trị `http://localhost:8080`.
+2. Đăng nhập bằng tài khoản `admin`.
+3. Kiểm tra thông tin phiên bản ở góc dưới bên phải hoặc trong phần **Server Info**.
+4. Kiểm tra xem các Realm, Client, và Users tạo từ phiên bản cũ có còn tồn tại và hoạt động ổn định hay không.
+5. Thử đăng nhập bằng một tài khoản người dùng bình thường để kiểm tra flow xác thực (Authentication Flow) xem có bị phá vỡ (break) không.
+
+### Khắc phục sự cố (Troubleshooting)
+
+- **Lỗi Migration Failed (Liquibase error):**
+  Nếu quá trình nâng cấp thất bại và container bị sập, cơ sở dữ liệu có thể đang ở trạng thái không nhất quán (inconsistent state). 
+  **Cách xử lý:** 
+  1. Dừng và xóa các container.
+  2. Khôi phục lại Database từ file backup bằng lệnh `pg_restore`:
+     ```bash
+     docker exec -i keycloak-upgrade-lab-postgres-1 pg_restore -U keycloak -d keycloak < keycloak_backup.dump
+     ```
+  3. Quay lại sử dụng phiên bản cũ hoặc phân tích log lỗi để tìm nguyên nhân gốc (ví dụ: xung đột custom SPI).
+
+- **Thiếu thuộc tính hoặc cảnh báo Deprecated:**
+  Sau khi cập nhật, hãy theo dõi cẩn thận System Logs. Nếu thấy các dòng log `WARN` về việc một tham số môi trường hoặc cấu hình bị loại bỏ (deprecated), bạn cần lên kế hoạch chỉnh sửa cấu hình hệ thống sớm để chuẩn bị cho phiên bản Major tiếp theo.
