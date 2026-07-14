@@ -1,46 +1,104 @@
-# Lesson 1: Bức Tường Lửa (Spring Cloud Gateway)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Tìm hiểu vai trò của API Gateway trong Bảo Mật Microservices và cách Tích Hợp Keycloak vào Kiến Trúc WebFlux của Spring Cloud Gateway.
+> **Category:** Theory
+> **Goal:** Hiểu sâu về vai trò của Spring Cloud Gateway trong kiến trúc Microservices, cách nó tương tác với Keycloak ở vị trí tiền đồn (Edge Service) và cơ chế Non-blocking I/O.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Trong kiến trúc Microservices, Client (Web, Mobile) hiếm khi gọi trực tiếp từng dịch vụ Backend (như User Service, Order Service). Thay vào đó, chúng kết nối tới một **API Gateway** đóng vai trò là điểm truy cập duy nhất (Single Entry Point). **Spring Cloud Gateway (SCG)** là một giải pháp API Gateway hiện đại xây dựng trên Spring WebFlux, Project Reactor và Netty, hỗ trợ kiến trúc Non-blocking (Không chặn luồng).
 
-### 1.1. Chốt Chặn Đầu Tiên (The API Gateway Pattern)
-Trong Kiến Trúc Microservices Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, việc mỗi dịch vụ con (Order, Payment, Inventory) đều phải tự đi Code Logic Đăng Nhập Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, tự Móc URL của Keycloak về Thẩm Định Token JWT là một sự lãng phí tài nguyên và tạo ra Lỗ Hổng Bảo Mật Khủng Khiếp Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa (Do Lệch Cấu Hình Giữa Các Đội Dev Khác Nhau Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp).
-Giải pháp Đỉnh Cao Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa: **Dồn Toàn Bộ Khối Lượng Trọng Tải Bảo Mật Lên Vai Của Thằng Gateway**.
-Spring Cloud Gateway đứng sát mép mạng Internet (Edge Server Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề). Khách Hàng (React, Mobile) KHÔNG BAO GIỜ được gọi trực tiếp vào Service Nội Bộ Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Mọi Traffic Bắt Buộc Phải Chui Qua Cổng Của Gateway Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Thằng Gateway Sẽ Đóng Hai Vai Trò:
-1.  **OAuth2 Client:** Đẩy khách ra màn hình Keycloak Đăng Nhập nếu khách chưa có Token Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy.
-2.  **OAuth2 Resource Server:** Chặn Đứng mọi cuộc tấn công mang Token giả mạo Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng, không cho nó lọt sâu vào hạ tầng bên trong Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
+Khi tích hợp SCG với **Keycloak**, Gateway thường đảm nhận vai trò **OAuth2 Resource Server** hoặc **OAuth2 Client (BFF - Backend for Frontend)**. Nó giải quyết các bài toán sau:
+- **Routing:** Định tuyến Request đến đúng Microservice dựa trên URL, Header.
+- **Authentication/Authorization (Tiền đồn):** Xác thực Token JWT từ Keycloak trước khi cho phép Request đi sâu vào hệ thống nội bộ.
+- **Cross-Cutting Concerns:** Xử lý CORS, Rate Limiting, Logging, và Retry tập trung tại một nơi thay vì lặp lại code ở hàng chục Microservice.
 
-### 1.2. Kỷ Nguyên WebFlux (Reactive Security)
-Spring Cloud Gateway được xây dựng trên lõi Netty và Spring WebFlux (Lập Trình Phản Ứng - Non-Blocking I/O Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh). Do đó Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, mọi Code Config Spring Security của bạn Đều Phải Thay Đổi Cấu Trúc Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh!
-Bạn Không Được Phép Dùng `HttpSecurity` (Dành Cho Servlet Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) Nữa Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh.
-Bạn Bắt Buộc Phải Dùng `ServerHttpSecurity` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh.
-```java
-@Bean
-public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) { // Chú ý chữ Server Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-    http.authorizeExchange(exchanges -> exchanges
-            .pathMatchers("/api/public/**").permitAll()
-            .anyExchange().authenticated()
-        )
-        .oauth2Login(Customizer.withDefaults()) // Bật tính năng đá khách sang Keycloak Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-        .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults())); // Bật tính năng kiểm tra JWT Đầu Vào Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề
-    return http.build();
-}
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
+Cách Spring Cloud Gateway xử lý một Request chứa JWT và định tuyến đến Backend:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant SCG as Spring Cloud Gateway
+    participant RouteLocator
+    participant Netty as Netty WebClient
+    participant Backend as Microservice
+
+    Client->>SCG: 1. GET /api/orders (Bearer JWT)
+    Note over SCG: Non-blocking Reactor Netty
+    SCG->>SCG: 2. SecurityWebFilterChain: Validate JWT
+    alt JWT Invalid
+        SCG-->>Client: 3a. 401 Unauthorized
+    else JWT Valid
+        SCG->>RouteLocator: 3b. Match Route (Path=/api/orders)
+        RouteLocator-->>SCG: 4. Route matched. Target: http://order-service
+        SCG->>SCG: 5. Execute Pre-Filters (Add Headers, StripPrefix)
+        SCG->>Netty: 6. Asynchronous HTTP Call to Backend
+        Netty->>Backend: 7. Forward Request (Bearer JWT)
+        Backend-->>Netty: 8. Response HTTP 200 OK
+        Netty-->>SCG: 9. Data Stream
+        SCG->>SCG: 10. Execute Post-Filters (Modify Response)
+        SCG-->>Client: 11. Final Response
+    end
 ```
 
----
+**Step-by-step Giải thích:**
+1. Client gửi Request kèm Token đến SCG. Netty tiếp nhận trên một Event Loop Thread.
+2. Tầng Security (WebFlux) kiểm tra chữ ký Token (gọi JWKS của Keycloak nếu cần).
+3. SCG tìm kiếm Route (tuyến đường) khớp với URL `/api/orders`.
+4. SCG xác định đích đến là `http://order-service`.
+5. Pre-filters thực thi (ví dụ: `StripPrefix` để xóa `/api` ra khỏi URL gốc).
+6. SCG sử dụng WebClient phi đồng bộ (Asynchronous) để gọi Backend. Luồng xử lý không bị chặn (Thread is free).
+7. Khi Backend xử lý xong và trả kết quả về, Event Loop được đánh thức.
+8. SCG chạy các Post-filters (ví dụ: thêm Header CORS) và trả Response cho Client.
 
-## 2. Câu hỏi Phỏng vấn (Interview Questions)
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
 
-**1. Trong Microservices Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh, Nếu Tao Dùng API Gateway Đứng Cửa Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Vậy Thì Mấy Thằng Service Con Ở Đằng Sau Như `Order-Service` Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Có Cần Phải Khai Báo Thư Viện Spring Security Nữa Không Oanh Khung Dịch Lụa Mạch Lệnh? Có Cần Khai URL Xác Minh Jwt Xuống Keycloak Giống Thằng Gateway Nữa Không Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa? Chẳng Lẽ Gateway Đã Soi Giấy Tờ Của Khách Rất Kỹ Rồi Mà Xuống Trạm Trong Nó Lại Bị Soi Lại 1 Lần Nữa Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề? Thiết Kế Của Mày Như Thế Nào Cho Hiệu Suất Cao Nhất Mà Vẫn An Toàn Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa?**
-- **Senior:** Dạ Sếp Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần! Đây Là Câu Hỏi Về Triết Lý Bảo Mật Vùng Kín (Defense-In-Depth Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa) Giao Thoa Với Hiệu Suất! Có 2 Trường Phái Giải Quyết Vấn Đề Này Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:
-  - **Trường Phái 1 (Nhanh Cẩu Thả Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa - Mạng Lưới Tin Tưởng Tuyệt Đối):** Mấy Ông Cấp Thấp Sẽ Chọn Cách Gateway Thẩm Định JWT Xong Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng. Lúc Cắt Routing Xuống Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp `Order-Service` Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Thằng Order-Service Không Hề Có Cài Spring Security Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề! Nó Cứ Nghĩ "Đại Ca Gateway Đã Kiểm Tra Rồi Thì Tao Cứ Thế Phục Vụ Thôi Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa". Cách Này Chạy Cực Kỳ Tốc Độ Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Ít Tốn CPU Máy Chủ Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh. NHƯNG Rất Nguy Hiểm Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Nếu Một Nhân Viên Nội Bộ Trong Công Ty Hoặc 1 Con Virus Xâm Nhập Vào Vùng Mạng LAN (Intranet Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa) Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Bọn Chúng Bắn Lệnh Gọi API Xuyên Qua Hông Thằng `Order-Service` (Không Đi Đường Cửa Chính Gateway Nữa Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh). Vậy Là `Order-Service` Mở Cửa Toang Hoác Đón Rước Hacker Cướp Dữ Liệu Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị!
-  - **Trường Phái 2 (Zero-Trust Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy - Tiêu Chuẩn Ngành Của Em Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy):** Mọi Microservices Phía Sau Gateway (Kể Cả Trạm Cuối Cùng Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy) **BẮT BUỘC** Đều Phải Cài Spring Security OAuth2 Resource Server Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Gateway Kiểm Tra JWT Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, Xong Truyền Cục JWT Đó Xuống Cho Order-Service Oanh Khung Dịch Lụa Mạch Lệnh. Order-Service **TỰ MÌNH** Lôi JWKS Khóa Ra Thẩm Định JWT Lại Một Lần Nữa Cho Đảm Bảo Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh! 
-  - Về Hiệu Suất Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần: Nhờ Kỹ Thuật Đúc JWKS Vào Túi Quần (Caching Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị) Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. Tốc Độ Thẩm Định JWT Tại Mỗi Trạm Chỉ Tốn Khoảng 1 Micro-Giây Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Hoàn Toàn Xứng Đáng Đánh Đổi Hiệu Năng Li Ti Đó Để Đổi Lấy Lớp Khiên Zero-Trust Bất Khả Xâm Phạm Cho Khối Hạ Tầng Của Công Ty Ạ Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! 
+> [!IMPORTANT]
+> **Không chặn luồng (No Blocking):** SCG chạy trên nền tảng WebFlux. TUYỆT ĐỐI KHÔNG sử dụng các thư viện chặn luồng (như `RestTemplate`, JDBC, `Thread.sleep`) trong Gateway Filters. Nếu làm vậy, toàn bộ Gateway sẽ bị sập (Resource Exhaustion) khi có tải cao. Phải dùng `WebClient` và R2DBC.
 
----
+> [!WARNING]
+> **Tránh xử lý Logic kinh doanh tại Gateway:** Gateway chỉ nên làm nhiệm vụ định tuyến và bảo mật chung. Không để Gateway gọi cơ sở dữ liệu hay tổng hợp dữ liệu (Data Aggregation) phức tạp, điều đó phá vỡ nguyên lý Microservices.
 
-## 5. Tài liệu tham khảo (References)
-- **Spring Cloud Gateway:** Securing Gateway with OAuth2.
+- **Tích hợp Keycloak làm Resource Server:** Gateway nên được cấu hình là `oauth2ResourceServer().jwt()`. Nó chỉ cần biết Token có hợp lệ không (Stateless Verification) dựa trên Public Key từ Keycloak.
+- **Sử dụng BFF Pattern cho SPA:** Nếu Client là ứng dụng React/Angular, Gateway nên đóng vai trò là `oauth2Login()`, lưu Token an toàn ở phía Server (Redis) và cấp phát Cookie mã hóa cho SPA, tránh rò rỉ JWT qua trình duyệt (XSS Attack).
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+
+**Cấu hình application.yml (Routing & Security):**
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: order-service-route
+          uri: lb://order-service   # Load balancer dựa trên Eureka/Consul
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=1         # Cắt '/api' -> gọi Backend: '/orders'
+            - TokenRelay=           # Tự động forward JWT cho Backend
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://auth.domain.com/realms/myrealm
+```
+
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Timeouts do Backend chậm:** Nếu Backend phản hồi quá chậm, kết nối ở Gateway sẽ bị giữ lại. Cần cấu hình `Response Timeout` (ví dụ 3 giây) và `Circuit Breaker` (Resilience4j) để Gateway ngắt kết nối ngay lập tức và trả về mã lỗi 504 (Gateway Timeout), tránh làm tắc nghẽn tài nguyên của Gateway.
+- **Payload Request quá lớn:** Mặc định Netty giới hạn kích thước Request. Nếu Upload file trực tiếp qua Gateway, bạn có thể gặp lỗi `Payload Too Large`. Cấu hình `spring.codec.max-in-memory-size` hoặc định tuyến thẳng luồng Upload bỏ qua Gateway nếu không cần thiết.
+
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+1. **Junior:** API Gateway khác gì so với Load Balancer (như Nginx)?
+   - *Đáp án:* Cả hai đều định tuyến, nhưng API Gateway xử lý logic ở tầng ứng dụng (L7) phức tạp hơn như: xác thực OAuth2/JWT, Rate Limiting theo User, và biến đổi Payload (Request/Response Modification), thường được code bằng ngôn ngữ linh hoạt như Java (Spring). Nginx chủ yếu làm Load Balancing, TLS Termination và Static Routing.
+2. **Junior:** Tại sao SCG lại sử dụng Spring WebFlux thay vì Spring MVC?
+   - *Đáp án:* Để hỗ trợ kiến trúc Non-blocking I/O. Với MVC (Tomcat), mỗi Request chiếm dụng 1 luồng (Thread), gây tốn RAM và thắt cổ chai khi gọi Backend bị trễ. WebFlux (Netty) sử dụng Event Loop, một vài luồng có thể xử lý hàng chục ngàn kết nối đồng thời.
+3. **Senior:** Hậu quả của việc gọi `RestTemplate.getForObject(...)` bên trong một Custom Gateway Filter là gì?
+   - *Đáp án:* `RestTemplate` là I/O chặn luồng (blocking). Việc gọi nó sẽ khóa chặt Event Loop Thread của Netty. Khi có nhiều request, toàn bộ Event Loop sẽ cạn kiệt, khiến Gateway treo cứng (Hung) dù CPU/RAM vẫn trống. Thay vào đó phải dùng `WebClient`.
+4. **Senior:** BFF (Backend for Frontend) Pattern được cài đặt trên Spring Cloud Gateway kết hợp với Keycloak như thế nào để bảo vệ ứng dụng React/Vue?
+   - *Đáp án:* Cấu hình SCG làm `oauth2Client/oauth2Login` thay vì `resourceServer`. Khi user đăng nhập, SCG làm luồng Authorization Code Flow với Keycloak. Keycloak trả Token cho SCG. SCG lưu Token vào Server-side Session (Redis) và gửi một HTTPOnly Cookie về cho React. React gửi Cookie lên SCG, SCG lấy lại Token từ Session và dùng `TokenRelay` Filter chèn JWT vào Header trước khi chuyển cho Backend. Cách này loại bỏ hoàn toàn JWT khỏi trình duyệt, chống XSS.
+5. **Senior:** Làm thế nào để cấu hình SCG không lấy Public Key từ Keycloak mỗi lần có Request đến?
+   - *Đáp án:* Mặc định Spring Security đã cache Public Key (JWKS) trong bộ nhớ dựa trên `issuer-uri`. Ta chỉ cần đảm bảo Gateway có kết nối mạng ổn định tới Keycloak lúc khởi động. Nếu Keycloak xoay vòng khóa (Key Rotation), SCG sẽ tự động re-fetch khi thấy thư viện Nimbus báo `kid` (Key ID) không tồn tại trong cache.
+
+## 7. Tài liệu tham khảo (References)
+- [Spring Cloud Gateway Official Documentation](https://spring.io/projects/spring-cloud-gateway)
+- [Spring Security WebFlux](https://docs.spring.io/spring-security/reference/reactive/configuration/webflux.html)
+- [OAuth 2.0 Best Current Practice for Browser-Based Apps (RFC 8252)](https://datatracker.ietf.org/doc/html/rfc8252)

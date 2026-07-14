@@ -1,46 +1,103 @@
-# Lesson 2: Nghệ Thuật Tiếp Sức (Token Relay in Gateway)
-
 > [!NOTE]
-> **Category:** Theory (Lý thuyết)
-> **Goal:** Hiểu cách Spring Cloud Gateway "hứng" luồng đăng nhập, lấy được Token, và "gắp" Token đó dán vào Header của Gói Tin HTTP để truyền sâu xuống cho các Microservices.
+> **Category:** Theory
+> **Goal:** Hiểu sâu về cơ chế Token Relay (Chuyển tiếp Token) trong Spring Cloud Gateway, cách nó duy trì ngữ cảnh bảo mật giữa các Microservices và nguyên lý hoạt động nội bộ.
 
 ## 1. Lý thuyết chuyên sâu (Detailed Theory)
+Trong kiến trúc Microservices phân tán, một chuỗi nghiệp vụ thường yêu cầu nhiều dịch vụ tương tác với nhau (Ví dụ: Gateway -> Order Service -> Inventory Service). Khi Client gửi một Request chứa **Access Token (JWT)**, làm thế nào để các dịch vụ đứng sau Gateway biết được "Ai đang thực hiện hành động này?" để áp dụng quyền hạn (Authorization)?
 
-### 1.1. Token Relay Filter Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-Nếu Gateway Đóng Vai Trò Đăng Nhập Client Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa (Khách dùng trình duyệt, nhảy sang Keycloak đăng nhập, bắn về Gateway Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa). Khi Khách Gọi API Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Cái Cookie Mà Gateway Nhận Được Nó Đang Chứa Cục JWT Oanh Khung Dịch Lụa Mạch Lệnh.
-Nhưng Lúc Gateway Routing (Điều Hướng) Gọi Bắn Xuống `Order-Service` Ở Trạm Dưới Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề. Gói Tin Default Sẽ Rớt Sạch Sẽ Header Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng! 
-Spring Cloud Cung Cấp 1 Bộ Lọc Hàng Hiệu Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh: **`TokenRelayGatewayFilterFactory`**.
-Trong Cấu Hình Route (application.yml) Của Gateway Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Bạn Chỉ Việc Gắn Khóa Chốt Này Vào Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh:
+**Token Relay (Chuyển tiếp Token)** là cơ chế tự động trích xuất Token từ Request đầu vào tại Gateway (hoặc BFF), và đính kèm (inject) lại Token đó vào Header (`Authorization: Bearer <token>`) của Request chuẩn bị được gửi đi (Forward/Proxy) tới các dịch vụ Downstream.
+
+Nhờ Token Relay, mọi Microservice trong chuỗi đều nhận được cùng một JWT chứa các Claims (User ID, Roles, Email), đảm bảo **Security Context (Ngữ cảnh bảo mật)** được duy trì xuyên suốt mà không yêu cầu Client phải gửi trực tiếp token cho từng dịch vụ riêng lẻ.
+
+## 2. Luồng nội bộ & Cơ chế cấp thấp (Internal Workflow & Low-level Mechanisms)
+Trong Spring Cloud Gateway, cơ chế này được thực hiện thông qua `TokenRelayGatewayFilterFactory`.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant SCG as Gateway (TokenRelay Filter)
+    participant Redis as Session Store (BFF Mode)
+    participant Backend as Microservice
+
+    Client->>SCG: 1. GET /api/data (Cookie: SESSIONID)
+    SCG->>Redis: 2. Load Spring Session
+    Redis-->>SCG: 3. Return SecurityContext (Contains OAuth2Token)
+    Note over SCG: 4. TokenRelay Filter Execution
+    SCG->>SCG: 5. Extract Access Token from SecurityContext
+    SCG->>SCG: 6. Mutate Request: Add Header 'Authorization: Bearer JWT'
+    SCG->>Backend: 7. Forward Mutated Request
+    Backend->>Backend: 8. Validate JWT & Extract User Info
+    Backend-->>SCG: 9. HTTP 200 (Data)
+    SCG-->>Client: 10. HTTP 200 (Data)
+```
+
+**Step-by-step Giải thích (Trong ngữ cảnh BFF/OAuth2 Login):**
+1. Client (SPA) gửi Request kèm theo Session Cookie. (Nếu là Mobile app, Client gửi thẳng JWT, lúc này SCG ở chế độ Resource Server, Filter chỉ việc pass-through header).
+2. SCG đọc Session từ bộ nhớ lưu trữ tập trung (như Redis).
+3. Trong Session chứa `SecurityContext`, bên trong lưu trữ `OAuth2AuthorizedClient` (chứa Access Token và Refresh Token).
+4. `TokenRelay` Filter được kích hoạt cho tuyến đường tương ứng.
+5. Filter trích xuất Access Token (chuỗi JWT). Nếu Token hết hạn, nó có thể tự động gọi Keycloak lấy Token mới bằng Refresh Token.
+6. Filter chỉnh sửa (Mutate) đối tượng Request gửi đi, chèn thêm Header `Authorization: Bearer <Access_Token>`.
+7. Gateway gọi Backend với Request mới đã chứa JWT.
+8. Backend (là một Resource Server) xác minh chữ ký Token và cấp quyền thực thi logic.
+
+## 3. Thực hành tốt nhất & Bảo mật (Best Practices & Security)
+
+> [!IMPORTANT]
+> **Bảo vệ Token trên đường truyền:** Token Relay đồng nghĩa với việc JWT chứa thông tin nhạy cảm được truyền đi giữa các Microservices nội bộ. Bạn **BẮT BUỘC** phải cấu hình mTLS (Mutual TLS) hoặc kết nối HTTPS trong mạng nội bộ (Internal VPC) để tránh bị nghe lén (Sniffing) bằng các cuộc tấn công MITM.
+
+> [!WARNING]
+> **Lỗ hổng Token Bleeding (Rò rỉ Token):** Nếu bạn cấu hình Gateway định tuyến một Request ra một dịch vụ bên ngoài (External 3rd-party API), TUYỆT ĐỐI KHÔNG được đính kèm `TokenRelay` filter. Nếu làm vậy, bạn sẽ rò rỉ (leak) Access Token của người dùng cho bên thứ ba. Chỉ Relay token vào các dịch vụ nội bộ do bạn kiểm soát.
+
+- **Tự động làm mới Token (Auto-Refresh):** Khi sử dụng Token Relay trong mô hình `oauth2Login` (BFF), Spring Security tự động xử lý Refresh Token. Nếu Access Token hết hạn, Gateway sẽ ngầm liên hệ với Keycloak lấy token mới, cập nhật Session và chuyển tiếp token mới. Đảm bảo Scope `offline_access` hoặc tính năng Refresh Token được bật trên Keycloak.
+
+## 4. Cấu hình minh họa thực tế (Configuration Examples)
+
+**Cấu hình Token Relay Filter trong Spring Cloud Gateway (`application.yml`):**
 ```yaml
 spring:
   cloud:
     gateway:
       routes:
-        - id: order-service-route
-          uri: lb://order-service
+        - id: inventory-service
+          uri: http://inventory-backend:8081
           predicates:
-            - Path=/api/orders/**
+            - Path=/api/inventory/**
           filters:
-            - TokenRelay= # Bí Quyết Nằm Đúng 1 Dòng Này Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp!
+            # Chỉ định TokenRelay filter cho route này
+            - TokenRelay=
+            - RemoveRequestHeader=Cookie # Xóa Cookie để tránh gửi rác sang Backend
 ```
-Filter `TokenRelay` Rất Thông Minh Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa: 
-- Nó Chọc Vào Kho Cookie/Session Của Gateway Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề.
-- Nó Rút Cục JWT Ra Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa.
-- Nó Cầm Cục JWT Ép Đè Lên Dòng Header `Authorization: Bearer <token_gốc>` Của Gói Tin Sắp Bắn Đi Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-- Trạm Nhận Cưới Chùng Order-Service Hoàn Toàn Tưởng Rằng Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Khách Hàng Gửi Trực Tiếp JWT Cho Nó Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy!
 
----
+**Mã Java tương đương (Nếu dùng Fluent API):**
+```java
+@Bean
+public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+    return builder.routes()
+        .route("inventory-service", r -> r.path("/api/inventory/**")
+            .filters(f -> f.tokenRelay() // Kích hoạt Token Relay
+                           .removeRequestHeader("Cookie"))
+            .uri("http://inventory-backend:8081"))
+        .build();
+}
+```
 
-## 2. Câu hỏi Phỏng vấn (Interview Questions)
+## 5. Trường hợp ngoại lệ (Edge Cases)
+- **Token quá lớn gây lỗi 431 Request Header Fields Too Large:** Nếu bạn gán quá nhiều thông tin (Custom Claims, Role mapper) vào Token trên Keycloak, chuỗi JWT có thể lớn hơn 8KB. Khi Gateway đính header này gửi cho Backend (thường dùng Tomcat), Tomcat sẽ chặn lại và ném lỗi 431. Giải pháp: Tăng kích thước `max-http-header-size` trên Backend, hoặc dùng Opaque Token.
+- **Mất Token khi chuyển qua WebClient trung gian:** Nếu Microservice A gọi Microservice B (không qua Gateway), Token sẽ bị rớt. Lúc này bạn phải cấu hình `FeignClient` interceptor hoặc `WebClient` filter tại Service A để tiếp tục *Relay* token từ Header của request đến Header của outbound request.
 
-**1. Trong Hệ Thống Của Mày Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, User Bấm Web React Gọi Qua Cổng Gateway Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy. Gateway Bọc Lớp TokenRelay Truyền Xuyên Xuống Cho Thằng `Order-Service` Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Quá Mượt Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị! Nhưng Đột Nhiên Hệ Thống Lỗi Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Có Thằng Hacker Nó Ăn Trộm Được Cục JWT Ở Đâu Đó Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Nó Gắn Cục JWT Giả Mạo Đó Trực Tiếp Lên Thanh Header `Authorization` Của Gói Tin Của Bọn React Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Rồi Nó Bắn Tốc Biến Lên Gateway Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa. TokenRelay Thấy Header Của Nó Có Sẵn Đồ Chơi Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Chắc Nó Lười Biếng Cứ Thế Chuyền Cho `Order-Service` Thì Sao Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa? Em Chống Đỡ Vụ Bơm Đè Header Bẩn Này (Header Injection) Thế Nào Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa?**
-- **Senior:** Dạ Sếp Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Sếp Hỏi Đúng Vô Trọng Tâm Yếu Huyệt Của Mảng Gateway Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! 
-  - Thực Ra Thằng `TokenRelay` Của Spring Nó Code Khá Khôn Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Cấu Trúc Khung Rỗng XML Nặng Nề. Châm Ngôn Của Nó Là "Gọt Bỏ Lớp Ngoài Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa, Trét Đè Lớp Mới Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng". 
-  - Nếu Hacker Mang Cái Token Thối Lên Header Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Gateway Khi Nhận Lệnh Route Sẽ Dùng Cái Tính Năng `TokenRelay` Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Thằng Relay Này Tuyệt Đối KHÔNG NHÌN LÊN CÁI HEADER MÀ HACKER TRUYỀN LÊN Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh! Nó Chỉ Đào Sâu Vào Bụng Của Thằng Spring Security Context Bằng Dòng Code Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa `ReactiveSecurityContextHolder.getContext()` Để Rút Ra Cái Token XỊN VÀ AN TOÀN Đã Được Thẩm Định Sẵn (Từ Nút Đăng Nhập Client Gateway Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa).
-  - Nó Rút Cục Token Xịn Đó Ra Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề, **GHI ĐÈ DÃ MAN (OVERWRITE)** Lên Đầu Header `Authorization` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh. Đồng Nghĩa Với Việc Cái Đồ Giả Mạo Của Hacker Sẽ Bị Bay Xóa Sạch Hoàn Toàn Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy! Gói Tin Xuyên Lưới Xuống Order-Service Vẫn Là Hàng Chuẩn Đét Của Gateway Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp.
-  - Tuy Nhiên Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Ở Các API Công Khai (Public API) Không Bị Bắt Buộc Xác Nhận Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh. Tụi Hacker Vẫn Có Thể Xài Chiêu Bơm Khống Header Đi Lọt Cửa Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Để Vá Triệt Để Khúc Này Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Em Sẽ Dùng Tính Năng `RemoveRequestHeader=Authorization` Tại Cấp Độ Bộ Lọc Của Route Đó Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng! Chặt Đức Bất Cứ Header Giả Mạo Nào Định Xuyên Hông Gateway Sếp Nhé Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+## 6. Câu hỏi Phỏng vấn (Interview Questions)
+1. **Junior:** Token Relay giải quyết vấn đề gì trong Microservices?
+   - *Đáp án:* Nó giúp tự động truyền Access Token từ Gateway vào các Microservices nội bộ, để các service này nhận diện được người dùng và thực hiện Authorization mà không bắt Client phải biết kiến trúc bên trong.
+2. **Junior:** Cấu hình `TokenRelay=` trong Spring Cloud Gateway có ý nghĩa gì?
+   - *Đáp án:* Đó là khai báo bộ lọc để Gateway lấy Token từ Security Context (hoặc Session) và thêm nó vào header `Authorization: Bearer` trước khi định tuyến Request đến dịch vụ đích.
+3. **Senior:** Chuyện gì xảy ra nếu Access Token hết hạn khi Gateway chuẩn bị thực hiện TokenRelay (trong mô hình BFF)?
+   - *Đáp án:* Spring Security (nếu cấu hình Client/Login mode) sẽ tự động kiểm tra thời gian hết hạn (Expiration). Nếu sắp hết hạn, nó sẽ dùng Refresh Token lưu trong `OAuth2AuthorizedClient` để gọi Keycloak lấy Access Token mới, cập nhật lại Security Context, và sau đó mới thực hiện Relay token mới. Client không hề hay biết quá trình này.
+4. **Senior:** Tại sao chúng ta thường thêm Filter `RemoveRequestHeader=Cookie` đi kèm với `TokenRelay`?
+   - *Đáp án:* Trong mô hình Backend For Frontend (BFF), Client gửi Session Cookie lên Gateway. Gateway dùng Cookie này tra cứu Token và dùng TokenRelay chèn JWT vào Header. Việc gửi cả Cookie chứa Session ID khổng lồ xuống Backend nội bộ (vốn là Stateless Resource Server, không dùng Cookie) là lãng phí băng thông và có nguy cơ bảo mật, nên ta cắt bỏ Cookie trước khi chuyển tiếp.
+5. **Senior:** Làm thế nào để lan truyền (Propagate) JWT từ Service A sang Service B qua OpenFeign?
+   - *Đáp án:* Tạo một bean `RequestInterceptor` cho OpenFeign. Interceptor này sử dụng `SecurityContextHolder` để trích xuất Token hiện tại từ luồng đang chạy, sau đó gọi phương thức `template.header("Authorization", "Bearer " + token)` để nhúng token vào Request gửi tới Service B.
 
----
-
-## 5. Tài liệu tham khảo (References)
-- **Spring Cloud Gateway:** TokenRelayGatewayFilterFactory.
+## 7. Tài liệu tham khảo (References)
+- [Spring Cloud Gateway Token Relay Documentation](https://docs.spring.io/spring-cloud-gateway/docs/current/reference/html/#the-tokenrelay-gatewayfilter-factory)
+- [OAuth 2.0 Token Exchange (RFC 8693) - Khái niệm liên quan](https://datatracker.ietf.org/doc/html/rfc8693)

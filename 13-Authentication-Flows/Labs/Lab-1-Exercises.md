@@ -1,74 +1,103 @@
-# Lab 1: Tùy Chỉnh Luồng Xác Thực Keycloak
+> [!NOTE]
+> **Category:** Practical/Lab (Thực hành)
+> **Goal:** Tự tay cấu hình và tùy biến luồng xác thực (Authentication Flow) trong Keycloak, kết hợp các mức độ Require (Bắt buộc/Thay thế) để thiết lập MFA linh hoạt.
 
-## 1. Mục Tiêu (Objectives)
-Thực hành các kỹ năng đã học trong Chapter 13 bằng cách xây dựng và cấu hình các luồng xác thực (Authentication Flows) nâng cao.
-- **Task 1:** Kích hoạt và kiểm tra chức năng tự đăng ký tài khoản (Registration Flow) đi kèm xác minh email.
-- **Task 2:** Bảo vệ tính năng quên mật khẩu (Reset Credentials) bằng MFA (OTP).
-- **Task 3:** Tạo Custom Browser Flow: User thường chỉ cần mật khẩu, Admin bắt buộc nhập OTP.
+## 1. Kịch bản Thực hành (Lab Scenario)
 
----
+Công ty của bạn yêu cầu thắt chặt bảo mật cho ứng dụng quản trị nội bộ. Chính sách bảo mật quy định như sau:
+- Người dùng bình thường chỉ cần đăng nhập bằng `Username` và `Password`.
+- Đối với những người dùng có quyền quản trị (Role `admin`), hệ thống phải bắt buộc yêu cầu thêm bước xác thực thứ 2: **Mã OTP (Time-based One-Time Password)**.
+- Người dùng có quyền chọn sử dụng Mật khẩu HOẶC Đăng nhập không mật khẩu thông qua **WebAuthn** (nếu thiết bị hỗ trợ).
 
-## 2. Chuẩn Bị (Prerequisites)
-Khởi động hệ thống Keycloak bằng docker-compose đã cung cấp.
+Để giải quyết kịch bản này, bạn sẽ cần tạo một **Custom Authentication Flow** sao chép từ luồng Browser mặc định, sau đó sử dụng **Conditional Flow** và kết hợp các toán tử **REQUIRED/ALTERNATIVE**.
 
-```bash
-cd code
-docker-compose up -d
-```
-Đợi khoảng 10-15 giây để Keycloak khởi động hoàn tất. Đăng nhập vào Admin Console tại `http://localhost:8080/` với tài khoản mặc định (ví dụ `admin` / `admin`).
+## 2. Chuẩn bị Môi trường (Prerequisites)
 
----
+Để thực hiện bài Lab, bạn cần chuẩn bị:
+1. Máy chủ Keycloak đang chạy (phiên bản 21.0.0 trở lên, chạy bằng Docker hoặc Standalone).
+2. Tài khoản quản trị cấp cao (Admin) để đăng nhập vào Keycloak Admin Console.
+3. Ứng dụng điện thoại để quét mã OTP (Google Authenticator, Microsoft Authenticator hoặc Authy).
+4. (Tùy chọn) Máy tính hoặc điện thoại có hỗ trợ WebAuthn (TouchID, Windows Hello, hoặc YubiKey).
 
-## 3. Các Bước Thực Hành (Lab Steps)
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
 
-### Task 1: Kích Hoạt Đăng Ký Tài Khoản & Bắt Buộc Verify Email
-Theo mặc định, Keycloak không cho phép người dùng tự đăng ký. Trong task này, ta sẽ bật Registration và cấu hình kiểm tra Email để chống bot.
+### Bước 3.1: Tạo người dùng và gán Role
 
-1. Đăng nhập Admin Console, chọn Realm đang thao tác (VD: `master` hoặc Realm bạn tạo).
-2. Tới Menu **Realm Settings** ở thanh menu trái.
-3. Chọn Tab **Login**.
-4. Bật công tắc của hai tuỳ chọn lên trạng thái `ON`:
-   - **User registration** (Hiện nút đăng ký)
-   - **Verify email** (Đòi xác minh qua link email)
-5. Mở một trình duyệt ẩn danh (Incognito) và truy cập `http://localhost:8080/realms/master/account/`.
-6. Bạn sẽ thấy giao diện Login đã xuất hiện thêm nút **Register**. Bấm vào để thử tạo tài khoản mới. Do tính năng Gửi Mail đang chạy ở local, bạn có thể kiểm tra console log docker để xem link Verify, hoặc sử dụng tool hỗ trợ giả lập Mailtrap.
+1. Đăng nhập vào **Keycloak Admin Console**.
+2. Chọn Realm (ví dụ: `master` hoặc tạo một Realm mới tên là `SecuredRealm`).
+3. Đi đến menu **Realm Roles**, nhấn **Create role** và tạo một role có tên là `admin`.
+4. Đi đến menu **Users**, nhấn **Add user**:
+   - `Username`: `alice_admin`
+   - Nhấn **Create**.
+5. Trong tab **Credentials** của người dùng `alice_admin`, thiết lập mật khẩu ban đầu là `password` (Tắt nút "Temporary").
+6. Đi đến tab **Role mapping**, nhấn **Assign role**, tìm và chọn role `admin`, sau đó nhấn **Assign**.
+7. Tạo thêm một người dùng thứ 2: `bob_user` (Không gán role `admin`, thiết lập chung mật khẩu là `password`).
 
-### Task 2: Bảo Vệ "Quên Mật Khẩu" (Reset Credentials) Với MFA (OTP)
-Chức năng khôi phục mật khẩu rất nguy hiểm nếu không bật OTP. Chúng ta sẽ ràng buộc tính năng Reset OTP từ chế độ Tuỳ chọn (Conditional) sang Bắt buộc (Required).
+### Bước 3.2: Sao chép luồng Browser mặc định
 
-1. Tại Admin Console, truy cập **Authentication** -> Tab **Flows**.
-2. Tìm kiếm luồng tên là **`reset credentials`** và bấm nút **Duplicate** (Nhân bản).
-3. Đặt tên luồng mới là: `Secure-Reset-Flow` rồi ấn Create/Save.
-4. Nhấn vào tên của luồng `Secure-Reset-Flow` để vào giao diện chỉnh sửa cấu trúc bên trong.
-5. Tìm cục Execution có tên **`Reset OTP`**. Trạng thái mặc định của nó là `Conditional`.
-6. Nhấn vào ô Dropdown của nó và đổi thành **`Required`**.
-7. Chuyển tới **Realm Settings** -> Tab **Themes**.
-8. Ở mục **Reset Credentials Flow**, đổi từ luồng mặc định sang luồng `Secure-Reset-Flow` bạn vừa tạo. Lưu lại cấu hình.
-*(Lưu ý: Sau bước này, bất kỳ ai lấy lại mật khẩu đều phải cấu hình OTP trước khi được nhả quyền truy cập).*
+Không bao giờ chỉnh sửa trực tiếp luồng Default tích hợp sẵn. Hãy luôn nhân bản (Clone) nó.
+1. Đi tới menu **Authentication**.
+2. Trong tab **Flows**, tìm luồng có tên `browser`.
+3. Bấm vào dấu ba chấm ở góc phải của dòng chứa luồng `browser`, chọn **Duplicate**.
+4. Đặt tên luồng mới là: `Browser-Conditional-MFA`. Nhấn **Duplicate**.
 
-### Task 3: Custom Browser Flow - Rẽ Nhánh Admin Chặn Kép Cấm Cửa (Conditional Flow)
-Thiết lập kịch bản thông minh (Context-Aware): Bất kỳ người dùng nào có Role `admin` thì phải Quét OTP mới được login. Người dùng thường chỉ cần mật khẩu.
+### Bước 3.3: Tùy chỉnh Requirement và cấu trúc luồng
 
-1. Vào Menu **Authentication** -> Tab **Flows**.
-2. Tìm dòng **`browser`** và bấm **Duplicate**. Đặt tên: `Admin-Secure-Browser`.
-3. Bấm vào `Admin-Secure-Browser` để chỉnh sửa. 
-4. Cuộn xuống cuối cùng của cây cấu trúc, bấm nút **Add Sub-flow** (Thêm luồng phụ). Đặt tên là: `OTP-Role-Check`.
-5. Đổi Requirement (Trạng thái) của luồng phụ `OTP-Role-Check` vừa tạo sang dạng **`Conditional`** (Điều kiện rẽ nhánh).
-6. Bấm vào nút `Add execution` **bên trong** (dấu cộng nhỏ) của `OTP-Role-Check`. Thêm khối: **`Condition - User Role`**. Đổi thành `Required`.
-7. Bấm vào biểu tượng bánh răng ⚙️ của `Condition - User Role`. Cấu hình Alias của role muốn check, điền `admin`. Lưu lại.
-8. Lại bấm vào nút `Add execution` **bên trong** `OTP-Role-Check` một lần nữa. Lần này thêm khối: **`OTP Form`**. Đổi thành `Required`.
-   - *Cấu trúc lúc này phải là: Nhánh Conditional chứa 2 khối Required là (Condition-User-Role) và (OTP-Form).*
-9. Cuối cùng, gán luồng này làm luồng đăng nhập mặc định: 
-   - Trở lại danh sách các Flows, tìm dòng `Admin-Secure-Browser`. 
-   - Nhấn nút ba chấm (Action) ở cuối dòng -> Bấm **`Bind Flow`**. 
-   - Chọn mục **`Browser Flow`** để tráo đổi quyền điều khiển.
+1. Mở luồng `Browser-Conditional-MFA` vừa tạo.
+2. Tìm nhánh `Browser-Conditional-MFA forms` (Nhánh này đang ở mức ALTERNATIVE).
+3. Tại nhánh `Browser-Conditional-MFA forms`, nhấn dấu ba chấm ở bên phải -> Chọn **Add sub-flow**.
+   - Tên: `Admin Conditional Sub-flow`
+   - Flow Type: `Conditional`
+   - Nhấn **Add**.
+4. Tìm luồng `Admin Conditional Sub-flow` vừa được tạo (nó sẽ nằm cuối danh sách trong nhánh form). Chỉnh cột Requirement của nó thành **REQUIRED**.
+5. Nhấn vào dấu `+` bên cạnh `Admin Conditional Sub-flow` để thêm Execution:
+   - Chọn **Add condition**.
+   - Tìm và chọn `Condition - user role`, bấm **Add**.
+6. Ở dòng `Condition - user role` vừa thêm, bấm vào biểu tượng bánh răng (⚙️ Settings):
+   - Đặt **Alias**: `check-admin-role`
+   - **Expected role**: `admin`
+   - Nhấn **Save**.
+7. Tiếp tục nhấn dấu `+` ở nhánh `Admin Conditional Sub-flow`, chọn **Add execution**.
+   - Tìm và chọn `OTP Form`, bấm **Add**.
+   - Đảm bảo Requirement của `OTP Form` được đặt là **REQUIRED**.
 
-Thử nghiệm:
-- Login bằng tài khoản admin: Màn hình bắt buộc bạn cài OTP.
-- Login bằng tài khoản test user (không có role admin): Giao diện đi thẳng vào app, bỏ qua bước OTP.
+*(Cấu trúc cuối cùng tại nhánh Forms sẽ tương tự thế này:)*
+- `Username Password Form` (REQUIRED)
+- `Admin Conditional Sub-flow` (REQUIRED)
+  - `Condition - user role` (REQUIRED) -> cấu hình check role 'admin'
+  - `OTP Form` (REQUIRED)
 
----
+### Bước 3.4: Gắn luồng vào cấp Realm
 
-## 4. Dọn Dẹp (Cleanup)
-Sau khi hoàn thành thử nghiệm, nếu lỡ cấu hình sai làm hỏng quyền truy cập Admin của bạn:
-- Hãy sử dụng Script truy cập thẳng vào PostgresSQL xoá cache hoặc xoá luôn Container Docker chạy mới bằng lệnh: `docker-compose down -v`. Lệnh này giúp dọn sạch Database trở lại cấu hình gốc.
+Keycloak chưa sử dụng luồng này cho đến khi bạn gán nó làm mặc định.
+1. Trong màn hình luồng `Browser-Conditional-MFA`, góc trên bên phải, nhấn nút **Bind flow**.
+2. Chọn Binding type là **Browser flow**. Nhấn **Save**.
+*(Giờ đây mọi giao dịch đăng nhập qua trình duyệt vào Realm này sẽ dùng luồng mới).*
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+### Kịch bản kiểm tra 1: User bình thường (Không có Role admin)
+
+1. Mở trình duyệt ở chế độ Ẩn danh (Incognito/Private window).
+2. Truy cập vào Account Console của Keycloak: `http://localhost:8080/realms/SecuredRealm/account/` (Thay URL tùy vào Realm và Port của bạn).
+3. Nhấn **Sign In**.
+4. Nhập `Username`: `bob_user`, `Password`: `password`.
+5. **Kỳ vọng:** Đăng nhập thành công ngay lập tức và đưa vào giao diện Account. Conditional Flow nhận thấy Bob không có role `admin`, nên bỏ qua bước OTP.
+
+### Kịch bản kiểm tra 2: User Admin (Có Role admin)
+
+1. Đóng cửa sổ ẩn danh và mở lại một cửa sổ ẩn danh mới.
+2. Truy cập vào URL Account Console tương tự.
+3. Nhập `Username`: `alice_admin`, `Password`: `password`.
+4. **Kỳ vọng:** Sau khi nhập mật khẩu thành công, Keycloak sẽ đưa Alice đến màn hình **Mobile Authenticator Setup** (Cài đặt OTP).
+5. Sử dụng Google Authenticator để quét mã QR và nhập mã 6 số để hoàn tất.
+6. Đăng xuất, rồi đăng nhập lại bằng `alice_admin`. Lúc này, Keycloak sẽ hiển thị form yêu cầu nhập mã OTP (không hiện QR code nữa).
+
+### Các lỗi thường gặp (Troubleshooting)
+
+- **Lỗi hiển thị "Invalid Username or Password" khi đã nhập đúng thông tin đối với Admin:** 
+  *Nguyên nhân:* Có thể trong Condition - user role, bạn đã gõ sai tên Role (ví dụ: gõ `Admin` thay vì `admin`, Keycloak phân biệt chữ hoa chữ thường).
+- **Lỗi Admin không bị yêu cầu OTP:** 
+  *Nguyên nhân:* Kiểm tra lại Requirement của `Admin Conditional Sub-flow` có phải là `REQUIRED` không. Nếu bạn vô tình đặt là `ALTERNATIVE`, Keycloak sẽ bỏ qua điều kiện nếu thấy mật khẩu (bước trên) đã thành công.
+- **Vòng lặp thiết lập (Infinite Loop) OTP:** 
+  *Nguyên nhân:* Lỗi thời gian trên máy chủ và điện thoại không đồng bộ. OTP sử dụng TOTP (Time-based), hãy đảm bảo đồng hồ của server Docker Keycloak và điện thoại quét mã là chính xác (cùng đồng bộ qua NTP). 

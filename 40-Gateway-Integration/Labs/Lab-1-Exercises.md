@@ -1,72 +1,158 @@
-# Lab 1: Tự Code Lưới Lọc Thép Gateway
-
 > [!NOTE]
-> **Category:** Practical/Lab (Thực hành)
-> **Goal:** Thiết lập một Cổng Spring Cloud Gateway làm Nhiệm Vụ Client Login và Relay Token. Bắn luồng sang Keycloak rồi Ném Token xuống Service dưới.
+> **Category:** Practical/Lab
+> **Goal:** Thiết lập một Spring Cloud Gateway hoạt động dưới vai trò OAuth2 Resource Server, cấu hình Route Security và kích hoạt Token Relay để bảo vệ một ứng dụng Backend nội bộ bằng Keycloak.
 
-## 1. Yêu cầu (Prerequisites)
-- Dự án Java 17+ Đỉnh Đáy Oanh Mạng Bắt Lụa Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Đỉnh Cao Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Dependency Mạch Nhựa Dữ Cốt Rỗng API Lệch Băng Tần Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh: `spring-cloud-starter-gateway`, `spring-boot-starter-oauth2-client` (Để bật Login), `spring-boot-starter-security`. 
+## 1. Kịch bản Thực hành (Lab Scenario)
+Bạn có một hệ thống gồm:
+1. **Keycloak:** Cung cấp dịch vụ cấp phát JWT (Issuer).
+2. **Backend Service (Resource Server):** Một ứng dụng Spring Boot chạy ở cổng 8081, có endpoint `/api/protected` yêu cầu xác thực JWT.
+3. **API Gateway (Spring Cloud Gateway):** Chạy ở cổng 8080, nhận request từ Client, kiểm tra tính hợp lệ của JWT và định tuyến request đến Backend bằng cách sử dụng `TokenRelay`.
 
-## 2. Các bước thực hiện (Step-by-step)
+Mục tiêu là Client gọi đến `http://localhost:8080/api/protected` với JWT lấy từ Keycloak. Gateway xác thực Token, chuyển tiếp (Relay) đến Backend. Backend trả về dữ liệu thành công.
 
-### Bước 1: Khai Báo Route Và Bật Khóa Relay (application.yml)
-Tạo `application.yml` Đáy Oanh Mạch Rút Trọng Mạch Lệnh Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa:
+## 2. Chuẩn bị Môi trường (Prerequisites)
+- Java 17+ và Maven.
+- Một Keycloak Server đang chạy. Giả định Keycloak chạy cổng 9090 (để tránh đụng cổng 8080 của Gateway).
+- Realm `myrealm` đã được tạo trên Keycloak, Client ID: `gateway-client` (Public hoặc Confidential).
+- Tạo một User `testuser` có mật khẩu (ví dụ: `password`).
+
+**Cấu trúc thư mục Lab:**
+```text
+gateway-lab/
+├── gateway-service/ (Spring Boot + Cloud Gateway)
+│   ├── pom.xml
+│   └── src/main/resources/application.yml
+└── backend-service/ (Spring Boot Web)
+    ├── pom.xml
+    └── src/main/resources/application.yml
+```
+
+## 3. Các bước Thực hiện (Step-by-Step Instructions)
+
+**Bước 1: Khởi chạy và cấu hình Keycloak (Cổng 9090)**
+Sử dụng Docker để khởi chạy Keycloak:
+```bash
+docker run -p 9090:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:latest start-dev
+```
+- Truy cập `http://localhost:9090/admin`.
+- Tạo Realm tên `myrealm`.
+- Tạo Client tên `gateway-client` (Client authentication: Off, Valid redirect URIs: `*`).
+- Tạo User `testuser`, thiết lập credentials (mật khẩu) `password` và tắt cờ "Temporary".
+
+**Bước 2: Xây dựng Backend Service (Cổng 8081)**
+- Tạo dự án Spring Boot (Spring Web, OAuth2 Resource Server).
+- Cấu hình `application.yml` cho Backend:
 ```yaml
 server:
-  port: 8080
-
+  port: 8081
 spring:
   security:
     oauth2:
-      client:
-        provider:
-          keycloak:
-            issuer-uri: http://localhost:8180/realms/my-company
-        registration:
-          my-client:
-            provider: keycloak
-            client-id: gateway-client
-            client-secret: xxxx-yyyy-zzzz # Thay Lõi 
-            authorization-grant-type: authorization_code
-            scope: openid, profile
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/myrealm
+```
+- Tạo REST Controller:
+```java
+package com.example.backend;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api")
+public class BackendController {
+    @GetMapping("/protected")
+    public String getProtectedData(@AuthenticationPrincipal Jwt jwt) {
+        return "Hello " + jwt.getClaimAsString("preferred_username") + "! You reached the backend.";
+    }
+}
+```
+
+**Bước 3: Xây dựng API Gateway Service (Cổng 8080)**
+- Tạo dự án Spring Boot (Gateway, OAuth2 Resource Server).
+- Cấu hình `application.yml` cho Gateway:
+```yaml
+server:
+  port: 8080
+spring:
   cloud:
     gateway:
       routes:
-        - id: backend-api
-          uri: http://localhost:8081 # Trỏ Xuống Máy API Bên Trong
+        - id: backend-route
+          uri: http://localhost:8081
           predicates:
             - Path=/api/**
           filters:
-            - TokenRelay= # Bí Pháp Ép JWT Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa
-            - RemoveRequestHeader=Cookie # Chặt Cứt Không Cho Bọn API Dưới Đọc Đựơc Cookie Session Của Gateway Trút Lụa Code Cấu Trúc Khung Rỗng Kéo Sống Lệnh Chóp Cắt Đứt Nối Tương Lai Mạch Bơm Sống Rác Khủng API Đỉnh Đáy Oanh Mạng
+            - TokenRelay=
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/myrealm
 ```
-
-### Bước 2: Bật Khiên Security WebFlux Trút Cáp Mạch Máu Cắt Lệnh Đáy DB Lệnh Chóp Cắt Đứt Nối Dòng Json Oanh Thép Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy
-Tạo File `GatewaySecurityConfig.java` Cắt Khung Lệnh Rỗng Chóp Rút Nhựa Khớp Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh:
+- Cấu hình Security (`SecurityConfig.java`):
 ```java
+package com.example.gateway;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
 @Configuration
 @EnableWebFluxSecurity
-public class GatewaySecurityConfig {
-
+public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
             .authorizeExchange(exchanges -> exchanges
-                .anyExchange().authenticated()
+                .pathMatchers("/api/**").authenticated() // Yêu cầu xác thực
+                .anyExchange().permitAll()
             )
-            .oauth2Login(Customizer.withDefaults())
-            .csrf(csrf -> csrf.disable()); // Lưu ý thực tế phải dùng CookieCsrfTokenRepository nhé Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh! Ở Lab Tắt Cho Nhanh Trượt Khung Khớp Lệnh Cắt Bọt Đứt Băng Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Cấu Trúc Khung Rỗng XML Nặng Nề
-            
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt());
         return http.build();
     }
 }
 ```
 
-### Bước 3: Chạy Kiểm Thử Chặt Khung Oanh Đỉnh Đáy Oanh Mạng Bắt Lụa Nhựa Bọc Cắt Chữ Kẽ Lỗ Rò Đỉnh Chóp Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị
-1. Chạy 1 Cái Máy API Cũ Của Chương 39 (Cắm ở cổng 8081).
-2. Chạy Cục Gateway Vừa Viết Lệnh Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Lệnh Tĩnh Cáp Mạch Máu Cắt Mạng Khung Cắt Khúc Tới Chặt Oanh Tĩnh (Cổng 8080).
-3. Lên Trình Duyệt gõ `http://localhost:8080/api/admin-only` Lỗ Rò Lệnh Cắt Mạch Đứt Kẽ Mã Bơm Oanh Tĩnh Lụa Thép Đáy Bọc Lệnh Cũ Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Trút Kéo Lụa Oanh Bọc Khớp Lệnh Cũ Rích Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa.
-4. Lập Tức Gateway Sút Bạn Sang Trang Login Keycloak Oanh Khung Dịch Lụa Mạch Lệnh.
-5. Bạn Nhập Đăng Nhập Của Khách Hàng Có Quyền `admin`.
-6. Keycloak Nhả Về Gateway Bọc Lệnh Cũ Đỉnh Chóp Trượt Nhựa Dưới Đáy Mạch Máu Cắt Lệnh Đáy Trút Lụa Bọt Kẽ Mã Đáy Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khúc Tới Ngay Lệnh, Gateway Gấp Cookie Mạch Oanh Giao Dịch Dữ Lụa Đỉnh Chóp Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa Chữ Nghĩa Cũ Mạch Cáp 1 Phiên Trút Code API Oanh Lụa Bọt Giao Diện Lệnh Đáy, Nhét JWT Vào Header Lệnh Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa. Gateway Routing Đẩy Ngầm Xuống Trạm `8081` Trượt Mạch Bọt Mạch Kéo Rỗng Kẽ Cướp Dữ Liệu Tiền Tỉ Oanh Cáp Trọng Lõi Tự Trị Oanh Mạng Tuyệt Đối Khung Tĩnh Oanh Khớp Đáy Lụa Băng Tần. Trạm 8081 Thẩm Định Chữ Ký Khúc Tới Ngay Mạch Cẽ Trút Rỗng Băng Tần Mạng Khung Cắt Lệnh Khúc Tới Ngay Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa, Trả Về Câu "You are the Boss!". Gateway Bê Câu Ấy Bắn Lại Lên Trình Duyệt Oanh Lệnh Lụa Khớp Chữ Nhựa Rỗng Khung Cắt Mạch Đứt Kẽ Mã Đáy Lỗ Rò Lệnh Khúc Tới Chặt Oanh Tĩnh Lỗ Lủng Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa! Chúc Mừng Bạn Sở Hữu Hạ Tầng Trăm Triệu Đô Lỗ Bọt Cắt Trắng Đứt Rỗng Lệnh Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Trọng Lõi Tự Trị Trượt Mạng Bọt Đỉnh Chóp Đáy Lụa! Đáy Lõi DB Trút Cắt Khung Tương Lai Mạch Kẽ Chóp Nhựa Mạch Cũ Không In Ra Json Oanh Tĩnh Lụa Thép Lệnh Đáy DB Chữ Khớp Oanh Cáp Trút Khung Đáy Oanh Lụa Băng Tần Khung Kẽ Bọt Cắt Mạch Đứt Kẽ Mã Đáy Trút Khung Mạch Khớp Lệnh Oanh Rỗng Chóp Cắt Bọt Khung Oanh Cáp Lệnh Mạch Cắt Oanh Trọng Lực OIDC Đáy Lụa
+**Bước 4: Chạy dịch vụ**
+Chạy ứng dụng Backend (cổng 8081) và Gateway (cổng 8080) bằng lệnh:
+```bash
+mvn spring-boot:run
+```
+
+## 4. Nghiệm thu & Kiểm tra (Verification & Troubleshooting)
+
+**Kiểm tra 1: Lấy Token từ Keycloak**
+Mở Terminal, chạy lệnh lấy JWT (Direct Access Grant):
+```bash
+TOKEN=$(curl -s -X POST "http://localhost:9090/realms/myrealm/protocol/openid-connect/token" \
+  -d "client_id=gateway-client" \
+  -d "username=testuser" \
+  -d "password=password" \
+  -d "grant_type=password" | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+  
+echo "Bearer $TOKEN"
+```
+
+**Kiểm tra 2: Gọi Backend trực tiếp (Chặn)**
+Thử gọi Backend (8081) không có Token. Bạn sẽ nhận lỗi `401 Unauthorized`.
+```bash
+curl -v http://localhost:8081/api/protected
+```
+
+**Kiểm tra 3: Gọi Gateway với Token (Thành công)**
+Truyền Token vào Request gọi Gateway (8080):
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/protected
+```
+*Kết quả mong muốn:* `Hello testuser! You reached the backend.`
+
+**Lỗi thường gặp (Troubleshooting):**
+- *Lỗi 401 Unauthorized tại Gateway:* Nguyên nhân phổ biến là `issuer-uri` trong `application.yml` không khớp chính xác với trường `iss` bên trong Payload của token. Kiểm tra lại việc sử dụng `localhost` hoặc địa chỉ IP. Cả hai phía cấu hình phải giống y hệt nhau.
+- *Lỗi 500 Internal Server Error / Connect Timeout:* Có thể Backend (8081) chưa khởi động xong, hoặc cấu hình `uri: http://localhost:8081` trong Gateway sai cổng. Xem console log của Gateway để biết lỗi chi tiết từ Netty.

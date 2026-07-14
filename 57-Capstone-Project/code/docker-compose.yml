@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: capstone-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    networks:
+      - capstone-net
+    depends_on:
+      - keycloak
+      - bff-gateway
+
+  postgres:
+    image: postgres:15
+    container_name: capstone-postgres
+    # VULNERABILITY 1: Hardcoded DB Password (Lab requirement to fix)
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: admin123
+    networks:
+      - capstone-net
+    volumes:
+      - capstone_db:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: capstone-keycloak
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      # VULNERABILITY 1: Hardcoded DB Password
+      KC_DB_PASSWORD: admin123
+      # VULNERABILITY 2: Hardcoded Master Admin
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    depends_on:
+      - postgres
+    networks:
+      - capstone-net
+
+  bff-gateway:
+    image: springcloud/spring-cloud-gateway:latest # Placeholder
+    container_name: capstone-bff
+    networks:
+      - capstone-net
+
+  resource-server:
+    image: jboss/wildfly:latest # Placeholder
+    container_name: capstone-resource-server
+    networks:
+      - capstone-net
+
+networks:
+  capstone-net:
+    driver: bridge
+
+volumes:
+  capstone_db:
